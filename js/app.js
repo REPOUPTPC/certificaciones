@@ -65,46 +65,51 @@
     const btnAbrir = document.getElementById('btnAbrirConfiguracion');
     const modalEl = document.getElementById('modalConfiguracion');
     const inputUrl = document.getElementById('inputGoogleScriptUrl');
+    const inputKey = document.getElementById('inputAdminSecretKey');
     const btnGuardar = document.getElementById('btnGuardarConfiguracion');
     const btnProbar = document.getElementById('btnProbarConexionScript');
     const statusContainer = document.getElementById('statusConexionScript');
 
     if (btnAbrir) {
       btnAbrir.addEventListener('click', () => {
-        inputUrl.value = window.config.getApiUrl();
-        statusContainer.innerHTML = '';
+        if (inputUrl) inputUrl.value = window.config.getApiUrl();
+        if (inputKey) inputKey.value = window.config.getAdminKey();
+        if (statusContainer) statusContainer.innerHTML = '';
         new bootstrap.Modal(modalEl).show();
       });
     }
 
     if (btnProbar) {
       btnProbar.addEventListener('click', async () => {
-        const url = inputUrl.value.trim();
+        const url = inputUrl ? inputUrl.value.trim() : '';
+        const key = inputKey ? inputKey.value.trim() : '';
         if (!url) {
           statusContainer.innerHTML = '<div class="alert alert-warning py-2 mb-0">Ingrese un URL de Aplicación Web de Google Apps Script.</div>';
           return;
         }
 
-        statusContainer.innerHTML = '<div class="alert alert-info py-2 mb-0"><i class="fa-solid fa-spinner fa-spin me-2"></i>Probando conexión...</div>';
+        statusContainer.innerHTML = '<div class="alert alert-info py-2 mb-0"><i class="fa-solid fa-spinner fa-spin me-2"></i>Probando conexión y autenticación...</div>';
         
         window.config.setApiUrl(url);
+        window.config.setAdminKey(key);
         try {
-          const res = await window.api.ping();
+          const res = await window.api.verifyAdmin();
           if (res.status === 'success') {
-            statusContainer.innerHTML = `<div class="alert alert-success py-2 mb-0"><i class="fa-solid fa-circle-check me-2"></i>¡Conexión exitosa! ${window.utils.escapeHtml(res.message)}</div>`;
+            statusContainer.innerHTML = `<div class="alert alert-success py-2 mb-0"><i class="fa-solid fa-circle-check me-2"></i>${window.utils.escapeHtml(res.message)}</div>`;
           } else {
-            statusContainer.innerHTML = `<div class="alert alert-danger py-2 mb-0"><i class="fa-solid fa-triangle-exclamation me-2"></i>Error: ${window.utils.escapeHtml(res.message)}</div>`;
+            statusContainer.innerHTML = `<div class="alert alert-danger py-2 mb-0"><i class="fa-solid fa-triangle-exclamation me-2"></i>${window.utils.escapeHtml(res.message || 'Clave de administración incorrecta')}</div>`;
           }
         } catch (e) {
-          statusContainer.innerHTML = `<div class="alert alert-danger py-2 mb-0"><i class="fa-solid fa-circle-xmark me-2"></i>No se pudo conectar con el URL especificado. Verifique los permisos de implementación.</div>`;
+          statusContainer.innerHTML = `<div class="alert alert-danger py-2 mb-0"><i class="fa-solid fa-circle-xmark me-2"></i>No se pudo autenticar. Verifique el URL y la Clave Secreta.</div>`;
         }
       });
     }
 
     if (btnGuardar) {
       btnGuardar.addEventListener('click', () => {
-        window.config.setApiUrl(inputUrl.value.trim());
-        window.utils.showToast('Configuración guardada exitosamente', 'success');
+        if (inputUrl) window.config.setApiUrl(inputUrl.value.trim());
+        if (inputKey) window.config.setAdminKey(inputKey.value.trim());
+        window.utils.showToast('Configuración y Clave de Administración guardadas', 'success');
         bootstrap.Modal.getInstance(modalEl).hide();
       });
     }

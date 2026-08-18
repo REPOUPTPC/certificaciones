@@ -79,7 +79,14 @@ Plataforma web integral para la creación, diseño interactivo en Canvas, emisi�
 
 ## 📋 Configuración e Instalación
 
-1. **Frontend**:
+1. **Google Sheets & Apps Script**:
+   - Cree un nuevo documento en Google Sheets.
+   - Abra el editor de código (**Extensiones > Apps Script**).
+   - Copie el contenido de [`google_sheet.gs`](file:///home/herrera/Documents/antigravity/blissful-curie/google_sheet.gs) (Versión V008) en el archivo principal.
+   - Asegúrese de ajustar el archivo [`appsscript.json`](file:///home/herrera/Documents/antigravity/blissful-curie/appsscript.json) con los permisos de OAuth necesarios.
+   - Despliegue como **Aplicación Web** (`Ejecutar como: Yo`, `Acceso: Cualquier persona`).
+
+2. **Frontend**:
    - Abra `gestion.html` en cualquier navegador web moderno o servidor local.
    - Ingrese el URL de la Aplicación Web desplegada en la configuración del panel de administración.
 

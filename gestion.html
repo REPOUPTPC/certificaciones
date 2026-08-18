@@ -640,6 +640,12 @@
             <input type="text" class="form-control" id="inputGoogleScriptUrl" placeholder="https://script.google.com/macros/s/.../exec">
           </div>
 
+          <div class="mb-3">
+            <label class="form-label fw-bold"><i class="fa-solid fa-key text-warning me-1"></i> Clave Secreta de Administración (Admin Token):</label>
+            <input type="password" class="form-control" id="inputAdminSecretKey" placeholder="Clave secreta configurada en google_sheet.gs">
+            <small class="text-muted">Protege operaciones de edición y emisión masiva para impedir modificaciones no autorizadas.</small>
+          </div>
+
           <div id="statusConexionScript" class="mb-3"></div>
         </div>
         <div class="modal-footer">

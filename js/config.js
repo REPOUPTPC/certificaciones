@@ -6,7 +6,9 @@
 
 (function() {
   const STORAGE_KEY_API_URL = 'uptpc_google_script_url';
+  const STORAGE_KEY_ADMIN_KEY = 'uptpc_admin_secret_key';
   const DEFAULT_GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwgdrEsh6goVGRCCdyiPVJ2XWwSy0e_XJ9bfIV9BSDB_f9WX-xttQKl3KCv4r_o3Os8lg/exec';
+  const DEFAULT_ADMIN_KEY = 'UPTPC_CYT_SECURE_KEY_2026';
   const DEFAULT_SUPABASE_URL = 'https://tuyatgbswyaaetytathd.supabase.co';
   const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1eWF0Z2Jzd3lhYWV0eXRhdGhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc4MTM1ODksImV4cCI6MjA4MzM4OTU4OX0._TCE8xZDAdckz4ZlXjvqz4r7ybU8yoyZHiJZuGLvC-A';
   const PUBLIC_VERIFICATION_BASE_URL = 'https://www.jornaltec.uptpc.edu.ve/p/validador-de-certificados.html';
@@ -23,6 +25,18 @@
         localStorage.setItem(STORAGE_KEY_API_URL, url.trim());
       } else {
         localStorage.removeItem(STORAGE_KEY_API_URL);
+      }
+    },
+
+    getAdminKey() {
+      return localStorage.getItem(STORAGE_KEY_ADMIN_KEY) || DEFAULT_ADMIN_KEY;
+    },
+
+    setAdminKey(key) {
+      if (key) {
+        localStorage.setItem(STORAGE_KEY_ADMIN_KEY, key.trim());
+      } else {
+        localStorage.removeItem(STORAGE_KEY_ADMIN_KEY);
       }
     },
 

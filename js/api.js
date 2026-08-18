@@ -83,16 +83,22 @@
   window.api = {
     async get(action, params = {}) {
       const apiUrl = window.config.getApiUrl();
+      const adminKey = window.config.getAdminKey();
 
       if (apiUrl) {
         try {
-          const queryParams = new URLSearchParams({ action, ...params });
+          const queryParams = new URLSearchParams({ action, admin_key: adminKey, ...params });
           const response = await fetch(`${apiUrl}?${queryParams.toString()}`, {
             method: 'GET',
             mode: 'cors'
           });
           if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
           const json = await response.json();
+
+          if (json && json.status === 'error' && json.code === 403) {
+            console.error('Acceso Denegado por Google Apps Script:', json.message);
+          }
+
           return json;
         } catch (err) {
           console.warn('Conexión remota con Google Apps Script no disponible, recurriendo a modo local:', err);
@@ -104,6 +110,7 @@
 
     async post(action, payload = {}) {
       const apiUrl = window.config.getApiUrl();
+      const adminKey = window.config.getAdminKey();
 
       if (apiUrl) {
         try {
@@ -113,10 +120,15 @@
             headers: {
               'Content-Type': 'text/plain;charset=utf-8'
             },
-            body: JSON.stringify({ action, ...payload })
+            body: JSON.stringify({ action, admin_key: adminKey, ...payload })
           });
           if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
           const json = await response.json();
+
+          if (json && json.status === 'error' && json.code === 403) {
+            window.utils.showToast('Acceso denegado (403): Clave de Administración incorrecta. Operación de modificación bloqueada por seguridad.', 'danger');
+            return json;
+          }
           
           // Además de guardar en Google Sheets, actualizamos la caché local
           this.mockPost(action, payload);
@@ -133,6 +145,7 @@
     },
 
     async ping() { return this.get('ping'); },
+    async verifyAdmin() { return this.get('verifyAdmin'); },
     async getAll(table) { return this.get('getAll', { table }); },
     async getById(table, id) { return this.get('getById', { table, id }); },
     async create(table, data) { return this.post('create', { table, data }); },
