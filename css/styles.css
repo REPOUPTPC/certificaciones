@@ -1,0 +1,180 @@
+/* ==============================================================================
+   SISTEMA DE GESTIÓN DE CERTIFICACIONES UPTPC - ESTILOS (css/styles.css)
+   ============================================================================== */
+
+:root {
+  --primary-color: #0f3460;
+  --primary-dark: #16213e;
+  --primary-gradient: linear-gradient(135deg, #0f3460 0%, #16213e 50%, #0f3460 100%);
+  --sidebar-width: 260px;
+  --accent-color: #0d6efd;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f4f6f9;
+  color: #333;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* ── Sidebar Nav ── */
+.sidebar {
+  width: var(--sidebar-width);
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  background: var(--primary-gradient);
+  color: #fff;
+  z-index: 1000;
+  box-shadow: 4px 0 15px rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-header {
+  padding: 20px;
+  text-align: center;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.sidebar-logo {
+  max-width: 140px;
+  height: auto;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+
+.sidebar-menu {
+  padding: 15px 10px;
+  flex-grow: 1;
+  overflow-y: auto;
+}
+
+.sidebar-menu .nav-link-tab {
+  color: rgba(255,255,255,0.8);
+  padding: 12px 18px;
+  margin-bottom: 5px;
+  border-radius: 10px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  transition: all 0.25s ease;
+  text-decoration: none;
+}
+
+.sidebar-menu .nav-link-tab:hover {
+  color: #fff;
+  background: rgba(255,255,255,0.12);
+  transform: translateX(3px);
+}
+
+.sidebar-menu .nav-link-tab.active {
+  color: #fff;
+  background: linear-gradient(135deg, #0d6efd, #0b5ed7);
+  box-shadow: 0 4px 12px rgba(13,110,253,0.35);
+  font-weight: 600;
+}
+
+.sidebar-menu .nav-link-tab i {
+  width: 24px;
+  font-size: 1.1rem;
+}
+
+/* ── Main Content Area ── */
+.main-content {
+  margin-left: var(--sidebar-width);
+  padding: 30px;
+  min-height: 100vh;
+}
+
+/* ── Top Navbar ── */
+.top-navbar {
+  background: #ffffff;
+  border-radius: 15px;
+  padding: 15px 25px;
+  margin-bottom: 25px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* ── Metric Cards ── */
+.card-metric {
+  border: none;
+  border-radius: 15px;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.06);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  background: #ffffff;
+}
+
+.card-metric:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+
+.metric-icon {
+  width: 55px;
+  height: 55px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+/* ── Canvas Designer UI ── */
+#canvasContainer {
+  background: #eef2f7;
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 15px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: auto;
+  min-height: 550px;
+}
+
+#canvasContainer svg {
+  background: #ffffff;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+  border-radius: 4px;
+}
+
+.item-elemento-canvas {
+  cursor: pointer;
+  border-left: 4px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.item-elemento-canvas.active {
+  border-left-color: #0d6efd;
+  background-color: #e7f1ff;
+}
+
+/* ── Custom Border Classes for Toasts ── */
+.border-left-primary { border-left: 5px solid #0d6efd !important; }
+.border-left-success { border-left: 5px solid #198754 !important; }
+.border-left-danger { border-left: 5px solid #dc3545 !important; }
+.border-left-warning { border-left: 5px solid #ffc107 !important; }
+.border-left-info { border-left: 5px solid #0dcaf0 !important; }
+
+/* ── Cursor Utilities ── */
+.cursor-pointer { cursor: pointer; }
+
+/* ── Responsive adjustments ── */
+@media (max-width: 991px) {
+  .sidebar {
+    width: 70px;
+  }
+  .sidebar .sidebar-text, .sidebar .sidebar-header h5 {
+    display: none;
+  }
+  .main-content {
+    margin-left: 70px;
+    padding: 15px;
+  }
+}

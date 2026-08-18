@@ -1,0 +1,5 @@
+google_sheet.gs
+
+# Ignorar archivos de sistema comunes
+.DS_Store
+node_modules/
