@@ -291,16 +291,16 @@
         ponencias: 'Módulo 1: Fundamentos | Módulo 2: Javascript',
         firma1_nombre: 'Dr. César Prieto',
         firma1_cargo: 'Rector de la UPTPC',
-        firma1_url: 'img/IMAGE.jpeg',
-        sello1_url: 'img/IMAGE.jpeg',
+        firma1_url: 'img/IMAGE.png',
+        sello1_url: 'img/IMAGE.png',
         firma2_nombre: 'Dra. Blanca Crespo',
         firma2_cargo: 'Secretaria General UPTPC',
-        firma2_url: 'img/IMAGE.jpeg',
-        sello2_url: 'img/IMAGE.jpeg',
+        firma2_url: 'img/IMAGE.png',
+        sello2_url: 'img/IMAGE.png',
         firma3_nombre: 'Nombre del Profesor',
         firma3_cargo: 'Cargo del Profesor',
-        firma3_url: 'img/IMAGE.jpeg',
-        sello3_url: 'img/IMAGE.jpeg'
+        firma3_url: 'img/IMAGE.png',
+        sello3_url: 'img/IMAGE.png'
       };
 
       const svgHtml = window.certRenderer.renderCertificateSVG(disenoActual, mockCert, true);
