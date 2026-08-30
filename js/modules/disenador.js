@@ -275,7 +275,7 @@
       const mockCert = {
         codigo: 'HGQ5573DTY',
         cedula: 'V-12345678',
-        nombre_completo: 'JUAN ALBERTO PÉREZ',
+        nombre_completo: 'NOMBRE COMPLETO DEL PARTICIPANTE',
         nombre_curso: 'INTRODUCCIÓN A LA INTELIGENCIA ARTIFICIAL',
         contenido: 'Conceptos fundamentales de IA y desarrollo web',
         horas: 16,
@@ -289,18 +289,18 @@
         folio: '102',
         motivo: 'Por su valiosa participación en el taller de formación tecnológica.',
         ponencias: 'Módulo 1: Fundamentos | Módulo 2: Javascript',
-        firma1_nombre: 'Msc. Carlos Rodríguez',
+        firma1_nombre: 'Dr. César Prieto',
         firma1_cargo: 'Rector de la UPTPC',
-        firma1_url: '',
-        sello1_url: '',
-        firma2_nombre: 'Dra. Elena Mendoza',
-        firma2_cargo: 'Directora de Ciencia y Tecnología',
-        firma2_url: '',
-        sello2_url: '',
-        firma3_nombre: 'Lcdo. Roberto Gómez',
-        firma3_cargo: 'Secretario General UPTPC',
-        firma3_url: '',
-        sello3_url: ''
+        firma1_url: 'img/IMAGE.jpeg',
+        sello1_url: 'img/IMAGE.jpeg',
+        firma2_nombre: 'Dra. Blanca Crespo',
+        firma2_cargo: 'Secretaria General UPTPC',
+        firma2_url: 'img/IMAGE.jpeg',
+        sello2_url: 'img/IMAGE.jpeg',
+        firma3_nombre: 'Nombre del Profesor',
+        firma3_cargo: 'Cargo del Profesor',
+        firma3_url: 'img/IMAGE.jpeg',
+        sello3_url: 'img/IMAGE.jpeg'
       };
 
       const svgHtml = window.certRenderer.renderCertificateSVG(disenoActual, mockCert, true);
