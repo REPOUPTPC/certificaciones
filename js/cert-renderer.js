@@ -246,20 +246,20 @@
       case 'se_certifica': return 'Se certifica que:';
 
       // Firmante 1
-      case 'firma1_nombre': return cert?.firma1_nombre || (isEditor ? 'Msc. Carlos Rodríguez' : '');
+      case 'firma1_nombre': return cert?.firma1_nombre || (isEditor ? 'Dr. Cesar Prieto' : '');
       case 'firma1_cargo': return cert?.firma1_cargo || (isEditor ? 'Rector de la UPTPC' : '');
       case 'firma1_url': return cert?.firma1_url || cert?.firma1_firma || '';
       case 'sello1_url': return cert?.sello1_url || cert?.firma1_sello || '';
 
       // Firmante 2
-      case 'firma2_nombre': return cert?.firma2_nombre || (isEditor ? 'Dra. Elena Mendoza' : '');
-      case 'firma2_cargo': return cert?.firma2_cargo || (isEditor ? 'Directora de Ciencia y Tecnología' : '');
+      case 'firma2_nombre': return cert?.firma2_nombre || (isEditor ? 'Dra. Blanca Crespo' : '');
+      case 'firma2_cargo': return cert?.firma2_cargo || (isEditor ? 'Secretaria General UPTPC' : '');
       case 'firma2_url': return cert?.firma2_url || cert?.firma2_firma || '';
       case 'sello2_url': return cert?.sello2_url || cert?.firma2_sello || '';
 
       // Firmante 3
-      case 'firma3_nombre': return cert?.firma3_nombre || (isEditor ? 'Lcdo. Roberto Gómez' : '');
-      case 'firma3_cargo': return cert?.firma3_cargo || (isEditor ? 'Secretario General UPTPC' : '');
+      case 'firma3_nombre': return cert?.firma3_nombre || (isEditor ? 'Nombre del Profesor' : '');
+      case 'firma3_cargo': return cert?.firma3_cargo || (isEditor ? 'Cargo del Profesor' : '');
       case 'firma3_url': return cert?.firma3_url || cert?.firma3_firma || '';
       case 'sello3_url': return cert?.sello3_url || cert?.firma3_sello || '';
 
