@@ -40,7 +40,6 @@
 
     async cargarCursos() {
       try {
-        await this.cargarDependencias();
         const [resCursos, resCerts] = await Promise.all([
           window.api.getAll('cursos'),
           window.api.getAll('certificados')

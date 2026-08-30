@@ -240,7 +240,7 @@
       case 'url_verificacion': return cert?.codigo ? verifyUrl : (isEditor ? verifyUrl : '');
       case 'qr_url': return cert?.codigo ? verifyUrl : (isEditor ? verifyUrl : '');
       case 'logo_url': return cert?.logo_url || '';
-      case 'logo_universidad': return cert?.logo_universidad || (window.config ? window.config.getDefaultLogoSvg() : 'https://tuyatgbswyaaetytathd.supabase.co/storage/v1/object/public/logos/UPTPC_LOGO.png');
+      case 'logo_universidad': return cert?.logo_universidad || (window.config ? window.config.getDefaultLogoSvg() : 'img/IMAGE.jpeg');
       case 'curso_nombre': return cert?.nombre_curso || (isEditor ? 'NOMBRE CURSO / TALLER FORMATIVO' : '');
       case 'fecha_curso': return cert?.fecha_curso ? (window.utils ? window.utils.formatDateExtended(cert.fecha_curso) : cert.fecha_curso) : (isEditor ? '20 DE MAYO DE 2026' : '');
       case 'se_certifica': return 'Se certifica que:';
@@ -478,7 +478,7 @@
       <path d="M 30 120 L 30 30 L 120 30" fill="none" stroke="${mainColor}" stroke-width="5" opacity="0.6"/>
       <path d="M 1093 674 L 1093 764 L 1003 764" fill="none" stroke="${mainColor}" stroke-width="5" opacity="0.6"/>
 
-      <image href="https://tuyatgbswyaaetytathd.supabase.co/storage/v1/object/public/logos/UPTPC_LOGO.png" x="60" y="50" width="100" height="100" preserveAspectRatio="xMidYMid meet" onerror="this.style.display='none'"/>
+      <image href="img/IMAGE.jpeg" x="60" y="50" width="100" height="100" preserveAspectRatio="xMidYMid meet" onerror="this.style.display='none'"/>
       ${cert?.logo_url ? `<image href="${cert.logo_url}" x="963" y="50" width="100" height="100" preserveAspectRatio="xMidYMid meet" onerror="this.style.display='none'"/>` : ''}
 
       <text x="561" y="60" class="text title" font-size="22">REPÚBLICA BOLIVARIANA DE VENEZUELA</text>

@@ -151,8 +151,10 @@
       const modalEl = document.getElementById('modalCertificar');
       if (!modalEl) return;
 
-      // Cargar/actualizar datos frescos del servidor antes de mostrar el modal
-      await this.cargarCertificados();
+      // Solo recargar si no hay datos en memoria
+      if (!certificadosVistaData.length && !usuariosDisponibles.length) {
+        await this.cargarCertificados();
+      }
 
       usuariosSeleccionadosEmision = [];
 

@@ -21,34 +21,34 @@
   <!-- ═══ SIDEBAR NAV ═══ -->
   <aside class="sidebar">
     <div class="sidebar-header">
-      <img src="img/CYT.png" alt="UPTPC Logo" class="sidebar-logo mb-2" onerror="this.style.display='none'">
+      <img src="img/CYT.png" alt="UPTPC Logo" class="sidebar-logo img-fluid mb-2" onerror="this.style.display='none'">
       <h6 class="mb-0 font-weight-bold text-white">UPTPC - Ciencia y Tecnología</h6>
       <small class="text-white-50">Certificaciones v2.0</small>
     </div>
 
     <div class="sidebar-menu">
-      <a href="#" class="nav-link-tab active" data-target="secDashboard">
+      <a href="#dashboard" class="nav-link-tab active" data-target="secDashboard">
         <i class="fa-solid fa-chart-line me-2"></i> <span class="sidebar-text">Dashboard</span>
       </a>
-      <a href="#" class="nav-link-tab" data-target="secUsuarios">
+      <a href="#usuarios" class="nav-link-tab" data-target="secUsuarios">
         <i class="fa-solid fa-users me-2"></i> <span class="sidebar-text">Usuarios</span>
       </a>
-      <a href="#" class="nav-link-tab" data-target="secUnidades">
+      <a href="#unidades" class="nav-link-tab" data-target="secUnidades">
         <i class="fa-solid fa-building-columns me-2"></i> <span class="sidebar-text">Unidades</span>
       </a>
-      <a href="#" class="nav-link-tab" data-target="secFirmas">
+      <a href="#firmas" class="nav-link-tab" data-target="secFirmas">
         <i class="fa-solid fa-signature me-2"></i> <span class="sidebar-text">Firmas y Sellos</span>
       </a>
-      <a href="#" class="nav-link-tab" data-target="secCursos">
+      <a href="#cursos" class="nav-link-tab" data-target="secCursos">
         <i class="fa-solid fa-book-open me-2"></i> <span class="sidebar-text">Cursos / Talleres</span>
       </a>
-      <a href="#" class="nav-link-tab" data-target="secCertificados">
+      <a href="#certificados" class="nav-link-tab" data-target="secCertificados">
         <i class="fa-solid fa-graduation-cap me-2"></i> <span class="sidebar-text">Emisión Certificados</span>
       </a>
-      <a href="#" class="nav-link-tab" data-target="secDisenador">
+      <a href="#disenador" class="nav-link-tab" data-target="secDisenador">
         <i class="fa-solid fa-palette me-2"></i> <span class="sidebar-text">Diseñador Canvas</span>
       </a>
-      <a href="#" class="nav-link-tab" data-target="secConsultas">
+      <a href="#consultas" class="nav-link-tab" data-target="secConsultas">
         <i class="fa-solid fa-clock-rotate-left me-2"></i> <span class="sidebar-text">Bitácora Consultas</span>
       </a>
     </div>
@@ -77,6 +77,15 @@
         <span class="badge bg-success py-2 px-3"><i class="fa-solid fa-wifi me-1"></i> Sistema Activo</span>
       </div>
     </header>
+
+      <!-- Banner de Datos de Ejemplo (se oculta con datos reales) -->
+      <div id="bannerDatosEjemplo" class="demo-data-banner" style="display: none;">
+        <i class="fa-solid fa-flask demo-icon"></i>
+        <span class="demo-text"><strong>Modo Demostración:</strong> Estás viendo datos de ejemplo almacenados localmente. Configura la conexión con Google Apps Script para trabajar con datos reales de producción.</span>
+        <button class="btn-close-demo" onclick="this.parentElement.style.display='none'" title="Cerrar">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
 
     <!-- ═════════════════════════════════════════════════════════════════ -->
     <!-- SECCIÓN 1: DASHBOARD -->
@@ -584,6 +593,21 @@
                   </select>
                 </div>
               </div>
+
+                <!-- Controles de Efectos Adicionales -->
+                <div class="effect-control-group" id="panelEfectosExtra">
+                  <label class="form-label mb-1"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>Efectos</label>
+                  <div class="row g-2 mb-2">
+                    <div class="col-6">
+                      <label class="form-label small mb-0">Opacidad</label>
+                      <input type="range" class="form-range" id="propElemOpacity" min="0" max="100" value="100">
+                    </div>
+                    <div class="col-6">
+                      <label class="form-label small mb-0">Espaciado Letras</label>
+                      <input type="number" class="form-control form-control-sm" id="propElemLetterSpacing" min="0" max="20" value="0">
+                    </div>
+                  </div>
+                </div>
             </form>
           </div>
 

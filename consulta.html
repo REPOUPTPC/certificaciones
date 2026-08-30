@@ -162,7 +162,7 @@
   <div class="row justify-content-center">
     <div class="col-md-8">
       <div class="search-container text-center">
-        <img src="https://i.ibb.co/cKsg52JX/LOGO-CIENCIA-Y-TECNOLOGIA-UPTPC-BORDE-BLANCO.png" alt="UPTPC" class="logo-uptpc" onerror="this.style.display='none'">
+        <img src="img/CYT.png" alt="UPTPC" class="logo-uptpc" onerror="this.style.display='none'">
         <h2 class="mb-1" style="color:#0f3460; font-weight:700;">Validador de Certificados</h2>
         <p class="text-muted mb-4">Universidad Politécnica Territorial de Puerto Cabello</p>
 
@@ -210,7 +210,7 @@
 // ============================================================
 // CONFIGURACIÓN DE GOOGLE APPS SCRIPT API
 // ============================================================
-const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwEIHa8gnLa-v_NpwfDxNRg72UCHUrltJKP5EE65yWkcGjs9G5LO_53VyS7TaI6nLhX4g/exec';
+const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwgdrEsh6goVGRCCdyiPVJ2XWwSy0e_XJ9bfIV9BSDB_f9WX-xttQKl3KCv4r_o3Os8lg/exec';
 const GOOGLE_SCRIPT_URL = localStorage.getItem('uptpc_google_script_url') || DEFAULT_SCRIPT_URL;
 
 // URL base para verificación de certificados
@@ -448,7 +448,7 @@ function resolverBinding(binding, cert) {
     case 'url_verificacion': return URL_VERIFICACION + '?ID=' + (cert.codigo || '');
     case 'qr_url': return URL_VERIFICACION + '?ID=' + (cert.codigo || '');
     case 'logo_url': return cert.logo_url || '';
-    case 'logo_universidad': return 'https://tuyatgbswyaaetytathd.supabase.co/storage/v1/object/public/logos/UPTPC_LOGO.png';
+    case 'logo_universidad': return 'img/IMAGE.jpeg';
     case 'curso_nombre': return cert.nombre_curso || '';
     case 'fecha_curso': return cert.fecha_curso ? formatearFechaExtendida(cert.fecha_curso) : '';
     case 'se_certifica': return 'Se certifica que:';
@@ -732,7 +732,7 @@ function generarSVGCertificado(cert) {
     '<path d="M 30 120 L 30 30 L 120 30" fill="none" stroke="' + tema.colorPrincipal + '" stroke-width="5" opacity="0.6"/>' +
     '<path d="M 1093 674 L 1093 764 L 1003 764" fill="none" stroke="' + tema.colorPrincipal + '" stroke-width="5" opacity="0.6"/>' +
 
-    '<image href="https://tuyatgbswyaaetytathd.supabase.co/storage/v1/object/public/logos/UPTPC_LOGO.png" x="60" y="50" width="100" height="100" preserveAspectRatio="xMidYMid meet" onerror="this.style.display=\'none\'"/>' +
+    '<image href="img/IMAGE.jpeg" x="60" y="50" width="100" height="100" preserveAspectRatio="xMidYMid meet" onerror="this.style.display=\'none\'"/>' +
     (logoUnidad ? '<image href="' + logoUnidad + '" x="963" y="50" width="100" height="100" preserveAspectRatio="xMidYMid meet" onerror="this.style.display=\'none\'"/>' : '') +
 
     '<text x="561" y="60" class="text title" font-size="22">REPÚBLICA BOLIVARIANA DE VENEZUELA</text>' +

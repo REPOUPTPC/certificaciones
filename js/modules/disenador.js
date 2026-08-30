@@ -282,7 +282,7 @@
         tipo_curso: 'Taller',
         unidad_nombre: 'Unidad de Ciencia y Tecnología',
         unidad_codigo: 'CYT',
-        logo_url: 'https://tuyatgbswyaaetytathd.supabase.co/storage/v1/object/public/logos/UPTPC_LOGO.png',
+        logo_url: 'img/IMAGE.jpeg',
         fecha_curso: '2026-05-20',
         lugar: 'Puerto Cabello, Venezuela',
         tomo: '01',
@@ -326,6 +326,7 @@
       const w = (el.ancho || 100) + pad * 2;
       const h = (el.alto || 30) + pad * 2;
 
+      // Rectángulo de selección punteado
       const selRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       selRect.setAttribute('x', x);
       selRect.setAttribute('y', y);
@@ -337,7 +338,7 @@
       selRect.setAttribute('stroke-dasharray', '5,3');
       selRect.setAttribute('pointer-events', 'none');
 
-      // Asignar etiqueta
+      // Etiqueta de coordenadas
       const tagText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       tagText.setAttribute('x', x);
       tagText.setAttribute('y', Math.max(12, y - 6));
@@ -346,10 +347,128 @@
       tagText.setAttribute('fill', '#0d6efd');
       tagText.setAttribute('font-family', 'Arial');
       tagText.setAttribute('pointer-events', 'none');
-      tagText.textContent = `📍 [${el.id}] (${el.x}, ${el.y})`;
+      tagText.textContent = `📍 [${el.id}] (${el.x}, ${el.y}) ${el.ancho}×${el.alto}`;
 
       svgEl.appendChild(selRect);
       svgEl.appendChild(tagText);
+
+      // ── Handles de redimensionamiento ──
+      const handleSize = 8;
+      const halfHandle = handleSize / 2;
+      const handlePositions = [
+        { cx: x, cy: y, cursor: 'nw-resize', dir: 'nw' },
+        { cx: x + w / 2, cy: y, cursor: 'n-resize', dir: 'n' },
+        { cx: x + w, cy: y, cursor: 'ne-resize', dir: 'ne' },
+        { cx: x + w, cy: y + h / 2, cursor: 'e-resize', dir: 'e' },
+        { cx: x + w, cy: y + h, cursor: 'se-resize', dir: 'se' },
+        { cx: x + w / 2, cy: y + h, cursor: 's-resize', dir: 's' },
+        { cx: x, cy: y + h, cursor: 'sw-resize', dir: 'sw' },
+        { cx: x, cy: y + h / 2, cursor: 'w-resize', dir: 'w' }
+      ];
+
+      handlePositions.forEach(hp => {
+        const handle = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        handle.setAttribute('x', hp.cx - halfHandle);
+        handle.setAttribute('y', hp.cy - halfHandle);
+        handle.setAttribute('width', handleSize);
+        handle.setAttribute('height', handleSize);
+        handle.setAttribute('fill', '#0d6efd');
+        handle.setAttribute('stroke', '#ffffff');
+        handle.setAttribute('stroke-width', '1.5');
+        handle.setAttribute('rx', '2');
+        handle.style.cursor = hp.cursor;
+        handle.setAttribute('pointer-events', 'all');
+
+        handle.addEventListener('mousedown', (evt) => {
+          evt.stopPropagation();
+          evt.preventDefault();
+          this.iniciarRedimensionamiento(evt, svgEl, el, hp.dir);
+        });
+
+        svgEl.appendChild(handle);
+      });
+    },
+
+    iniciarRedimensionamiento(evt, svgEl, el, dir) {
+      const ctm = svgEl.getScreenCTM();
+      const startPoint = svgEl.createSVGPoint();
+      startPoint.x = evt.clientX;
+      startPoint.y = evt.clientY;
+      const startCoords = ctm ? startPoint.matrixTransform(ctm.inverse()) : { x: evt.clientX, y: evt.clientY };
+
+      const origX = el.x;
+      const origY = el.y;
+      const origW = el.ancho || 100;
+      const origH = el.alto || 30;
+
+      const onMouseMove = (moveEvt) => {
+        const p = svgEl.createSVGPoint();
+        p.x = moveEvt.clientX;
+        p.y = moveEvt.clientY;
+        const ctmNow = svgEl.getScreenCTM();
+        const coords = ctmNow ? p.matrixTransform(ctmNow.inverse()) : { x: moveEvt.clientX, y: moveEvt.clientY };
+
+        const dx = coords.x - startCoords.x;
+        const dy = coords.y - startCoords.y;
+        const minSize = 20;
+
+        switch (dir) {
+          case 'se':
+            el.ancho = Math.max(minSize, Math.round(origW + dx));
+            el.alto = Math.max(minSize, Math.round(origH + dy));
+            break;
+          case 'e':
+            el.ancho = Math.max(minSize, Math.round(origW + dx));
+            break;
+          case 's':
+            el.alto = Math.max(minSize, Math.round(origH + dy));
+            break;
+          case 'nw':
+            el.ancho = Math.max(minSize, Math.round(origW - dx));
+            el.alto = Math.max(minSize, Math.round(origH - dy));
+            el.x = Math.round(origX + (origW - el.ancho));
+            el.y = Math.round(origY + (origH - el.alto));
+            break;
+          case 'n':
+            el.alto = Math.max(minSize, Math.round(origH - dy));
+            el.y = Math.round(origY + (origH - el.alto));
+            break;
+          case 'ne':
+            el.ancho = Math.max(minSize, Math.round(origW + dx));
+            el.alto = Math.max(minSize, Math.round(origH - dy));
+            el.y = Math.round(origY + (origH - el.alto));
+            break;
+          case 'sw':
+            el.ancho = Math.max(minSize, Math.round(origW - dx));
+            el.alto = Math.max(minSize, Math.round(origH + dy));
+            el.x = Math.round(origX + (origW - el.ancho));
+            break;
+          case 'w':
+            el.ancho = Math.max(minSize, Math.round(origW - dx));
+            el.x = Math.round(origX + (origW - el.ancho));
+            break;
+        }
+
+        // Actualizar campos numéricos en panel de propiedades
+        const propX = document.getElementById('propElemX');
+        const propY = document.getElementById('propElemY');
+        const propW = document.getElementById('propElemAncho');
+        const propH = document.getElementById('propElemAlto');
+        if (propX) propX.value = el.x;
+        if (propY) propY.value = el.y;
+        if (propW) propW.value = el.ancho;
+        if (propH) propH.value = el.alto;
+
+        this.renderLienzo();
+      };
+
+      const onMouseUp = () => {
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+      };
+
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
     },
 
     hacerLienzoInteractivo(svgEl) {
@@ -475,6 +594,12 @@
       document.getElementById('propElemColor').value = estilo.fill || estilo.color || '#000000';
       document.getElementById('propElemTextAnchor').value = estilo.textAnchor || 'middle';
 
+      // Efectos adicionales
+      const opacityInput = document.getElementById('propElemOpacity');
+      if (opacityInput) opacityInput.value = Math.round((elementoSeleccionado.estilo?.opacity ?? 1) * 100);
+      const lsInput = document.getElementById('propElemLetterSpacing');
+      if (lsInput) lsInput.value = elementoSeleccionado.estilo?.letterSpacing || 0;
+
       // Mostrar u ocultar controles específicos por tipo
       const imageContainer = document.getElementById('containerPropImagen');
       if (imageContainer) {
@@ -521,6 +646,16 @@
 
       elementoSeleccionado.estilo.fill = document.getElementById('propElemColor').value;
       elementoSeleccionado.estilo.textAnchor = document.getElementById('propElemTextAnchor').value;
+
+      // Efectos adicionales
+      const opacityInput = document.getElementById('propElemOpacity');
+      if (opacityInput) {
+        elementoSeleccionado.estilo.opacity = parseInt(opacityInput.value) / 100;
+      }
+      const lsInput = document.getElementById('propElemLetterSpacing');
+      if (lsInput) {
+        elementoSeleccionado.estilo.letterSpacing = parseInt(lsInput.value) || 0;
+      }
 
       this.renderLienzo();
       this.actualizarListaElementosUI();
@@ -767,7 +902,7 @@
         tipo_curso: 'Taller',
         unidad_nombre: 'Unidad de Ciencia y Tecnología',
         unidad_codigo: 'CYT',
-        logo_url: 'https://tuyatgbswyaaetytathd.supabase.co/storage/v1/object/public/logos/UPTPC_LOGO.png',
+        logo_url: 'img/IMAGE.jpeg',
         fecha_curso: new Date().toISOString().split('T')[0],
         lugar: 'Puerto Cabello, Venezuela',
         tomo: '01',

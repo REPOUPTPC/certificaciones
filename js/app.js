@@ -9,56 +9,95 @@
     initNavegacionSidebar();
     initModalConfiguracion();
     
-    // Cargar módulo activo inicial (Dashboard)
-    if (window.dashboardModule) {
-      await window.dashboardModule.init();
-    }
+    // La navegación inicial se maneja en initNavegacionSidebar() via hash
   });
 
   function initNavegacionSidebar() {
     const navLinks = document.querySelectorAll('.nav-link-tab');
     const sections = document.querySelectorAll('.tab-section');
 
+    // Mapa de hash a sección
+    const hashMap = {
+      '#dashboard': 'secDashboard',
+      '#usuarios': 'secUsuarios',
+      '#unidades': 'secUnidades',
+      '#firmas': 'secFirmas',
+      '#cursos': 'secCursos',
+      '#certificados': 'secCertificados',
+      '#disenador': 'secDisenador',
+      '#consultas': 'secConsultas'
+    };
+
+    async function navegarASeccion(targetId, updateHash = true) {
+      navLinks.forEach(l => l.classList.remove('active'));
+      const activeLink = document.querySelector(`.nav-link-tab[data-target="${targetId}"]`);
+      if (activeLink) activeLink.classList.add('active');
+
+      sections.forEach(sec => sec.style.display = 'none');
+      const targetSec = document.getElementById(targetId);
+      if (targetSec) targetSec.style.display = 'block';
+
+      // Actualizar hash sin disparar hashchange
+      if (updateHash) {
+        const hashEntry = Object.entries(hashMap).find(([, v]) => v === targetId);
+        if (hashEntry) {
+          history.replaceState(null, '', hashEntry[0]);
+        }
+      }
+
+      // Mostrar/ocultar banner de datos de ejemplo
+      const banner = document.getElementById('bannerDatosEjemplo');
+      if (banner && window.api) {
+        banner.style.display = window.api.isUsingMockData() ? 'flex' : 'none';
+      }
+
+      switch (targetId) {
+        case 'secDashboard':
+          if (window.dashboardModule) await window.dashboardModule.init();
+          break;
+        case 'secUsuarios':
+          if (window.usuariosModule) await window.usuariosModule.init();
+          break;
+        case 'secUnidades':
+          if (window.unidadesModule) await window.unidadesModule.init();
+          break;
+        case 'secFirmas':
+          if (window.firmasModule) await window.firmasModule.init();
+          break;
+        case 'secCursos':
+          if (window.cursosModule) await window.cursosModule.init();
+          break;
+        case 'secCertificados':
+          if (window.certificadosModule) await window.certificadosModule.init();
+          break;
+        case 'secDisenador':
+          if (window.disenadorModule) await window.disenadorModule.init();
+          break;
+        case 'secConsultas':
+          if (window.consultasModule) await window.consultasModule.init();
+          break;
+      }
+    }
+
     navLinks.forEach(link => {
       link.addEventListener('click', async (e) => {
         e.preventDefault();
         const targetId = link.getAttribute('data-target');
-
-        navLinks.forEach(l => l.classList.remove('active'));
-        link.classList.add('active');
-
-        sections.forEach(sec => sec.style.display = 'none');
-        const targetSec = document.getElementById(targetId);
-        if (targetSec) targetSec.style.display = 'block';
-
-        switch (targetId) {
-          case 'secDashboard':
-            if (window.dashboardModule) await window.dashboardModule.init();
-            break;
-          case 'secUsuarios':
-            if (window.usuariosModule) await window.usuariosModule.init();
-            break;
-          case 'secUnidades':
-            if (window.unidadesModule) await window.unidadesModule.init();
-            break;
-          case 'secFirmas':
-            if (window.firmasModule) await window.firmasModule.init();
-            break;
-          case 'secCursos':
-            if (window.cursosModule) await window.cursosModule.init();
-            break;
-          case 'secCertificados':
-            if (window.certificadosModule) await window.certificadosModule.init();
-            break;
-          case 'secDisenador':
-            if (window.disenadorModule) await window.disenadorModule.init();
-            break;
-          case 'secConsultas':
-            if (window.consultasModule) await window.consultasModule.init();
-            break;
-        }
+        await navegarASeccion(targetId);
       });
     });
+
+    // Escuchar cambios de hash (botones atrás/adelante del navegador)
+    window.addEventListener('hashchange', () => {
+      const hash = window.location.hash || '#dashboard';
+      const targetId = hashMap[hash];
+      if (targetId) navegarASeccion(targetId, false);
+    });
+
+    // Navegar a la sección del hash actual al cargar
+    const initialHash = window.location.hash || '#dashboard';
+    const initialTarget = hashMap[initialHash] || 'secDashboard';
+    navegarASeccion(initialTarget);
   }
 
   function initModalConfiguracion() {

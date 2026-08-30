@@ -178,3 +178,94 @@ body {
     padding: 15px;
   }
 }
+
+/* ── Responsive Logo ── */
+@media (max-width: 991px) {
+  .sidebar-logo {
+    max-width: 45px;
+    transition: max-width 0.3s ease;
+  }
+}
+
+@media (max-width: 576px) {
+  .sidebar-logo {
+    max-width: 38px;
+  }
+}
+
+/* ── Banner Datos de Ejemplo ── */
+.demo-data-banner {
+  background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+  border: 1px solid #f0c36d;
+  border-radius: 12px;
+  padding: 12px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: slideDown 0.4s ease;
+  box-shadow: 0 2px 8px rgba(240, 195, 109, 0.2);
+}
+
+.demo-data-banner .demo-icon {
+  font-size: 1.4rem;
+  color: #856404;
+}
+
+.demo-data-banner .demo-text {
+  color: #664d03;
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.demo-data-banner .demo-text strong {
+  color: #533f03;
+}
+
+.demo-data-banner .btn-close-demo {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #856404;
+  font-size: 1.1rem;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.demo-data-banner .btn-close-demo:hover {
+  opacity: 1;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── SVG Resize Handles ── */
+.svg-resize-handle {
+  fill: #0d6efd;
+  stroke: #ffffff;
+  stroke-width: 1.5;
+  cursor: pointer;
+  transition: fill 0.15s ease;
+}
+
+.svg-resize-handle:hover {
+  fill: #0b5ed7;
+}
+
+/* ── Controles de Efectos del Diseñador ── */
+.effect-control-group {
+  border-top: 1px solid #e9ecef;
+  padding-top: 10px;
+  margin-top: 10px;
+}
+
+.effect-control-group label {
+  font-size: 0.78rem;
+  color: #6c757d;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}

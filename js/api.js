@@ -10,7 +10,7 @@
   function getLocalDb() {
     const defaultDb = {
       unidades: [
-        { id: 'u1', codigo: 'CYT', nombre: 'Unidad de Ciencia y Tecnología', logo_url: 'https://tuyatgbswyaaetytathd.supabase.co/storage/v1/object/public/logos/UPTPC_LOGO.png', created_at: new Date().toISOString() },
+        { id: 'u1', codigo: 'CYT', nombre: 'Unidad de Ciencia y Tecnología', logo_url: 'img/IMAGE.jpeg', created_at: new Date().toISOString() },
         { id: 'u2', codigo: 'BIENESTAR', nombre: 'Unidad de Bienestar Estudiantil', logo_url: '', created_at: new Date().toISOString() },
         { id: 'u3', codigo: 'EXTENSION', nombre: 'Dirección de Extensión Universitaria', logo_url: '', created_at: new Date().toISOString() }
       ],
@@ -81,9 +81,43 @@
   }
 
   window.api = {
+    // ── Cache TTL para GET requests ──
+    _cache: {},
+    _cacheTTL: 60000, // 60 segundos
+    
+    _getCached(cacheKey) {
+      const entry = this._cache[cacheKey];
+      if (entry && (Date.now() - entry.timestamp < this._cacheTTL)) {
+        return entry.data;
+      }
+      return null;
+    },
+    
+    _setCache(cacheKey, data) {
+      this._cache[cacheKey] = { data, timestamp: Date.now() };
+    },
+    
+    clearCache() {
+      this._cache = {};
+    },
+
+    _isUsingMockData: false,
+    
+    isUsingMockData() {
+      return this._isUsingMockData;
+    },
+
     async get(action, params = {}) {
       const apiUrl = window.config.getApiUrl();
       const adminKey = window.config.getAdminKey();
+      
+      // Cache para tablas estáticas (unidades, firmas, tipo)
+      const staticTables = ['unidades', 'firmas', 'tipo'];
+      const cacheKey = action + '_' + JSON.stringify(params);
+      if (action === 'getAll' && staticTables.includes(params.tabla)) {
+        const cached = this._getCached(cacheKey);
+        if (cached) return cached;
+      }
 
       if (apiUrl) {
         try {
@@ -98,13 +132,20 @@
           if (json && json.status === 'error' && json.code === 403) {
             console.error('Acceso Denegado por Google Apps Script:', json.message);
           }
+          
+          // Guardar en caché si es tabla estática
+          if (action === 'getAll' && staticTables.includes(params.tabla)) {
+            this._setCache(cacheKey, json);
+          }
 
+          this._isUsingMockData = false;
           return json;
         } catch (err) {
           console.warn('Conexión remota con Google Apps Script no disponible, recurriendo a modo local:', err);
         }
       }
 
+      this._isUsingMockData = true;
       return this.mockGet(action, params);
     },
 
@@ -127,20 +168,30 @@
 
           if (json && json.status === 'error' && json.code === 403) {
             window.utils.showToast('Acceso denegado (403): Clave de Administración incorrecta. Operación de modificación bloqueada por seguridad.', 'danger');
+            this._isUsingMockData = false;
             return json;
           }
           
           // Además de guardar en Google Sheets, actualizamos la caché local
           this.mockPost(action, payload);
+          // Invalidar caché de la tabla afectada
+          if (payload.tabla) {
+            Object.keys(this._cache).forEach(key => {
+              if (key.includes(payload.tabla)) delete this._cache[key];
+            });
+          }
+          this._isUsingMockData = false;
           return json;
         } catch (err) {
           console.error('Error al enviar solicitud a Google Apps Script:', err);
           window.utils.showToast(`Advertencia: No se pudo conectar con Google Sheets (${err.message}). Se guardó localmente.`, 'warning');
+          this._isUsingMockData = true;
           return this.mockPost(action, payload);
         }
       }
 
       window.utils.showToast('Nota: Operando en almacenamiento local del navegador (Configure el URL de API para guardar en Google Sheets)', 'info');
+      this._isUsingMockData = true;
       return this.mockPost(action, payload);
     },
 
