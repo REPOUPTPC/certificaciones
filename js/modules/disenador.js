@@ -710,7 +710,7 @@
         ancho: tipo === 'imagen' || tipo === 'qr' ? 120 : 400,
         alto: tipo === 'imagen' || tipo === 'qr' ? 120 : 30,
         binding: tipo === 'qr' ? 'qr_url' : (tipo === 'imagen' ? 'logo_url' : null),
-        texto_fijo: tipo === 'texto' ? 'Nuevo Texto' : '',
+        texto_fijo: tipo === 'texto' ? '' : '',
         estilo: {
           fontSize: 16,
           fontWeight: 'normal',
