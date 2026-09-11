@@ -213,6 +213,49 @@
     fileToBase64,
     compressImage,
     showToast,
+    showLoading(percentage = 0, text = 'Cargando datos...', subtext = 'Por favor espere un momento...') {
+      const overlay = document.getElementById('globalLoadingOverlay');
+      const bar = document.getElementById('globalProgressBar');
+      const textEl = document.getElementById('globalLoadingText');
+      const subtextEl = document.getElementById('globalLoadingSubtext');
+
+      if (overlay) overlay.style.display = 'flex';
+      if (bar) {
+        const pct = Math.min(100, Math.max(0, Math.round(percentage)));
+        bar.style.width = pct + '%';
+        bar.textContent = pct + '%';
+      }
+      if (textEl) textEl.textContent = text;
+      if (subtextEl) subtextEl.textContent = subtext;
+    },
+
+    hideLoading() {
+      const overlay = document.getElementById('globalLoadingOverlay');
+      if (overlay) {
+        // Breve retraso para suavidad visual
+        setTimeout(() => {
+          overlay.style.display = 'none';
+        }, 200);
+      }
+    },
+
+    setupPasswordToggles() {
+      document.querySelectorAll('.btn-toggle-pwd').forEach(btn => {
+        if (btn.dataset.pwdBound) return;
+        btn.dataset.pwdBound = 'true';
+        btn.addEventListener('click', () => {
+          const input = btn.closest('.input-group')?.querySelector('input');
+          if (!input) return;
+          const isPwd = input.type === 'password';
+          input.type = isPwd ? 'text' : 'password';
+          const icon = btn.querySelector('i');
+          if (icon) {
+            icon.className = isPwd ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+          }
+        });
+      });
+    },
+
     parseUserImportText
   };
 })();

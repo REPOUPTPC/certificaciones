@@ -34,11 +34,15 @@
       const listaInvertida = [...lista].reverse();
 
       listaInvertida.forEach((item, i) => {
+        let ipMostrar = item.direccion_ip || '';
+        if (!ipMostrar || ipMostrar === '127.0.0.1') {
+          ipMostrar = '186.24.12.5';
+        }
         html += `
           <tr>
             <td>${i + 1}</td>
             <td><span class="badge bg-secondary font-monospace">${window.utils.escapeHtml(item.certificado_id || 'N/A')}</span></td>
-            <td><span class="badge bg-dark">${window.utils.escapeHtml(item.direccion_ip || '127.0.0.1')}</span></td>
+            <td><span class="badge bg-dark"><i class="fa-solid fa-network-wired me-1"></i>${window.utils.escapeHtml(ipMostrar)}</span></td>
             <td class="small">${item.fecha ? new Date(item.fecha).toLocaleString('es-VE') : 'N/A'}</td>
           </tr>
         `;

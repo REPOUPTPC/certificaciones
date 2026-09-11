@@ -6,17 +6,97 @@
 
 (function() {
   document.addEventListener('DOMContentLoaded', async () => {
+    initSwitchModoConexion();
     initNavegacionSidebar();
     initModalConfiguracion();
-    
-    // La navegación inicial se maneja en initNavegacionSidebar() via hash
+    if (window.utils && window.utils.setupPasswordToggles) {
+      window.utils.setupPasswordToggles();
+    }
   });
+
+  function initSwitchModoConexion() {
+    const switchEl = document.getElementById('switchModoConexion');
+    const lblEl = document.getElementById('lblModoConexion');
+
+    const actualizarEstadoUi = () => {
+      if (!switchEl || !lblEl) return;
+      const isMock = window.api ? window.api.isUsingMockData() : false;
+      if (isMock) {
+        switchEl.checked = false;
+        lblEl.className = 'form-check-label fw-bold small cursor-pointer mb-0 text-warning';
+        lblEl.innerHTML = '<i class="fa-solid fa-flask me-1"></i> Datos de Prueba (Local)';
+      } else {
+        switchEl.checked = true;
+        lblEl.className = 'form-check-label fw-bold small cursor-pointer mb-0 text-success';
+        lblEl.innerHTML = '<i class="fa-solid fa-cloud me-1"></i> Datos Reales';
+      }
+    };
+
+    if (switchEl) {
+      switchEl.addEventListener('change', async () => {
+        const forceMock = !switchEl.checked;
+        if (window.api && window.api.setForceMockMode) {
+          window.api.setForceMockMode(forceMock);
+        }
+
+        actualizarEstadoUi();
+
+        const modoNombre = forceMock ? 'Modo de Datos Ficticios (Local)' : 'Modo de Datos Reales (Google Sheets)';
+        window.utils.showToast(`Modo cambiado a: ${modoNombre}`, forceMock ? 'warning' : 'success');
+
+        // Recargar la sección actual
+        const currentHash = window.location.hash || '#dashboard';
+        const targetId = document.querySelector(`.nav-link-tab.active`)?.getAttribute('data-target') || 'secDashboard';
+        
+        if (window.utils && window.utils.showLoading) {
+          window.utils.showLoading(20, 'Cargando datos...', `Conectando con ${modoNombre}`);
+        }
+
+        try {
+          switch (targetId) {
+            case 'secDashboard':
+              if (window.dashboardModule) await window.dashboardModule.init();
+              break;
+            case 'secUsuarios':
+              if (window.usuariosModule) await window.usuariosModule.init();
+              break;
+            case 'secUnidades':
+              if (window.unidadesModule) await window.unidadesModule.init();
+              break;
+            case 'secFirmas':
+              if (window.firmasModule) await window.firmasModule.init();
+              break;
+            case 'secCursos':
+              if (window.cursosModule) await window.cursosModule.init();
+              break;
+            case 'secCertificados':
+              if (window.certificadosModule) await window.certificadosModule.init();
+              break;
+            case 'secDisenador':
+              if (window.disenadorModule) await window.disenadorModule.init();
+              break;
+            case 'secConsultas':
+              if (window.consultasModule) await window.consultasModule.init();
+              break;
+            case 'secAdministradores':
+              if (window.authAdmin) await window.authAdmin.cargarTablaAdministradores();
+              break;
+          }
+        } finally {
+          actualizarEstadoUi();
+          if (window.utils && window.utils.hideLoading) window.utils.hideLoading();
+        }
+      });
+    }
+
+    // Exportar helper global para actualizar estado
+    window.actualizarSwitchModoConexion = actualizarEstadoUi;
+  }
 
   function initNavegacionSidebar() {
     const navLinks = document.querySelectorAll('.nav-link-tab');
     const sections = document.querySelectorAll('.tab-section');
 
-    // Mapa de hash a sección
     const hashMap = {
       '#dashboard': 'secDashboard',
       '#usuarios': 'secUsuarios',
@@ -25,10 +105,27 @@
       '#cursos': 'secCursos',
       '#certificados': 'secCertificados',
       '#disenador': 'secDisenador',
-      '#consultas': 'secConsultas'
+      '#consultas': 'secConsultas',
+      '#administradores': 'secAdministradores'
     };
 
     async function navegarASeccion(targetId, updateHash = true) {
+      if (window.authAdmin) {
+        if (!window.authAdmin.isLoggedIn()) {
+          window.authAdmin.mostrarModalLogin();
+          return;
+        }
+
+        if (!window.authAdmin.hasSectionPermission(targetId)) {
+          if (window.utils) window.utils.showToast('Acceso restringido: No posee permisos para acceder a esta sección.', 'warning');
+          targetId = 'secDashboard';
+        }
+      }
+
+      if (window.utils && window.utils.showLoading && targetId !== 'secAdministradores') {
+        window.utils.showLoading(20, 'Cargando sección...', 'Preparando vista');
+      }
+
       navLinks.forEach(l => l.classList.remove('active'));
       const activeLink = document.querySelector(`.nav-link-tab[data-target="${targetId}"]`);
       if (activeLink) activeLink.classList.add('active');
@@ -37,7 +134,6 @@
       const targetSec = document.getElementById(targetId);
       if (targetSec) targetSec.style.display = 'block';
 
-      // Actualizar hash sin disparar hashchange
       if (updateHash) {
         const hashEntry = Object.entries(hashMap).find(([, v]) => v === targetId);
         if (hashEntry) {
@@ -45,37 +141,55 @@
         }
       }
 
-      // Mostrar/ocultar banner de datos de ejemplo
-      const banner = document.getElementById('bannerDatosEjemplo');
-      if (banner && window.api) {
-        banner.style.display = window.api.isUsingMockData() ? 'flex' : 'none';
+      // Registrar visita en audit log (visita_admin)
+      if (window.authAdmin && window.authAdmin.isLoggedIn()) {
+        const currentHash = window.location.hash || '#dashboard';
+        window.authAdmin.registrarVisitaAdmin(currentHash);
       }
 
-      switch (targetId) {
-        case 'secDashboard':
-          if (window.dashboardModule) await window.dashboardModule.init();
-          break;
-        case 'secUsuarios':
-          if (window.usuariosModule) await window.usuariosModule.init();
-          break;
-        case 'secUnidades':
-          if (window.unidadesModule) await window.unidadesModule.init();
-          break;
-        case 'secFirmas':
-          if (window.firmasModule) await window.firmasModule.init();
-          break;
-        case 'secCursos':
-          if (window.cursosModule) await window.cursosModule.init();
-          break;
-        case 'secCertificados':
-          if (window.certificadosModule) await window.certificadosModule.init();
-          break;
-        case 'secDisenador':
-          if (window.disenadorModule) await window.disenadorModule.init();
-          break;
-        case 'secConsultas':
-          if (window.consultasModule) await window.consultasModule.init();
-          break;
+      try {
+        if (window.utils && window.utils.showLoading && targetId !== 'secAdministradores') {
+          window.utils.showLoading(60, 'Obteniendo datos...', 'Consultando registros');
+        }
+
+        switch (targetId) {
+          case 'secDashboard':
+            if (window.dashboardModule) await window.dashboardModule.init();
+            break;
+          case 'secUsuarios':
+            if (window.usuariosModule) await window.usuariosModule.init();
+            break;
+          case 'secUnidades':
+            if (window.unidadesModule) await window.unidadesModule.init();
+            break;
+          case 'secFirmas':
+            if (window.firmasModule) await window.firmasModule.init();
+            break;
+          case 'secCursos':
+            if (window.cursosModule) await window.cursosModule.init();
+            break;
+          case 'secCertificados':
+            if (window.certificadosModule) await window.certificadosModule.init();
+            break;
+          case 'secDisenador':
+            if (window.disenadorModule) await window.disenadorModule.init();
+            break;
+          case 'secConsultas':
+            if (window.consultasModule) await window.consultasModule.init();
+            break;
+          case 'secAdministradores':
+            if (window.authAdmin) await window.authAdmin.cargarTablaAdministradores();
+            break;
+        }
+
+        if (window.utils && window.utils.showLoading && targetId !== 'secAdministradores') {
+          window.utils.showLoading(100, '¡Completado!', 'Carga lista');
+        }
+      } finally {
+        if (window.actualizarSwitchModoConexion) window.actualizarSwitchModoConexion();
+        if (window.utils && window.utils.hideLoading && targetId !== 'secAdministradores') {
+          window.utils.hideLoading();
+        }
       }
     }
 
@@ -87,14 +201,12 @@
       });
     });
 
-    // Escuchar cambios de hash (botones atrás/adelante del navegador)
     window.addEventListener('hashchange', () => {
       const hash = window.location.hash || '#dashboard';
       const targetId = hashMap[hash];
       if (targetId) navegarASeccion(targetId, false);
     });
 
-    // Navegar a la sección del hash actual al cargar
     const initialHash = window.location.hash || '#dashboard';
     const initialTarget = hashMap[initialHash] || 'secDashboard';
     navegarASeccion(initialTarget);
@@ -103,7 +215,6 @@
   function initModalConfiguracion() {
     const btnAbrir = document.getElementById('btnAbrirConfiguracion');
     const modalEl = document.getElementById('modalConfiguracion');
-    const inputUrl = document.getElementById('inputGoogleScriptUrl');
     const inputKey = document.getElementById('inputAdminSecretKey');
     const btnGuardar = document.getElementById('btnGuardarConfiguracion');
     const btnProbar = document.getElementById('btnProbarConexionScript');
@@ -111,25 +222,18 @@
 
     if (btnAbrir) {
       btnAbrir.addEventListener('click', () => {
-        if (inputUrl) inputUrl.value = window.config.getApiUrl();
         if (inputKey) inputKey.value = window.config.getAdminKey();
         if (statusContainer) statusContainer.innerHTML = '';
-        new bootstrap.Modal(modalEl).show();
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        if (window.utils && window.utils.setupPasswordToggles) window.utils.setupPasswordToggles();
       });
     }
 
     if (btnProbar) {
       btnProbar.addEventListener('click', async () => {
-        const url = inputUrl ? inputUrl.value.trim() : '';
         const key = inputKey ? inputKey.value.trim() : '';
-        if (!url) {
-          statusContainer.innerHTML = '<div class="alert alert-warning py-2 mb-0">Ingrese un URL de Aplicación Web de Google Apps Script.</div>';
-          return;
-        }
-
         statusContainer.innerHTML = '<div class="alert alert-info py-2 mb-0"><i class="fa-solid fa-spinner fa-spin me-2"></i>Probando conexión y autenticación...</div>';
         
-        window.config.setApiUrl(url);
         window.config.setAdminKey(key);
         try {
           const res = await window.api.verifyAdmin();
@@ -139,17 +243,17 @@
             statusContainer.innerHTML = `<div class="alert alert-danger py-2 mb-0"><i class="fa-solid fa-triangle-exclamation me-2"></i>${window.utils.escapeHtml(res.message || 'Clave de administración incorrecta')}</div>`;
           }
         } catch (e) {
-          statusContainer.innerHTML = `<div class="alert alert-danger py-2 mb-0"><i class="fa-solid fa-circle-xmark me-2"></i>No se pudo autenticar. Verifique el URL y la Clave Secreta.</div>`;
+          statusContainer.innerHTML = `<div class="alert alert-danger py-2 mb-0"><i class="fa-solid fa-circle-xmark me-2"></i>No se pudo autenticar. Verifique la Clave Secreta (API KEY).</div>`;
         }
       });
     }
 
     if (btnGuardar) {
       btnGuardar.addEventListener('click', () => {
-        if (inputUrl) window.config.setApiUrl(inputUrl.value.trim());
         if (inputKey) window.config.setAdminKey(inputKey.value.trim());
-        window.utils.showToast('Configuración y Clave de Administración guardadas', 'success');
-        bootstrap.Modal.getInstance(modalEl).hide();
+        window.utils.showToast('API KEY de Administración guardada exitosamente', 'success');
+        const inst = bootstrap.Modal.getInstance(modalEl);
+        if (inst) inst.hide();
       });
     }
   }

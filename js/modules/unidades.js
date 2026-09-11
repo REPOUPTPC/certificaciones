@@ -49,6 +49,7 @@
 
     async cargarUnidades() {
       try {
+        if (window.authAdmin) await window.authAdmin.autocorregirLogosUnidades();
         const res = await window.api.getAll('unidades');
         if (res.status === 'success') {
           unidadesData = res.data || [];

@@ -7,7 +7,7 @@
 (function() {
   const STORAGE_KEY_API_URL = 'uptpc_google_script_url';
   const STORAGE_KEY_ADMIN_KEY = 'uptpc_admin_secret_key';
-  const DEFAULT_GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwgdrEsh6goVGRCCdyiPVJ2XWwSy0e_XJ9bfIV9BSDB_f9WX-xttQKl3KCv4r_o3Os8lg/exec';
+  const DEFAULT_GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwEIHa8gnLa-v_NpwfDxNRg72UCHUrltJKP5EE65yWkcGjs9G5LO_53VyS7TaI6nLhX4g/exec';
   const DEFAULT_ADMIN_KEY = 'UPTPC_CYT_SECURE_KEY_2026';
   const PUBLIC_VERIFICATION_BASE_URL = 'https://www.jornaltec.uptpc.edu.ve/p/validador-de-certificados.html';
 
@@ -15,15 +15,11 @@
 
   window.config = {
     getApiUrl() {
-      return localStorage.getItem(STORAGE_KEY_API_URL) || DEFAULT_GOOGLE_SCRIPT_URL;
+      return DEFAULT_GOOGLE_SCRIPT_URL;
     },
 
     setApiUrl(url) {
-      if (url) {
-        localStorage.setItem(STORAGE_KEY_API_URL, url.trim());
-      } else {
-        localStorage.removeItem(STORAGE_KEY_API_URL);
-      }
+      // URL is fixed by policy, keep constant
     },
 
     getAdminKey() {

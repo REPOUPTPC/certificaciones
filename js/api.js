@@ -111,15 +111,21 @@
       const apiUrl = window.config.getApiUrl();
       const adminKey = window.config.getAdminKey();
       
+      const targetTable = params.tabla || params.table;
+      if (targetTable) {
+        params.tabla = targetTable;
+        params.table = targetTable;
+      }
+      
       // Cache para tablas estáticas (unidades, firmas, tipo)
       const staticTables = ['unidades', 'firmas', 'tipo'];
-      const cacheKey = action + '_' + JSON.stringify(params);
-      if (action === 'getAll' && staticTables.includes(params.tabla)) {
+      const cacheKey = action + '_' + (targetTable || '') + '_' + JSON.stringify(params);
+      if (action === 'getAll' && targetTable && staticTables.includes(targetTable)) {
         const cached = this._getCached(cacheKey);
         if (cached) return cached;
       }
 
-      if (apiUrl) {
+      if (apiUrl && !this._forceMockMode) {
         try {
           const queryParams = new URLSearchParams({ action, admin_key: adminKey, ...params });
           const response = await fetch(`${apiUrl}?${queryParams.toString()}`, {
@@ -134,7 +140,7 @@
           }
           
           // Guardar en caché si es tabla estática
-          if (action === 'getAll' && staticTables.includes(params.tabla)) {
+          if (action === 'getAll' && targetTable && staticTables.includes(targetTable)) {
             this._setCache(cacheKey, json);
           }
 
@@ -152,8 +158,13 @@
     async post(action, payload = {}) {
       const apiUrl = window.config.getApiUrl();
       const adminKey = window.config.getAdminKey();
+      const targetTable = payload.tabla || payload.table;
+      if (targetTable) {
+        payload.tabla = targetTable;
+        payload.table = targetTable;
+      }
 
-      if (apiUrl) {
+      if (apiUrl && !this._forceMockMode) {
         try {
           const response = await fetch(apiUrl, {
             method: 'POST',
@@ -175,9 +186,9 @@
           // Además de guardar en Google Sheets, actualizamos la caché local
           this.mockPost(action, payload);
           // Invalidar caché de la tabla afectada
-          if (payload.tabla) {
+          if (targetTable) {
             Object.keys(this._cache).forEach(key => {
-              if (key.includes(payload.tabla)) delete this._cache[key];
+              if (key.includes(targetTable)) delete this._cache[key];
             });
           }
           this._isUsingMockData = false;
@@ -190,18 +201,22 @@
         }
       }
 
-      window.utils.showToast('Nota: Operando en almacenamiento local del navegador (Configure el URL de API para guardar en Google Sheets)', 'info');
       this._isUsingMockData = true;
       return this.mockPost(action, payload);
     },
 
+    setForceMockMode(force) {
+      this._forceMockMode = Boolean(force);
+      this.clearCache();
+    },
+
     async ping() { return this.get('ping'); },
     async verifyAdmin() { return this.get('verifyAdmin'); },
-    async getAll(table) { return this.get('getAll', { table }); },
-    async getById(table, id) { return this.get('getById', { table, id }); },
-    async create(table, data) { return this.post('create', { table, data }); },
-    async update(table, id, data) { return this.post('update', { table, id, data }); },
-    async delete(table, id) { return this.post('delete', { table, id }); },
+    async getAll(table) { return this.get('getAll', { tabla: table, table }); },
+    async getById(table, id) { return this.get('getById', { tabla: table, table, id }); },
+    async create(table, data) { return this.post('create', { tabla: table, table, data }); },
+    async update(table, id, data) { return this.post('update', { tabla: table, table, id, data }); },
+    async delete(table, id) { return this.post('delete', { tabla: table, table, id }); },
     async searchCertificados(termino) { return this.get('searchCertificado', { termino }); },
     async getVistaCertificados() { return this.get('getVistaCertificados'); },
     async bulkCreateUsuarios(usuarios) { return this.post('bulkCreateUsuarios', { usuarios }); },
@@ -224,12 +239,12 @@
           return { status: 'success', message: 'Sistema UPTPC en modo Local (Almacenamiento Local del Navegador)' };
 
         case 'getAll': {
-          const table = params.table;
+          const table = params.tabla || params.table;
           return { status: 'success', data: db[table] || [] };
         }
 
         case 'getById': {
-          const table = params.table;
+          const table = params.tabla || params.table;
           const record = (db[table] || []).find(r => String(r.id) === String(params.id));
           return { status: 'success', data: record || null };
         }

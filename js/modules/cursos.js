@@ -63,8 +63,18 @@
         return;
       }
 
-      const unidadesMap = Object.fromEntries(unidadesData.map(u => [String(u.id).trim(), u.nombre]));
-      const tiposMap = Object.fromEntries(tiposData.map(t => [String(t.id).trim(), t.tipo]));
+      const unidadesMap = {};
+      unidadesData.forEach(u => {
+        if (u.id) unidadesMap[String(u.id).trim()] = u.nombre;
+        if (u.codigo) unidadesMap[String(u.codigo).trim()] = u.nombre;
+        if (u.nombre) unidadesMap[String(u.nombre).trim()] = u.nombre;
+      });
+
+      const tiposMap = {};
+      tiposData.forEach(t => {
+        if (t.id) tiposMap[String(t.id).trim()] = t.tipo;
+        if (t.tipo) tiposMap[String(t.tipo).trim()] = t.tipo;
+      });
 
       const countMap = {};
       certsData.forEach(cert => {
@@ -75,8 +85,11 @@
       let html = '';
       lista.forEach((c, i) => {
         const cid = String(c.id).trim();
-        const unidNom = unidadesMap[String(c.unidad_id).trim()] || 'Unidad UPTPC';
-        const tipoNom = tiposMap[String(c.idtipo_curso).trim()] || 'Taller';
+        const rawUnid = String(c.unidad_id || c.unidad || '').trim();
+        const rawTipo = String(c.tipo_curso || c.idtipo_curso || c.tipo || '').trim();
+
+        const unidNom = unidadesMap[rawUnid] || rawUnid || 'Unidad UPTPC';
+        const tipoNom = tiposMap[rawTipo] || rawTipo || 'Taller';
         const totalEmitidos = countMap[cid] || 0;
 
         html += `
@@ -113,6 +126,24 @@
       const selF2 = document.getElementById('cursoFirma2');
       const selF3 = document.getElementById('cursoFirma3');
 
+      const defaultTipos = [
+        { id: '1', tipo: 'Taller' },
+        { id: '2', tipo: 'Curso' },
+        { id: '3', tipo: 'Diplomado' },
+        { id: '4', tipo: 'Seminario' },
+        { id: '5', tipo: 'Conferencia' },
+        { id: '6', tipo: 'Congreso' }
+      ];
+
+      let listaTipos = (tiposData && tiposData.length > 0) ? [...tiposData] : defaultTipos;
+      defaultTipos.forEach(dt => {
+        const existe = listaTipos.some(t => 
+          String(t.id).trim().toLowerCase() === dt.id.toLowerCase() ||
+          String(t.tipo).trim().toLowerCase() === dt.tipo.toLowerCase()
+        );
+        if (!existe) listaTipos.push(dt);
+      });
+
       if (selUnidad) {
         selUnidad.innerHTML = '<option value="">-- Seleccionar Unidad --</option>' +
           unidadesData.map(u => `<option value="${u.id}">${window.utils.escapeHtml(u.nombre)} (${u.codigo})</option>`).join('');
@@ -120,7 +151,7 @@
 
       if (selTipo) {
         selTipo.innerHTML = '<option value="">-- Seleccionar Tipo --</option>' +
-          tiposData.map(t => `<option value="${t.id}">${window.utils.escapeHtml(t.tipo)}</option>`).join('');
+          listaTipos.map(t => `<option value="${t.tipo || t.id}" data-id="${t.id}">${window.utils.escapeHtml(t.tipo)}</option>`).join('');
       }
 
       const firmasOpts = '<option value="">-- Ninguna --</option>' +
@@ -146,6 +177,39 @@
       // Poblar opciones de selects
       this.populateSelects();
 
+      const setSelectSmart = (elementId, ...posiblesValores) => {
+        const selectEl = document.getElementById(elementId);
+        if (!selectEl) return;
+        
+        let rawVal = '';
+        for (let v of posiblesValores) {
+          if (v !== undefined && v !== null && String(v).trim() !== '') {
+            rawVal = String(v).trim();
+            break;
+          }
+        }
+
+        if (!rawVal) {
+          selectEl.value = '';
+          return;
+        }
+
+        const targetVal = rawVal.toLowerCase();
+        let match = Array.from(selectEl.options).find(opt => 
+          String(opt.value).trim().toLowerCase() === targetVal ||
+          String(opt.text).trim().toLowerCase() === targetVal ||
+          String(opt.getAttribute('data-id') || '').trim().toLowerCase() === targetVal ||
+          String(opt.text).trim().toLowerCase().startsWith(targetVal) ||
+          targetVal.startsWith(String(opt.text).trim().toLowerCase())
+        );
+
+        if (match) {
+          selectEl.value = match.value;
+        } else {
+          selectEl.value = rawVal;
+        }
+      };
+
       // Cargar valores del curso a editar si existe
       if (id) {
         const c = cursosData.find(x => String(x.id).trim() === String(id).trim());
@@ -153,19 +217,33 @@
           if (document.getElementById('cursoCodigoRel')) document.getElementById('cursoCodigoRel').value = c.codigo_relacionado || '';
           if (document.getElementById('cursoNombre')) document.getElementById('cursoNombre').value = c.nombre || '';
           if (document.getElementById('cursoContenido')) document.getElementById('cursoContenido').value = c.contenido || '';
-          if (document.getElementById('cursoTipoId')) document.getElementById('cursoTipoId').value = c.idtipo_curso || '';
-          if (document.getElementById('cursoUnidadId')) document.getElementById('cursoUnidadId').value = c.unidad_id || '';
           if (document.getElementById('cursoHoras')) document.getElementById('cursoHoras').value = c.horas || 16;
           if (document.getElementById('cursoMotivo')) document.getElementById('cursoMotivo').value = c.motivo || '';
           if (document.getElementById('cursoPonencias')) document.getElementById('cursoPonencias').value = c.ponencias || '';
-          if (document.getElementById('cursoFirma1')) document.getElementById('cursoFirma1').value = c.idfirma1 || '';
-          if (document.getElementById('cursoFirma2')) document.getElementById('cursoFirma2').value = c.idfirma2 || '';
-          if (document.getElementById('cursoFirma3')) document.getElementById('cursoFirma3').value = c.idfirma3 || '';
           if (document.getElementById('cursoPrefijoMatricula')) document.getElementById('cursoPrefijoMatricula').value = c.matricula_prefijo || '';
+
+          let tipoValor = c.tipo_curso || c.idtipo_curso || c.tipo;
+          if (!tipoValor) {
+            const textoBusqueda = ((c.nombre || '') + ' ' + (c.codigo_relacionado || '')).toUpperCase();
+            if (textoBusqueda.includes('TALLER')) tipoValor = 'Taller';
+            else if (textoBusqueda.includes('CURSO')) tipoValor = 'Curso';
+            else if (textoBusqueda.includes('SEMINARIO')) tipoValor = 'Seminario';
+            else if (textoBusqueda.includes('DIPLOMADO')) tipoValor = 'Diplomado';
+            else if (textoBusqueda.includes('CONFERENCIA')) tipoValor = 'Conferencia';
+            else if (textoBusqueda.includes('CONGRESO')) tipoValor = 'Congreso';
+            else tipoValor = 'Taller';
+          }
+
+          setSelectSmart('cursoTipoId', tipoValor, 'Taller', 't1', '1');
+          setSelectSmart('cursoUnidadId', c.unidad_id, c.unidad);
+          setSelectSmart('cursoFirma1', c.idfirma1);
+          setSelectSmart('cursoFirma2', c.idfirma2);
+          setSelectSmart('cursoFirma3', c.idfirma3);
         }
+      } else {
+        setSelectSmart('cursoTipoId', 'Taller', 't1', '1');
       }
 
-      // Abrir modal usando Bootstrap 5 de manera segura e instantánea
       const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
       bsModal.show();
     },
@@ -176,7 +254,13 @@
       const codigo_relacionado = document.getElementById('cursoCodigoRel')?.value.trim() || '';
       const nombre = document.getElementById('cursoNombre')?.value.trim() || '';
       const contenido = document.getElementById('cursoContenido')?.value.trim() || '';
-      const idtipo_curso = document.getElementById('cursoTipoId')?.value || '';
+      
+      const selTipoEl = document.getElementById('cursoTipoId');
+      const tipoVal = selTipoEl?.value || 'Taller';
+      const selectedOpt = selTipoEl?.options[selTipoEl.selectedIndex];
+      const tipo_curso = selectedOpt ? selectedOpt.text : tipoVal;
+      const idtipo_curso = selectedOpt ? (selectedOpt.getAttribute('data-id') || tipoVal) : tipoVal;
+
       const unidad_id = document.getElementById('cursoUnidadId')?.value || '';
       const horas = parseInt(document.getElementById('cursoHoras')?.value) || 0;
       const motivo = document.getElementById('cursoMotivo')?.value.trim() || '';
@@ -195,6 +279,7 @@
         codigo_relacionado,
         nombre,
         contenido,
+        tipo_curso,
         idtipo_curso,
         unidad_id,
         horas,

@@ -15,6 +15,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Cinzel:wght@400;700&family=Great+Vibes&family=Lora:ital,wght@0,400;0,700;1,400;1,700&family=Merriweather:ital,wght@0,400;0,700;1,400;1,700&family=Montserrat:ital,wght@0,400;0,700;1,400;1,700&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Roboto:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
 
+  <!-- Chart.js para estadísticas -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <link href="css/styles.css" rel="stylesheet">
 </head>
 <body>
@@ -52,6 +55,9 @@
       <a href="#consultas" class="nav-link-tab" data-target="secConsultas">
         <i class="fa-solid fa-clock-rotate-left me-2"></i> <span class="sidebar-text">Bitácora Consultas</span>
       </a>
+      <a href="#administradores" class="nav-link-tab" data-target="secAdministradores" id="navLinkAdministradores" style="display: none;">
+        <i class="fa-solid fa-user-shield me-2"></i> <span class="sidebar-text">Gestión Administradores</span>
+      </a>
     </div>
 
     <div class="p-3 border-top border-secondary">
@@ -71,22 +77,30 @@
         <small class="text-muted">Unidad de Ciencia y Tecnología - UPTPC Puerto Cabello</small>
       </div>
 
-      <div class="d-flex align-items-center">
-        <a href="consulta.html" target="_blank" class="btn btn-outline-primary me-2 btn-sm">
-          <i class="fa-solid fa-magnifying-glass me-1"></i> Ir a Validador Público
+      <div class="d-flex align-items-center flex-wrap gap-2">
+        <span class="badge bg-primary py-2 px-3 me-1" id="badgeUserConnected" style="display: none;">
+          <i class="fa-solid fa-user-shield me-1"></i> <span id="lblUserNombre">CIENCIA_TECNOLOGIA</span> (<span id="lblUserTipo">SUPER_ADMIN</span>)
+        </span>
+
+        <!-- Switch Origen de Datos (Datos Reales / Datos de Prueba) -->
+        <div class="form-check form-switch bg-light border rounded px-3 py-1 me-1 d-flex align-items-center gap-2" title="Alternar entre Google Sheets (Reales) y Almacenamiento Local (Prueba)">
+          <input class="form-check-input cursor-pointer my-0" type="checkbox" id="switchModoConexion" checked style="width: 2.2em; height: 1.2em;">
+          <label class="form-check-label fw-bold small cursor-pointer mb-0 text-success" for="switchModoConexion" id="lblModoConexion">
+            <i class="fa-solid fa-cloud me-1"></i> Datos Reales
+          </label>
+        </div>
+
+        <button class="btn btn-outline-secondary btn-sm" id="btnCambiarClaveGlobal" title="Cambiar mi contraseña">
+          <i class="fa-solid fa-key me-1"></i> Cambiar Clave
+        </button>
+        <button class="btn btn-outline-danger btn-sm" id="btnCerrarSesionGlobal" title="Cerrar sesión">
+          <i class="fa-solid fa-right-from-bracket me-1"></i> Cerrar Sesión
+        </button>
+        <a href="consulta.html" target="_blank" class="btn btn-outline-primary btn-sm">
+          <i class="fa-solid fa-magnifying-glass me-1"></i> Validador Público
         </a>
-        <span class="badge bg-success py-2 px-3"><i class="fa-solid fa-wifi me-1"></i> Sistema Activo</span>
       </div>
     </header>
-
-      <!-- Banner de Datos de Ejemplo (se oculta con datos reales) -->
-      <div id="bannerDatosEjemplo" class="demo-data-banner" style="display: none;">
-        <i class="fa-solid fa-flask demo-icon"></i>
-        <span class="demo-text"><strong>Modo Demostración:</strong> Estás viendo datos de ejemplo almacenados localmente. Configura la conexión con Google Apps Script para trabajar con datos reales de producción.</span>
-        <button class="btn-close-demo" onclick="this.parentElement.style.display='none'" title="Cerrar">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-      </div>
 
     <!-- ═════════════════════════════════════════════════════════════════ -->
     <!-- SECCIÓN 1: DASHBOARD -->
@@ -645,6 +659,68 @@
       </div>
     </section>
 
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <!-- SECCIÓN 9: GESTIÓN DE ADMINISTRADORES (EXCLUSIVO SUPER_ADMIN) -->
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <section id="secAdministradores" class="tab-section" style="display: none;">
+      <div class="card border-0 shadow-sm p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <h4 class="fw-bold mb-0"><i class="fa-solid fa-user-shield text-primary me-2"></i>Gestión de Administradores del Sistema</h4>
+            <small class="text-muted">Gestione usuarios administradores, claves, estatus y permisos de acceso a las secciones.</small>
+          </div>
+          <button class="btn btn-primary" id="btnNuevoAdmin">
+            <i class="fa-solid fa-user-plus me-1"></i> Nuevo Administrador
+          </button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>#</th>
+                <th>Usuario Admin</th>
+                <th>Rol / Tipo</th>
+                <th>Estatus</th>
+                <th>Secciones Permitidas</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyAdministradores">
+              <tr><td colspan="6" class="text-center text-muted py-4">Cargando administradores...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- ══ SECCIÓN ESTADÍSTICAS DE CONEXIÓN ADMIN (GRÁFICOS) ══ -->
+        <div class="mt-4 pt-3 border-top">
+          <h5 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-chart-pie me-2 text-primary"></i>Estadísticas de Conexión de Administradores</h5>
+          
+          <div class="row g-4">
+            <!-- Gráfico Circular / Donut: Usuarios que más se conectan -->
+            <div class="col-md-6">
+              <div class="card border-0 bg-light p-3 h-100">
+                <h6 class="fw-bold text-center mb-3"><i class="fa-solid fa-users me-1 text-info"></i> Usuarios con Más Conexiones</h6>
+                <div style="position: relative; height: 260px; width: 100%;">
+                  <canvas id="chartUsuariosConexiones"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <!-- Gráfico de Barras: Horas con más conexiones -->
+            <div class="col-md-6">
+              <div class="card border-0 bg-light p-3 h-100">
+                <h6 class="fw-bold text-center mb-3"><i class="fa-solid fa-clock me-1 text-warning"></i> Horas de Mayor Frecuencia de Conexión</h6>
+                <div style="position: relative; height: 260px; width: 100%;">
+                  <canvas id="chartHorasConexiones"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <!-- ═══ MODALES DE LA APLICACIÓN ═══ -->
@@ -658,17 +734,24 @@
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <p class="small text-muted mb-3">Pegue la URL de la Aplicación Web generada al implementar el archivo <code>google_sheet.gs</code> en su hoja de Google Sheets.</p>
+          <p class="small text-muted mb-3">Conexión con la Aplicación Web de Google Apps Script para la hoja de cálculo de producción.</p>
 
           <div class="mb-3">
-            <label class="form-label fw-bold">URL de la Aplicación Web (Google Apps Script):</label>
-            <input type="text" class="form-control" id="inputGoogleScriptUrl" placeholder="https://script.google.com/macros/s/.../exec">
+            <label class="form-label fw-bold">URL de la Aplicación Web (Google Apps Script Backend):</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light"><i class="fa-solid fa-link"></i></span>
+              <input type="text" class="form-control bg-light font-monospace small" value="https://script.google.com/macros/s/AKfycbwEIHa8gnLa-v_NpwfDxNRg72UCHUrltJKP5EE65yWkcGjs9G5LO_53VyS7TaI6nLhX4g/exec" readonly>
+            </div>
+            <small class="text-success"><i class="fa-solid fa-circle-check me-1"></i> URL Fija Oficial Integrada</small>
           </div>
 
           <div class="mb-3">
-            <label class="form-label fw-bold"><i class="fa-solid fa-key text-warning me-1"></i> Clave Secreta de Administración (Admin Token):</label>
-            <input type="password" class="form-control" id="inputAdminSecretKey" placeholder="Clave secreta configurada en google_sheet.gs">
-            <small class="text-muted">Protege operaciones de edición y emisión masiva para impedir modificaciones no autorizadas.</small>
+            <label class="form-label fw-bold"><i class="fa-solid fa-key text-warning me-1"></i> API KEY (ADMIN_SECRET_KEY):</label>
+            <div class="input-group">
+              <input type="password" class="form-control font-monospace" id="inputAdminSecretKey" placeholder="Ingrese el valor alfanumérico ADMIN_SECRET_KEY">
+              <button type="button" class="btn btn-outline-secondary btn-toggle-pwd" title="Mostrar/Ocultar"><i class="fa-solid fa-eye"></i></button>
+            </div>
+            <small class="text-muted">Valor alfanumérico para autorizar operaciones y comunicarse de forma segura con el backend.</small>
           </div>
 
           <div id="statusConexionScript" class="mb-3"></div>
@@ -871,11 +954,11 @@
                 <select class="form-select" id="cursoFirma1"></select>
               </div>
               <div class="col-md-3">
-                <label class="form-label fw-bold">Firmante 2 (Director/a):</label>
+                <label class="form-label fw-bold">Firmante 2 (Secretario/a):</label>
                 <select class="form-select" id="cursoFirma2"></select>
               </div>
               <div class="col-md-3">
-                <label class="form-label fw-bold">Firmante 3 (Secretario/a):</label>
+                <label class="form-label fw-bold">Firmante 3 (Profesor/a):</label>
                 <select class="form-select" id="cursoFirma3"></select>
               </div>
               <div class="col-md-3">
@@ -1098,6 +1181,196 @@
     </div>
   </div>
 
+  <!-- Modal Iniciar Sesión Administrador -->
+  <div class="modal fade" id="modalLoginAdmin" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content shadow-lg border-0">
+        <div class="modal-header bg-dark text-white text-center d-block position-relative">
+          <h4 class="modal-title fw-bold mb-1"><i class="fa-solid fa-lock text-warning me-2"></i>Acceso al Sistema</h4>
+          <small class="text-white-50">Ingrese sus credenciales de administración para acceder</small>
+        </div>
+        <div class="modal-body p-4">
+          <form id="formLoginAdmin">
+            <div class="mb-3">
+              <label class="form-label fw-bold"><i class="fa-solid fa-user me-1 text-primary"></i> Usuario:</label>
+              <input type="text" class="form-control form-control-lg" id="loginUsuario" required placeholder="Ej: USUARIO" autocomplete="username">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold"><i class="fa-solid fa-key me-1 text-primary"></i> Clave / Contraseña:</label>
+              <div class="input-group">
+                <input type="password" class="form-control form-control-lg" id="loginClave" required placeholder="Ej: ABC_123" autocomplete="current-password">
+                <button type="button" class="btn btn-outline-secondary btn-toggle-pwd" title="Mostrar/Ocultar"><i class="fa-solid fa-eye"></i></button>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold"><i class="fa-solid fa-shield-halved me-1 text-warning"></i> API KEY (ADMIN_SECRET_KEY):</label>
+              <div class="input-group">
+                <input type="password" class="form-control font-monospace" id="loginAdminKey" placeholder="Ingrese clave secreta de administración">
+                <button type="button" class="btn btn-outline-secondary btn-toggle-pwd" title="Mostrar/Ocultar"><i class="fa-solid fa-eye"></i></button>
+              </div>
+              <small class="text-muted">Clave de conexión con el servidor de Google Sheets.</small>
+            </div>
+            <div id="statusLoginAdmin" class="mb-3"></div>
+            <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold shadow-sm" id="btnSubmitLogin">
+              <i class="fa-solid fa-right-to-bracket me-2"></i> Iniciar Sesión
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Cambiar Contraseña -->
+  <div class="modal fade" id="modalCambiarClave" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <form id="formCambiarClave">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title"><i class="fa-solid fa-key me-2"></i>Cambiar Contraseña</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3" id="groupClaveActual">
+              <label class="form-label fw-bold">Contraseña Actual:</label>
+              <div class="input-group">
+                <input type="password" class="form-control" id="claveActual" placeholder="Ingrese contraseña actual">
+                <button type="button" class="btn btn-outline-secondary btn-toggle-pwd" title="Mostrar/Ocultar"><i class="fa-solid fa-eye"></i></button>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Nueva Contraseña:</label>
+              <div class="input-group has-validation">
+                <input type="password" class="form-control" id="nuevaClave" required placeholder="Mínimo 6 caracteres (letras y números)">
+                <button type="button" class="btn btn-outline-secondary btn-toggle-pwd" title="Mostrar/Ocultar"><i class="fa-solid fa-eye"></i></button>
+                <div class="invalid-feedback" id="feedbackNuevaClave">La contraseña debe combinar letras y números y tener mínimo 6 caracteres.</div>
+              </div>
+              <small class="text-muted" id="msgRuleNuevaClave">Requisito: Alfanumérica (letras + números), mín 6 caracteres.</small>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Confirmar Nueva Contraseña:</label>
+              <div class="input-group has-validation">
+                <input type="password" class="form-control" id="confirmarNuevaClave" required placeholder="Repita la nueva contraseña">
+                <button type="button" class="btn btn-outline-secondary btn-toggle-pwd" title="Mostrar/Ocultar"><i class="fa-solid fa-eye"></i></button>
+                <div class="invalid-feedback" id="feedbackConfirmarNuevaClave">Las contraseñas no coinciden.</div>
+              </div>
+            </div>
+            <div id="statusCambiarClave"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary" id="btnSubmitCambiarClave">Guardar Nueva Contraseña</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Crear/Editar Admin User (Super Admin) -->
+  <div class="modal fade" id="modalAdminUser" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <form id="formAdminUser">
+          <div class="modal-header bg-dark text-white">
+            <h5 class="modal-title" id="modalAdminUserTitle"><i class="fa-solid fa-user-gear me-2"></i>Nuevo Administrador</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="adminUserId">
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Nombre de Usuario Admin:</label>
+                <input type="text" class="form-control" id="adminUsuarioName" required placeholder="Ej: COORDINACION_EXT">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Contraseña / Clave:</label>
+                <div class="input-group has-validation">
+                  <input type="password" class="form-control" id="adminUsuarioClave" placeholder="Escriba la clave del administrador">
+                  <button type="button" class="btn btn-outline-secondary btn-toggle-pwd" title="Mostrar/Ocultar"><i class="fa-solid fa-eye"></i></button>
+                  <div class="invalid-feedback" id="feedbackAdminUsuarioClave">Debe combinar letras y números (mínimo 6 caracteres).</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Tipo / Rol:</label>
+                <select class="form-select" id="adminUsuarioTipo" required>
+                  <option value="ADMIN">ADMIN (Acceso Restringido por Permisos)</option>
+                  <option value="SUPER_ADMIN">SUPER_ADMIN (Control Total del Sistema)</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Estatus de Cuenta:</label>
+                <select class="form-select" id="adminUsuarioStatus" required>
+                  <option value="ACTIVO">ACTIVO (Permitido Iniciar Sesión)</option>
+                  <option value="INACTIVO">INACTIVO (Acceso Bloqueado)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="card bg-light border p-3">
+              <h6 class="fw-bold text-dark mb-2"><i class="fa-solid fa-list-check me-2"></i>Permisos de Acceso a Secciones (Sólo aplica para ADMIN):</h6>
+              <div class="row g-2" id="checkboxesSeccionesPermisos">
+                <div class="col-md-6">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="secDashboard" id="permSecDashboard" checked>
+                    <label class="form-check-label" for="permSecDashboard">Dashboard / Estadísticas</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="secUsuarios" id="permSecUsuarios" checked>
+                    <label class="form-check-label" for="permSecUsuarios">Gestión de Usuarios / Participantes</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="secUnidades" id="permSecUnidades" checked>
+                    <label class="form-check-label" for="permSecUnidades">Unidades Organizativas</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="secFirmas" id="permSecFirmas" checked>
+                    <label class="form-check-label" for="permSecFirmas">Firmas y Sellos</label>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="secCursos" id="permSecCursos" checked>
+                    <label class="form-check-label" for="permSecCursos">Cursos / Talleres</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="secCertificados" id="permSecCertificados" checked>
+                    <label class="form-check-label" for="permSecCertificados">Emisión de Certificados</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="secDisenador" id="permSecDisenador" checked>
+                    <label class="form-check-label" for="permSecDisenador">Diseñador Canvas SVG</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="secConsultas" id="permSecConsultas" checked>
+                    <label class="form-check-label" for="permSecConsultas">Bitácora de Consultas</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Guardar Administrador</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Overlay Global con Porcentaje -->
+  <div id="globalLoadingOverlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15,23,42,0.8); backdrop-filter:blur(4px); z-index:99999; align-items:center; justify-content:center;">
+    <div class="card shadow-lg border-0 text-center p-4" style="max-width:420px; width:90%; border-radius:16px;">
+      <div class="spinner-border text-primary mx-auto mb-3" role="status" style="width:3.5rem; height:3.5rem;"></div>
+      <h5 class="fw-bold mb-2 text-dark" id="globalLoadingText">Cargando información...</h5>
+      <div class="progress mb-2" style="height: 24px; border-radius: 12px; background-color: #e9ecef;">
+        <div id="globalProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 0%; font-weight: bold; font-size: 13px;">0%</div>
+      </div>
+      <small class="text-muted" id="globalLoadingSubtext">Por favor espere un momento...</small>
+    </div>
+  </div>
+
   <!-- Bootstrap 5 Bundle JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   
@@ -1115,5 +1388,6 @@
   <script src="js/modules/disenador.js"></script>
   <script src="js/modules/consultas.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/auth-admin.js"></script>
 </body>
 </html>
