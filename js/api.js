@@ -279,6 +279,110 @@
       }
     },
 
+    applyMutationToCache(action, payload, json) {
+      if (!this._globalCache) return;
+
+      const targetTable = payload.tabla || payload.table;
+
+      switch (action) {
+        case 'create': {
+          if (targetTable) {
+            if (!Array.isArray(this._globalCache[targetTable])) {
+              this._globalCache[targetTable] = [];
+            }
+            const newItem = (json && json.data) ? json.data : { ...payload.data };
+            if (!newItem.id && payload.data && payload.data.id) newItem.id = payload.data.id;
+            const exists = this._globalCache[targetTable].some(r => String(r.id) === String(newItem.id));
+            if (!exists) {
+              this._globalCache[targetTable].push(newItem);
+            }
+          }
+          break;
+        }
+
+        case 'update': {
+          if (targetTable && Array.isArray(this._globalCache[targetTable])) {
+            const searchId = String(payload.id);
+            const idx = this._globalCache[targetTable].findIndex(r => String(r.id) === searchId);
+            if (idx !== -1) {
+              this._globalCache[targetTable][idx] = {
+                ...this._globalCache[targetTable][idx],
+                ...(payload.data || {}),
+                id: payload.id
+              };
+            } else if (payload.data) {
+              this._globalCache[targetTable].push({ ...payload.data, id: payload.id });
+            }
+          }
+          break;
+        }
+
+        case 'delete': {
+          if (targetTable && Array.isArray(this._globalCache[targetTable])) {
+            const deleteId = String(payload.id);
+            this._globalCache[targetTable] = this._globalCache[targetTable].filter(r => String(r.id) !== deleteId);
+          }
+          break;
+        }
+
+        case 'bulkCreateUsuarios': {
+          if (!Array.isArray(this._globalCache.usuarios)) this._globalCache.usuarios = [];
+          const newUsers = (json && Array.isArray(json.created)) ? json.created : (payload.usuarios || []);
+          newUsers.forEach(u => {
+            const exists = this._globalCache.usuarios.some(existing => String(existing.cedula).toUpperCase() === String(u.cedula).toUpperCase());
+            if (!exists) {
+              this._globalCache.usuarios.push(u);
+            }
+          });
+          break;
+        }
+
+        case 'bulkCertificar': {
+          if (!Array.isArray(this._globalCache.certificados)) this._globalCache.certificados = [];
+          const newCerts = (json && Array.isArray(json.data)) ? json.data : [];
+          newCerts.forEach(c => {
+            const exists = this._globalCache.certificados.some(existing => String(existing.id) === String(c.id));
+            if (!exists) {
+              this._globalCache.certificados.push(c);
+            }
+          });
+          break;
+        }
+
+        case 'saveDiseno': {
+          if (!Array.isArray(this._globalCache.disenos)) this._globalCache.disenos = [];
+          const disenoData = (json && json.data) ? json.data : payload.diseno_data;
+          if (disenoData) {
+            const isActivo = String(disenoData.activo).toLowerCase() === 'true' || disenoData.activo === true;
+            if (isActivo) {
+              this._globalCache.disenos.forEach(d => d.activo = 'FALSE');
+            }
+            const idx = this._globalCache.disenos.findIndex(d => String(d.id) === String(disenoData.id));
+            if (idx !== -1) {
+              this._globalCache.disenos[idx] = { ...this._globalCache.disenos[idx], ...disenoData };
+            } else {
+              this._globalCache.disenos.push(disenoData);
+            }
+          }
+          break;
+        }
+
+        case 'setDisenoActivo': {
+          if (Array.isArray(this._globalCache.disenos)) {
+            const activeId = String(payload.id);
+            this._globalCache.disenos.forEach(d => {
+              d.activo = (String(d.id) === activeId) ? 'TRUE' : 'FALSE';
+            });
+          }
+          break;
+        }
+      }
+
+      try {
+        sessionStorage.setItem('uptpc_real_drive_cache_v2', JSON.stringify(this._globalCache));
+      } catch (e) {}
+    },
+
     async post(action, payload = {}) {
       const apiUrl = window.config.getApiUrl();
       const adminKey = window.config.getAdminKey();
@@ -308,8 +412,11 @@
           }
 
           if (json && json.status === 'success') {
-            // Re-sincronizar datos frescos desde Google Drive en segundo plano
-            this.preloadAllData(true).catch(e => console.warn('Refresco de cache post-edicion:', e));
+            // 1. Aplicar inmediatamente el cambio a la caché local en memoria
+            this.applyMutationToCache(action, payload, json);
+
+            // 2. Re-sincronizar en segundo plano con Google Drive
+            this.preloadAllData(true).catch(e => console.warn('Refresco de cache post-edicion background:', e));
           }
 
           this._isUsingMockData = false;
@@ -324,8 +431,7 @@
 
       this._isUsingMockData = true;
       const localRes = this.mockPost(action, payload);
-      const updatedDb = getLocalDb();
-      this._globalCache = updatedDb;
+      this.applyMutationToCache(action, payload, localRes);
       return localRes;
     },
 
@@ -533,7 +639,7 @@
             let code = '';
             do {
               code = Array.from({length:3}, ()=>letters[Math.floor(Math.random()*26)]).join('') +
-                     Array.from({length:3}, ()=>digits[Math.floor(Math.random()*10)]).join('') +
+                     Array.from({length:4}, ()=>digits[Math.floor(Math.random()*10)]).join('') +
                      Array.from({length:3}, ()=>letters[Math.floor(Math.random()*26)]).join('');
             } while(existingCodes.has(code));
 
