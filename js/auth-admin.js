@@ -585,6 +585,7 @@
 
         if (window.utils && window.utils.showLoading) window.utils.showLoading(75, 'Generando Gráficas de Conexión...', 'Analizando historial de visitas');
         await this.cargarEstadisticasConexion();
+        await this.cargarBitacoraCertificadosEliminados();
 
         if (window.utils && window.utils.showLoading) window.utils.showLoading(100, '¡Carga Completa!', 'Sección lista');
         setTimeout(() => {
@@ -594,6 +595,53 @@
       } catch (e) {
         if (window.utils && window.utils.hideLoading) window.utils.hideLoading();
         console.error('Error cargando tabla admin:', e);
+      }
+    },
+
+    async cargarBitacoraCertificadosEliminados() {
+      const tbody = document.getElementById('tbodyCertificadosEliminados');
+      if (!tbody) return;
+
+      try {
+        const res = await window.api.getAll('certificados_eliminados');
+        let lista = (res && res.status === 'success' && Array.isArray(res.data)) ? res.data : [];
+
+        if (lista.length === 0 && window.api._globalCache && Array.isArray(window.api._globalCache.certificados_eliminados)) {
+          lista = window.api._globalCache.certificados_eliminados;
+        }
+
+        const badge = document.getElementById('badgeTotalCertificadosEliminados');
+
+        if (lista.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4"><i class="fa-solid fa-shield-check fa-2x mb-2 text-success"></i><br>No hay registros de certificados eliminados en el sistema.</td></tr>`;
+          if (badge) badge.textContent = '0 registros';
+          return;
+        }
+
+        lista.sort((a, b) => new Date(b.created_at || b.fecha_eliminacion || 0) - new Date(a.created_at || a.fecha_eliminacion || 0));
+
+        let html = '';
+        lista.forEach((item, i) => {
+          const fechaStr = item.created_at || item.fecha_eliminacion;
+          const fechaFormatted = window.utils ? window.utils.formatDate(fechaStr) : (fechaStr || '-');
+
+          html += `
+            <tr>
+              <td>${i + 1}</td>
+              <td><span class="badge bg-danger font-monospace fw-bold fs-6">${window.utils.escapeHtml(item.codigo || 'N/A')}</span></td>
+              <td class="fw-semibold">${window.utils.escapeHtml(item.nombre_completo || 'N/A')}<br><small class="text-muted">${window.utils.escapeHtml(item.cedula || '')}</small></td>
+              <td class="small">${window.utils.escapeHtml(item.nombre_curso || 'N/A')}</td>
+              <td class="small text-danger italic">${window.utils.escapeHtml(item.motivo_eliminacion || 'Anulación / Eliminación manual')}</td>
+              <td><span class="badge bg-secondary font-monospace">${window.utils.escapeHtml(item.eliminado_por || 'ADMIN')}</span></td>
+              <td class="small text-muted">${window.utils.escapeHtml(fechaFormatted)}</td>
+            </tr>
+          `;
+        });
+
+        tbody.innerHTML = html;
+        if (badge) badge.textContent = `${lista.length} registro${lista.length !== 1 ? 's' : ''}`;
+      } catch (e) {
+        console.error('Error cargando bitácora de certificados eliminados:', e);
       }
     },
 

@@ -36,6 +36,12 @@
       document.getElementById('fileCargaRapidaCsv')?.addEventListener('change', (e) => this.cargarArchivoCsvEnTextarea(e));
       document.getElementById('btnLimpiarCargaRapida')?.addEventListener('click', () => this.limpiarCargaRapida());
       document.getElementById('btnConfirmarCargaRapida')?.addEventListener('click', () => this.procesarConfirmacionCargaRapida());
+
+      // Eventos Modal Editar Certificado
+      document.getElementById('formEditarCertificado')?.addEventListener('submit', (e) => this.guardarEdicionCertificado(e));
+      document.getElementById('btnCerrarModalEditarCertificado')?.addEventListener('click', () => this.cerrarModalEditarCertificado());
+      document.getElementById('btnCancelarModalEditarCertificado')?.addEventListener('click', () => this.cerrarModalEditarCertificado());
+      document.getElementById('btnImprimirReporteInclusion')?.addEventListener('click', () => this.imprimirReporteInclusion());
     },
 
     async cargarCertificados() {
@@ -86,6 +92,7 @@
             <td class="small">${window.utils.formatDate(c.fecha_curso)}</td>
             <td>
               <button class="btn btn-sm btn-outline-success me-1" onclick="window.certificadosModule.verCertificado('${c.codigo}')" title="Ver / Imprimir Certificado"><i class="fa-solid fa-eye"></i></button>
+              <button class="btn btn-sm btn-outline-warning me-1" onclick="window.certificadosModule.abrirModalEditarCertificado('${c.id}')" title="Editar Certificado (Tomo, Folio, etc.)"><i class="fa-solid fa-pen-to-square"></i></button>
               <button class="btn btn-sm btn-outline-danger" onclick="window.certificadosModule.eliminarCertificado('${c.id}')" title="Anular / Eliminar"><i class="fa-solid fa-trash"></i></button>
             </td>
           </tr>
@@ -338,6 +345,9 @@
               <button type="button" class="btn btn-xs btn-outline-success py-0 px-2 me-1" onclick="window.certificadosModule.verCertificado('${c.codigo}')" title="Ver Certificado">
                 <i class="fa-solid fa-eye me-1"></i>Ver
               </button>
+              <button type="button" class="btn btn-xs btn-outline-warning py-0 px-2 me-1" onclick="window.certificadosModule.abrirModalEditarCertificado('${c.id}', true)" title="Editar Certificación">
+                <i class="fa-solid fa-pen-to-square me-1"></i>Editar
+              </button>
               <button type="button" class="btn btn-xs btn-outline-danger py-0 px-2" onclick="window.certificadosModule.eliminarCertificadoCurso('${c.id}')" title="Eliminar / Anular Certificación de este Curso">
                 <i class="fa-solid fa-trash me-1"></i>Eliminar
               </button>
@@ -355,43 +365,47 @@
       const certNombre = cert ? cert.nombre_completo : 'este participante';
       const certCodigo = cert ? cert.codigo : '';
 
-      if (!confirm(`¿Está seguro de eliminar la certificación asignada a ${certNombre} (Código: ${certCodigo})?\n\nEsta acción eliminará el certificado del curso y quedará registrada en la bitácora auditada de eliminaciones.`)) {
-        return;
-      }
+      window.utils.showConfirm({
+        title: 'Anular Certificación de Taller',
+        message: `¿Está seguro de eliminar la certificación asignada a ${certNombre} (${certCodigo})?`,
+        subtext: 'Esta acción eliminará el certificado del curso y quedará registrada en la bitácora auditada de eliminaciones.',
+        confirmText: 'Sí, Anular Certificado',
+        onConfirm: async () => {
+          try {
+            const sessionUser = (window.authAdmin && window.authAdmin.getSession()) ? window.authAdmin.getSession().usuario : 'ADMIN';
+            
+            // Registrar en bitácora auditada de eliminaciones (hoja: certificados_eliminados)
+            if (cert) {
+              const auditPayload = {
+                id: window.utils.generateUUID(),
+                certificado_id: cert.id || '',
+                codigo: cert.codigo || '',
+                cedula: cert.cedula || '',
+                nombre_completo: cert.nombre_completo || '',
+                curso_id: cert.curso_id || '',
+                nombre_curso: cert.nombre_curso || '',
+                motivo_eliminacion: 'Eliminación manual desde modal de curso',
+                eliminado_por: sessionUser,
+                fecha_eliminacion: new Date().toISOString()
+              };
+              
+              await window.api.post('create', { tabla: 'certificados_eliminados', data: auditPayload }).catch(e => console.warn('Bitácora local error:', e));
+            }
 
-      try {
-        const sessionUser = (window.authAdmin && window.authAdmin.getSession()) ? window.authAdmin.getSession().usuario : 'ADMIN';
-        
-        // Registrar en bitácora auditada de eliminaciones (hoja: certificados_eliminados)
-        if (cert) {
-          const auditPayload = {
-            id: window.utils.generateUUID(),
-            certificado_id: cert.id || '',
-            codigo: cert.codigo || '',
-            cedula: cert.cedula || '',
-            nombre_completo: cert.nombre_completo || '',
-            curso_id: cert.curso_id || '',
-            nombre_curso: cert.nombre_curso || '',
-            motivo_eliminacion: 'Eliminación manual desde modal de curso',
-            eliminado_por: sessionUser,
-            fecha_eliminacion: new Date().toISOString()
-          };
-          
-          await window.api.post('create', { tabla: 'certificados_eliminados', data: auditPayload }).catch(e => console.warn('Bitácora local error:', e));
+            const res = await window.api.delete('certificados', id);
+            if (res.status === 'success') {
+              window.utils.showToast('Certificación eliminada y registrada en la bitácora auditada', 'success');
+              await this.cargarCertificados();
+              this.onCambioCursoEmision();
+              if (window.cursosModule) await window.cursosModule.cargarCursos();
+            } else {
+              window.utils.showToast(res.message, 'danger');
+            }
+          } catch (e) {
+            window.utils.showToast('Error al eliminar la certificación', 'danger');
+          }
         }
-
-        const res = await window.api.delete('certificados', id);
-        if (res.status === 'success') {
-          window.utils.showToast('Certificación eliminada y registrada en la bitácora auditada', 'success');
-          await this.cargarCertificados();
-          this.onCambioCursoEmision();
-          if (window.cursosModule) await window.cursosModule.cargarCursos();
-        } else {
-          window.utils.showToast(res.message, 'danger');
-        }
-      } catch (e) {
-        window.utils.showToast('Error al eliminar la certificación', 'danger');
-      }
+      });
     },
 
     filtrarUsuariosModalEmision(query) {
@@ -452,6 +466,7 @@
       const isTomoEnabled = document.getElementById('checkHabilitarTomoFolio')?.checked;
       const tomo = isTomoEnabled ? document.getElementById('emisionTomo').value.trim() : '';
       const folio = isTomoEnabled ? document.getElementById('emisionFolioInicial').value.trim() : '';
+      const limite_por_folio = isTomoEnabled ? (document.getElementById('emisionLimitePorFolio')?.value || '15') : '15';
 
       if (!curso_id) {
         window.utils.showToast('Seleccione el taller o curso', 'warning');
@@ -469,11 +484,11 @@
       btn.disabled = true;
 
       try {
-        const datos_generales = { fecha_curso, lugar, tomo, folio };
+        const datos_generales = { fecha_curso, lugar, tomo, folio, limite_por_folio };
         const res = await window.api.bulkCertificar(curso_id, usuariosSeleccionadosEmision, datos_generales);
 
         if (res.status === 'success') {
-          window.utils.showToast(`Se emitieron ${res.count || usuariosSeleccionadosEmision.length} certificados con códigos únicos de verificación (format AAA123AAA)`, 'success');
+          window.utils.showToast(`Se emitieron ${res.count || usuariosSeleccionadosEmision.length} certificados con códigos únicos de verificación (AAA1234AAA)`, 'success');
 
           // Forzar recarga completa de datos del servidor para reflejar los nuevos certificados
           await this.cargarCertificados();
@@ -482,6 +497,9 @@
           bootstrap.Modal.getOrCreateInstance(document.getElementById('modalCertificar')).hide();
 
           if (window.cursosModule) await window.cursosModule.cargarCursos();
+
+          // Mostrar Reporte de Inclusión en Registro de Tomo y Folio
+          this.mostrarReporteInclusionTomoFolio(curso_id, res.data || [], datos_generales);
         } else {
           window.utils.showToast(res.message, 'danger');
         }
@@ -772,19 +790,269 @@
     },
 
     async eliminarCertificado(id) {
-      if (!confirm('¿Está seguro de anular/eliminar este certificado?')) return;
+      const cert = certificadosVistaData.find(c => String(c.id).trim() === String(id).trim()) ||
+                   (window.api._globalCache && window.api._globalCache.certificados ? window.api._globalCache.certificados.find(c => String(c.id).trim() === String(id).trim()) : null);
+      const certNombre = cert ? (cert.nombre_completo || 'este participante') : 'este participante';
+      const certCodigo = cert ? (cert.codigo || '') : '';
+
+      window.utils.showConfirm({
+        title: 'Anular Certificado',
+        message: `¿Está seguro de anular/eliminar el certificado ${certCodigo} de ${certNombre}?`,
+        subtext: 'Esta acción registrará la eliminación en la bitácora de auditoría del sistema.',
+        confirmText: 'Sí, Anular Certificado',
+        onConfirm: async () => {
+          try {
+            const sessionUser = (window.authAdmin && window.authAdmin.getSession()) ? window.authAdmin.getSession().usuario : 'ADMIN';
+
+            if (cert) {
+              const auditPayload = {
+                id: window.utils.generateUUID(),
+                certificado_id: cert.id || '',
+                codigo: cert.codigo || '',
+                cedula: cert.cedula || '',
+                nombre_completo: cert.nombre_completo || '',
+                curso_id: cert.curso_id || '',
+                nombre_curso: cert.nombre_curso || '',
+                motivo_eliminacion: 'Eliminación manual desde tabla principal de certificados',
+                eliminado_por: sessionUser,
+                fecha_eliminacion: new Date().toISOString()
+              };
+              await window.api.post('create', { tabla: 'certificados_eliminados', data: auditPayload }).catch(e => console.warn('Bitácora local error:', e));
+            }
+
+            const res = await window.api.delete('certificados', id);
+            if (res.status === 'success') {
+              window.utils.showToast('Certificado eliminado y registrado en la bitácora auditada', 'success');
+              await this.cargarCertificados();
+            } else {
+              window.utils.showToast(res.message, 'danger');
+            }
+          } catch (e) {
+            window.utils.showToast('Error al eliminar certificado', 'danger');
+          }
+        }
+      });
+    },
+
+    abrirModalEditarCertificado(id, returnToBulk = false) {
+      const cert = certificadosVistaData.find(c => String(c.id).trim() === String(id).trim()) ||
+                   (window.api._globalCache && window.api._globalCache.certificados ? window.api._globalCache.certificados.find(c => String(c.id).trim() === String(id).trim()) : null);
+
+      if (!cert) {
+        window.utils.showToast('No se encontró la información del certificado a editar', 'danger');
+        return;
+      }
+
+      document.getElementById('editarCertificadoId').value = cert.id;
+      document.getElementById('editarCertificadoReturnBulk').value = returnToBulk ? 'true' : 'false';
+
+      document.getElementById('lblEditarCertificadoNombre').textContent = cert.nombre_completo || 'Participante';
+      document.getElementById('lblEditarCertificadoCedula').textContent = cert.cedula || '';
+      document.getElementById('badgeEditarCertificadoCodigo').textContent = cert.codigo || '';
+
+      document.getElementById('editarCertificadoTomo').value = cert.tomo || '';
+      document.getElementById('editarCertificadoFolio').value = cert.folio || '';
+
+      let fechaVal = cert.fecha_curso || '';
+      if (fechaVal && fechaVal.includes('T')) {
+        fechaVal = fechaVal.split('T')[0];
+      }
+      document.getElementById('editarCertificadoFecha').value = fechaVal;
+
+      document.getElementById('editarCertificadoLugar').value = cert.lugar || 'Puerto Cabello, Venezuela';
+      document.getElementById('editarCertificadoMatricula').value = cert.matricula || '';
+
+      if (returnToBulk) {
+        const modalCert = document.getElementById('modalCertificar');
+        if (modalCert) bootstrap.Modal.getOrCreateInstance(modalCert).hide();
+      }
+
+      const modalEdit = document.getElementById('modalEditarCertificado');
+      if (modalEdit) bootstrap.Modal.getOrCreateInstance(modalEdit).show();
+    },
+
+    cerrarModalEditarCertificado() {
+      const returnToBulk = document.getElementById('editarCertificadoReturnBulk')?.value === 'true';
+      const modalEdit = document.getElementById('modalEditarCertificado');
+      if (modalEdit) bootstrap.Modal.getOrCreateInstance(modalEdit).hide();
+
+      if (returnToBulk) {
+        this.onCambioCursoEmision();
+        const modalCert = document.getElementById('modalCertificar');
+        if (modalCert) bootstrap.Modal.getOrCreateInstance(modalCert).show();
+      }
+    },
+
+    async guardarEdicionCertificado(e) {
+      e.preventDefault();
+
+      const id = document.getElementById('editarCertificadoId').value;
+      const returnToBulk = document.getElementById('editarCertificadoReturnBulk').value === 'true';
+      const tomo = document.getElementById('editarCertificadoTomo').value.trim();
+      const folio = document.getElementById('editarCertificadoFolio').value.trim();
+      const fecha_curso = document.getElementById('editarCertificadoFecha').value;
+      const lugar = document.getElementById('editarCertificadoLugar').value.trim();
+      const matricula = document.getElementById('editarCertificadoMatricula').value.trim();
+
+      if (!id) {
+        window.utils.showToast('ID de certificado no especificado', 'danger');
+        return;
+      }
+
+      const btn = document.getElementById('btnSubmitEditarCertificado');
+      const oldText = btn.innerHTML;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Guardando...';
+      btn.disabled = true;
 
       try {
-        const res = await window.api.delete('certificados', id);
+        const editData = { tomo, folio, fecha_curso, lugar, matricula };
+        const res = await window.api.update('certificados', id, editData);
+
         if (res.status === 'success') {
-          window.utils.showToast('Certificado eliminado', 'success');
+          window.utils.showToast('Certificación actualizada correctamente', 'success');
+
+          // Actualizar datos locales directamente para respuesta instantánea
+          const certIdx = certificadosVistaData.findIndex(c => String(c.id).trim() === String(id).trim());
+          if (certIdx !== -1) {
+            certificadosVistaData[certIdx] = {
+              ...certificadosVistaData[certIdx],
+              tomo, folio, fecha_curso, lugar, matricula
+            };
+          }
+
           await this.cargarCertificados();
+
+          const modalEdit = document.getElementById('modalEditarCertificado');
+          if (modalEdit) bootstrap.Modal.getOrCreateInstance(modalEdit).hide();
+
+          if (returnToBulk) {
+            this.onCambioCursoEmision();
+            const modalCert = document.getElementById('modalCertificar');
+            if (modalCert) bootstrap.Modal.getOrCreateInstance(modalCert).show();
+          }
         } else {
-          window.utils.showToast(res.message, 'danger');
+          window.utils.showToast(res.message || 'Error al actualizar la certificación', 'danger');
         }
-      } catch (e) {
-        window.utils.showToast('Error al eliminar certificado', 'danger');
+      } catch (err) {
+        console.error('Error al actualizar certificado:', err);
+        window.utils.showToast('Error al guardar cambios en la certificación', 'danger');
+      } finally {
+        btn.innerHTML = oldText;
+        btn.disabled = false;
       }
+    },
+
+    mostrarReporteInclusionTomoFolio(curso_id, certificadosCreados, datosGenerales) {
+      const cursoObj = cursosDisponibles.find(c => String(c.id) === String(curso_id));
+      const cursoNombre = cursoObj ? cursoObj.nombre : 'CURSO DE CAPACITACIÓN';
+
+      const lblCurso = document.getElementById('reporteInclusionCursoNombre');
+      if (lblCurso) lblCurso.textContent = cursoNombre.toUpperCase();
+
+      const lblFecha = document.getElementById('reporteInclusionFechaInfo');
+      if (lblFecha) lblFecha.textContent = `Fecha del Curso: ${window.utils.formatDate(datosGenerales.fecha_curso)} | ${datosGenerales.lugar || 'Puerto Cabello, Venezuela'}`;
+
+      const certsList = (certificadosCreados && certificadosCreados.length > 0)
+        ? certificadosCreados
+        : certificadosVistaData.filter(c => String(c.curso_id) === String(curso_id));
+
+      const lblTotal = document.getElementById('reporteInclusionTotalCount');
+      if (lblTotal) lblTotal.textContent = `${certsList.length} certificados emitidos`;
+
+      const tomoTexto = datosGenerales.tomo ? datosGenerales.tomo : 'No especificado';
+      let foliosTexto = 'No especificado';
+      if (certsList.length > 0 && certsList[0].folio) {
+        const minFolio = certsList[0].folio;
+        const maxFolio = certsList[certsList.length - 1].folio;
+        foliosTexto = (minFolio === maxFolio) ? `Folio ${minFolio}` : `Folios ${minFolio} al ${maxFolio}`;
+      }
+      const lblSummary = document.getElementById('reporteInclusionTomoFolioSummary');
+      if (lblSummary) lblSummary.textContent = `Tomo / Libro: ${tomoTexto} | ${foliosTexto}`;
+
+      const tbody = document.getElementById('tbodyReporteInclusionTomoFolio');
+      if (tbody) {
+        let html = '';
+        certsList.forEach((c, idx) => {
+          let uNombre = c.nombre_completo;
+          let uCedula = c.cedula;
+
+          if (!uNombre || !uCedula) {
+            const userObj = usuariosDisponibles.find(u => String(u.id) === String(c.usuario_id));
+            if (userObj) {
+              uNombre = userObj.nombre_completo;
+              uCedula = userObj.cedula;
+            }
+          }
+
+          html += `
+            <tr>
+              <td>${idx + 1}</td>
+              <td class="font-monospace">${window.utils.escapeHtml(uCedula || '')}</td>
+              <td class="fw-bold text-dark">${window.utils.escapeHtml(uNombre || '')}</td>
+              <td><span class="badge bg-dark text-warning font-monospace fw-bold">${window.utils.escapeHtml(c.codigo || '')}</span></td>
+              <td><span class="badge bg-secondary font-monospace">${window.utils.escapeHtml(c.tomo || datosGenerales.tomo || 'N/A')}</span></td>
+              <td><span class="badge bg-primary font-monospace fs-6">${window.utils.escapeHtml(c.folio || 'N/A')}</span></td>
+            </tr>
+          `;
+        });
+        tbody.innerHTML = html || '<tr><td colspan="6" class="text-center text-muted py-3">No hay detalles de emisión.</td></tr>';
+      }
+
+      const modalRep = document.getElementById('modalReporteInclusionTomoFolio');
+      if (modalRep) bootstrap.Modal.getOrCreateInstance(modalRep).show();
+    },
+
+    imprimirReporteInclusion() {
+      const content = document.getElementById('printableReporteInclusionArea')?.innerHTML;
+      if (!content) return;
+
+      const printWindow = window.open('', '_blank', 'width=900,height=700');
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+          <meta charset="UTF-8">
+          <title>Reporte de Inclusión en Tomo y Folio - UPTPC</title>
+          <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; color: #333; }
+            .table { font-size: 12px; }
+            @media print {
+              .no-print { display: none !important; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="text-center mb-4">
+            <h4 class="fw-bold mb-1">UNIVERSIDAD POLITÉCNICA TERRITORIAL DE PUERTO CABELLO</h4>
+            <h6 class="text-secondary">UNIDAD DE CIENCIA Y TECNOLOGÍA - SISTEMA DE CERTIFICACIÓN</h6>
+            <hr>
+          </div>
+          ${content}
+          <div class="mt-5 pt-4 text-center">
+            <div class="row">
+              <div class="col-6">
+                <p class="mb-0">__________________________________________</p>
+                <small class="fw-bold">Firma del Responsable del Libro / Tomo</small>
+              </div>
+              <div class="col-6">
+                <p class="mb-0">__________________________________________</p>
+                <small class="fw-bold">Sello de Control de Registro</small>
+              </div>
+            </div>
+          </div>
+          <script>
+            window.onload = function() { window.print(); window.close(); };
+          </script>
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
+    },
+
+    getCertificadosVistaData() {
+      return certificadosVistaData;
     }
   };
 

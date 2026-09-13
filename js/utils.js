@@ -22,7 +22,7 @@
 
     do {
       const part1 = randomChars(letters, 3);
-      const part2 = randomChars(digits, 3);
+      const part2 = randomChars(digits, 4);
       const part3 = randomChars(letters, 3);
       code = `${part1}${part2}${part3}`;
       attempts++;
@@ -282,6 +282,38 @@
           }
         });
       });
+    },
+
+    showConfirm({ title = 'Confirmar Acción', message = '¿Desea continuar?', subtext = '', confirmText = 'Sí, Confirmar', confirmClass = 'btn-danger', onConfirm } = {}) {
+      const modalEl = document.getElementById('modalConfirmacionBootstrap');
+      if (!modalEl) {
+        if (confirm(message)) onConfirm();
+        return;
+      }
+
+      const titleEl = document.getElementById('lblModalConfirmacionTitulo');
+      const msgEl = document.getElementById('lblModalConfirmacionMensaje');
+      const subEl = document.getElementById('lblModalConfirmacionSubtexto');
+      const btnConfirm = document.getElementById('btnModalConfirmacionAceptar');
+
+      if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation me-2"></i>${title}`;
+      if (msgEl) msgEl.textContent = message;
+      if (subEl) subEl.textContent = subtext;
+
+      if (btnConfirm) {
+        btnConfirm.className = `btn ${confirmClass} fw-bold px-4`;
+        btnConfirm.innerHTML = `<i class="fa-solid fa-check me-1"></i> ${confirmText}`;
+
+        const newBtn = btnConfirm.cloneNode(true);
+        btnConfirm.parentNode.replaceChild(newBtn, btnConfirm);
+
+        newBtn.addEventListener('click', () => {
+          bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+          if (typeof onConfirm === 'function') onConfirm();
+        });
+      }
+
+      bootstrap.Modal.getOrCreateInstance(modalEl).show();
     },
 
     parseUserImportText

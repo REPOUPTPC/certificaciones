@@ -152,16 +152,23 @@
     },
 
     async eliminarUnidad(id) {
-      if (!confirm('¿Eliminar esta unidad?')) return;
-      try {
-        const res = await window.api.delete('unidades', id);
-        if (res.status === 'success') {
-          window.utils.showToast('Unidad eliminada', 'success');
-          await this.cargarUnidades();
+      window.utils.showConfirm({
+        title: 'Eliminar Unidad Académica',
+        message: '¿Está seguro de eliminar esta unidad académica?',
+        subtext: 'Esta acción eliminará la unidad del catálogo.',
+        confirmText: 'Sí, Eliminar Unidad',
+        onConfirm: async () => {
+          try {
+            const res = await window.api.delete('unidades', id);
+            if (res.status === 'success') {
+              window.utils.showToast('Unidad eliminada correctamente', 'success');
+              await this.cargarUnidades();
+            }
+          } catch (e) {
+            window.utils.showToast('Error al eliminar unidad', 'danger');
+          }
         }
-      } catch (e) {
-        window.utils.showToast('Error al eliminar', 'danger');
-      }
+      });
     }
   };
 

@@ -183,16 +183,23 @@
     },
 
     async eliminarFirma(id) {
-      if (!confirm('¿Eliminar este firmante?')) return;
-      try {
-        const res = await window.api.delete('firmas', id);
-        if (res.status === 'success') {
-          window.utils.showToast('Firmante eliminado', 'success');
-          await this.cargarFirmas();
+      window.utils.showConfirm({
+        title: 'Eliminar Firmante Autorizado',
+        message: '¿Está seguro de eliminar este registro de firmante?',
+        subtext: 'Esta acción eliminará el firmante del catálogo.',
+        confirmText: 'Sí, Eliminar Firmante',
+        onConfirm: async () => {
+          try {
+            const res = await window.api.delete('firmas', id);
+            if (res.status === 'success') {
+              window.utils.showToast('Firmante eliminado correctamente', 'success');
+              await this.cargarFirmas();
+            }
+          } catch (e) {
+            window.utils.showToast('Error al eliminar firmante', 'danger');
+          }
         }
-      } catch (e) {
-        window.utils.showToast('Error al eliminar', 'danger');
-      }
+      });
     }
   };
 

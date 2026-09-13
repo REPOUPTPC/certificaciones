@@ -869,22 +869,26 @@
         return;
       }
 
-      if (!confirm(`¿Está seguro de que desea eliminar el diseño "${disenoActual.nombre}"?`)) {
-        return;
-      }
-
-      try {
-        const res = await window.api.delete('disenos', disenoActual.id);
-        if (res.status === 'success') {
-          window.utils.showToast('Diseño eliminado correctamente', 'success');
-          await this.cargarListaDiseños();
-          this.nuevoDiseño();
-        } else {
-          window.utils.showToast('Error al eliminar diseño: ' + res.message, 'danger');
+      window.utils.showConfirm({
+        title: 'Eliminar Diseño de Certificado',
+        message: `¿Está seguro de que desea eliminar el diseño "${disenoActual.nombre}"?`,
+        subtext: 'Esta acción eliminará la plantilla de diseño de certificado.',
+        confirmText: 'Sí, Eliminar Diseño',
+        onConfirm: async () => {
+          try {
+            const res = await window.api.delete('disenos', disenoActual.id);
+            if (res.status === 'success') {
+              window.utils.showToast('Diseño eliminado correctamente', 'success');
+              await this.cargarListaDiseños();
+              this.nuevoDiseño();
+            } else {
+              window.utils.showToast('Error al eliminar diseño: ' + res.message, 'danger');
+            }
+          } catch (e) {
+            window.utils.showToast('Error al procesar eliminación', 'danger');
+          }
         }
-      } catch (e) {
-        window.utils.showToast('Error al procesar eliminación', 'danger');
-      }
+      });
     },
 
     previsualizarCertificado() {

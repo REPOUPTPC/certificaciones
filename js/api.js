@@ -71,7 +71,9 @@
     }
 
     try {
-      return JSON.parse(stored);
+      const db = JSON.parse(stored);
+      if (!Array.isArray(db.certificados_eliminados)) db.certificados_eliminados = [];
+      return db;
     } catch (e) {
       return defaultDb;
     }
@@ -111,8 +113,18 @@
       return await response.json();
     },
 
+    ensureAllTables(cacheObj) {
+      if (!cacheObj || typeof cacheObj !== 'object') return cacheObj;
+      const tables = ['unidades', 'firmas', 'tipo', 'usuarios', 'cursos', 'certificados', 'disenos', 'admin', 'consulta', 'certificados_eliminados'];
+      tables.forEach(t => {
+        if (!Array.isArray(cacheObj[t])) cacheObj[t] = [];
+      });
+      return cacheObj;
+    },
+
     async preloadAllData(force = false) {
       if (!force && this._globalCache && this._isPreloaded) {
+        this.ensureAllTables(this._globalCache);
         return this._globalCache;
       }
 
@@ -120,7 +132,10 @@
         while (this._isPreloading) {
           await new Promise(r => setTimeout(r, 100));
         }
-        if (this._globalCache) return this._globalCache;
+        if (this._globalCache) {
+          this.ensureAllTables(this._globalCache);
+          return this._globalCache;
+        }
       }
 
       // Intentar cargar la caché real desde sessionStorage
@@ -130,7 +145,7 @@
           if (stored) {
             const parsed = JSON.parse(stored);
             if (parsed && typeof parsed === 'object' && Array.isArray(parsed.usuarios) && Array.isArray(parsed.cursos)) {
-              this._globalCache = parsed;
+              this._globalCache = this.ensureAllTables(parsed);
               this._isPreloaded = true;
               this._isUsingMockData = false;
               return this._globalCache;
@@ -146,7 +161,7 @@
           // Intento 1: Acción unificada getAllData desde Google Apps Script
           const resCombined = await this.fetchRemoteDirect('getAllData');
           if (resCombined && resCombined.status === 'success' && resCombined.data && typeof resCombined.data === 'object') {
-            this._globalCache = resCombined.data;
+            this._globalCache = this.ensureAllTables(resCombined.data);
             this._isPreloaded = true;
             this._isUsingMockData = false;
             try {
@@ -172,7 +187,7 @@
             combined[t] = (res && res.status === 'success' && Array.isArray(res.data)) ? res.data : [];
           });
 
-          this._globalCache = combined;
+          this._globalCache = this.ensureAllTables(combined);
           this._isPreloaded = true;
           this._isUsingMockData = false;
           try {
@@ -381,6 +396,10 @@
       try {
         sessionStorage.setItem('uptpc_real_drive_cache_v2', JSON.stringify(this._globalCache));
       } catch (e) {}
+
+      try {
+        sessionStorage.setItem('uptpc_real_drive_cache_v2', JSON.stringify(this._globalCache));
+      } catch (e) {}
     },
 
     async post(action, payload = {}) {
@@ -540,32 +559,38 @@
         }
 
         case 'create': {
-          const table = payload.table;
-          if (!db[table]) db[table] = [];
-          const item = { ...payload.data, id: payload.data.id || window.utils.generateUUID(), created_at: new Date().toISOString() };
-          db[table].push(item);
-          saveLocalDb(db);
-          return { status: 'success', message: 'Creado correctamente', data: item };
+          const table = payload.table || payload.tabla;
+          if (table) {
+            if (!db[table]) db[table] = [];
+            const item = { ...payload.data, id: payload.data.id || window.utils.generateUUID(), created_at: new Date().toISOString() };
+            db[table].push(item);
+            saveLocalDb(db);
+            return { status: 'success', message: 'Creado correctamente', data: item };
+          }
+          return { status: 'error', message: 'Tabla no especificada' };
         }
 
         case 'update': {
-          const table = payload.table;
-          if (!db[table]) db[table] = [];
-          const idx = db[table].findIndex(r => String(r.id) === String(payload.id));
-          if (idx !== -1) {
-            db[table][idx] = { ...db[table][idx], ...payload.data, updated_at: new Date().toISOString() };
+          const table = payload.table || payload.tabla;
+          if (table) {
+            if (!db[table]) db[table] = [];
+            const idx = db[table].findIndex(r => String(r.id) === String(payload.id));
+            if (idx !== -1) {
+              db[table][idx] = { ...db[table][idx], ...payload.data, updated_at: new Date().toISOString() };
+              saveLocalDb(db);
+              return { status: 'success', message: 'Actualizado correctamente' };
+            }
+            const newItem = { ...payload.data, id: payload.id, created_at: new Date().toISOString() };
+            db[table].push(newItem);
             saveLocalDb(db);
-            return { status: 'success', message: 'Actualizado correctamente' };
+            return { status: 'success', message: 'Creado correctamente', data: newItem };
           }
-          const newItem = { ...payload.data, id: payload.id, created_at: new Date().toISOString() };
-          db[table].push(newItem);
-          saveLocalDb(db);
-          return { status: 'success', message: 'Creado correctamente', data: newItem };
+          return { status: 'error', message: 'Tabla no especificada' };
         }
 
         case 'delete': {
-          const table = payload.table;
-          if (!db[table]) return { status: 'error', message: 'Tabla no existe' };
+          const table = payload.table || payload.tabla;
+          if (!table || !db[table]) return { status: 'error', message: 'Tabla no existe' };
           db[table] = db[table].filter(r => String(r.id) !== String(payload.id));
           saveLocalDb(db);
           return { status: 'success', message: 'Eliminado correctamente' };
@@ -645,6 +670,9 @@
 
             existingCodes.add(code);
 
+            const limiteFolio = parseInt(datos.limite_por_folio) || 15;
+            const folioCalculado = datos.folio ? String(parseInt(datos.folio) + Math.floor(i / limiteFolio)) : '';
+
             const item = {
               id: window.utils.generateUUID(),
               usuario_id: u.id,
@@ -653,7 +681,7 @@
               fecha_curso: datos.fecha_curso || new Date().toISOString().split('T')[0],
               lugar: datos.lugar || generarLugar(datos.fecha_curso),
               tomo: datos.tomo || '',
-              folio: datos.folio ? String(parseInt(datos.folio) + i) : '',
+              folio: folioCalculado,
               created_at: pgTimestamp(),
               matricula: datos.matricula || ''
             };

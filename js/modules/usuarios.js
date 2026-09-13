@@ -184,18 +184,25 @@
     },
 
     async eliminarUsuario(id) {
-      if (!confirm('¿Está seguro de eliminar este usuario?')) return;
-      try {
-        const res = await window.api.delete('usuarios', id);
-        if (res.status === 'success') {
-          window.utils.showToast('Usuario eliminado', 'success');
-          await this.cargarUsuarios();
-        } else {
-          window.utils.showToast(res.message, 'danger');
+      window.utils.showConfirm({
+        title: 'Eliminar Usuario / Participante',
+        message: '¿Está seguro de eliminar este usuario o participante del sistema?',
+        subtext: 'Esta acción no se puede deshacer.',
+        confirmText: 'Sí, Eliminar Usuario',
+        onConfirm: async () => {
+          try {
+            const res = await window.api.delete('usuarios', id);
+            if (res.status === 'success') {
+              window.utils.showToast('Usuario eliminado correctamente', 'success');
+              await this.cargarUsuarios();
+            } else {
+              window.utils.showToast(res.message, 'danger');
+            }
+          } catch (e) {
+            window.utils.showToast('Error al eliminar usuario', 'danger');
+          }
         }
-      } catch (e) {
-        window.utils.showToast('Error al eliminar usuario', 'danger');
-      }
+      });
     },
 
     abrirModalCargaMasiva() {
