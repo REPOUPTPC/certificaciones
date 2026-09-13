@@ -7,10 +7,16 @@
 (function() {
   document.addEventListener('DOMContentLoaded', async () => {
     initSwitchModoConexion();
+    initBotonSincronizar();
     initNavegacionSidebar();
     initModalConfiguracion();
     if (window.utils && window.utils.setupPasswordToggles) {
       window.utils.setupPasswordToggles();
+    }
+
+    // Si hay una sesión activa, precargar datos de Google Drive inmediatamente
+    if (window.authAdmin && window.authAdmin.isLoggedIn() && window.api && window.api.preloadAllData) {
+      await window.api.preloadAllData();
     }
   });
 
@@ -37,6 +43,9 @@
         const forceMock = !switchEl.checked;
         if (window.api && window.api.setForceMockMode) {
           window.api.setForceMockMode(forceMock);
+        }
+        if (window.api && window.api.preloadAllData) {
+          await window.api.preloadAllData(true);
         }
 
         actualizarEstadoUi();
@@ -256,5 +265,69 @@
         if (inst) inst.hide();
       });
     }
+  }
+
+  function initBotonSincronizar() {
+    const btnSync = document.getElementById('btnSincronizarDatos');
+    if (!btnSync) return;
+
+    btnSync.addEventListener('click', async () => {
+      const icon = btnSync.querySelector('i');
+      if (icon) icon.classList.add('fa-spin');
+      btnSync.disabled = true;
+
+      if (window.utils && window.utils.showToast) {
+        window.utils.showToast('Sincronizando datos con Google Drive...', 'info');
+      }
+
+      try {
+        if (window.api && window.api.refreshData) {
+          await window.api.refreshData();
+        }
+
+        const targetId = document.querySelector(`.nav-link-tab.active`)?.getAttribute('data-target') || 'secDashboard';
+        switch (targetId) {
+          case 'secDashboard':
+            if (window.dashboardModule) await window.dashboardModule.init();
+            break;
+          case 'secUsuarios':
+            if (window.usuariosModule) await window.usuariosModule.init();
+            break;
+          case 'secUnidades':
+            if (window.unidadesModule) await window.unidadesModule.init();
+            break;
+          case 'secFirmas':
+            if (window.firmasModule) await window.firmasModule.init();
+            break;
+          case 'secCursos':
+            if (window.cursosModule) await window.cursosModule.init();
+            break;
+          case 'secCertificados':
+            if (window.certificadosModule) await window.certificadosModule.init();
+            break;
+          case 'secDisenador':
+            if (window.disenadorModule) await window.disenadorModule.init();
+            break;
+          case 'secConsultas':
+            if (window.consultasModule) await window.consultasModule.init();
+            break;
+          case 'secAdministradores':
+            if (window.authAdmin) await window.authAdmin.cargarTablaAdministradores();
+            break;
+        }
+
+        if (window.utils && window.utils.showToast) {
+          window.utils.showToast('¡Datos sincronizados correctamente con Google Drive!', 'success');
+        }
+      } catch (err) {
+        console.error('Error al sincronizar datos:', err);
+        if (window.utils && window.utils.showToast) {
+          window.utils.showToast('Error al sincronizar: ' + err.message, 'danger');
+        }
+      } finally {
+        if (icon) icon.classList.remove('fa-spin');
+        btnSync.disabled = false;
+      }
+    });
   }
 })();

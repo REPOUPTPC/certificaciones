@@ -82,78 +82,201 @@
   }
 
   window.api = {
-    // ── Cache TTL para GET requests ──
+    // ── Sistema de Precarga Global y Caché Inteligente de Datos Reales ──
+    _globalCache: null,
+    _isPreloaded: false,
+    _isPreloading: false,
     _cache: {},
-    _cacheTTL: 60000, // 60 segundos
-    
-    _getCached(cacheKey) {
-      const entry = this._cache[cacheKey];
-      if (entry && (Date.now() - entry.timestamp < this._cacheTTL)) {
-        return entry.data;
-      }
-      return null;
-    },
-    
-    _setCache(cacheKey, data) {
-      this._cache[cacheKey] = { data, timestamp: Date.now() };
-    },
-    
+    _cacheTTL: 60000,
+
     clearCache() {
       this._cache = {};
+      this._globalCache = null;
+      this._isPreloaded = false;
+      try {
+        sessionStorage.removeItem('uptpc_real_drive_cache_v2');
+      } catch (e) {}
+    },
+
+    async fetchRemoteDirect(action, params = {}) {
+      const apiUrl = window.config.getApiUrl();
+      const adminKey = window.config.getAdminKey();
+      if (!apiUrl) throw new Error('No API URL configured');
+      const queryParams = new URLSearchParams({ action, admin_key: adminKey, ...params });
+      const response = await fetch(`${apiUrl}?${queryParams.toString()}`, {
+        method: 'GET',
+        mode: 'cors'
+      });
+      if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
+      return await response.json();
+    },
+
+    async preloadAllData(force = false) {
+      if (!force && this._globalCache && this._isPreloaded) {
+        return this._globalCache;
+      }
+
+      if (this._isPreloading) {
+        while (this._isPreloading) {
+          await new Promise(r => setTimeout(r, 100));
+        }
+        if (this._globalCache) return this._globalCache;
+      }
+
+      // Intentar cargar la caché real desde sessionStorage
+      if (!force) {
+        try {
+          const stored = sessionStorage.getItem('uptpc_real_drive_cache_v2');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed && typeof parsed === 'object' && Array.isArray(parsed.usuarios) && Array.isArray(parsed.cursos)) {
+              this._globalCache = parsed;
+              this._isPreloaded = true;
+              this._isUsingMockData = false;
+              return this._globalCache;
+            }
+          }
+        } catch (e) {}
+      }
+
+      this._isPreloading = true;
+
+      if (window.config.hasApiUrl() && !this._forceMockMode) {
+        try {
+          // Intento 1: Acción unificada getAllData desde Google Apps Script
+          const resCombined = await this.fetchRemoteDirect('getAllData');
+          if (resCombined && resCombined.status === 'success' && resCombined.data && typeof resCombined.data === 'object') {
+            this._globalCache = resCombined.data;
+            this._isPreloaded = true;
+            this._isUsingMockData = false;
+            try {
+              sessionStorage.setItem('uptpc_real_drive_cache_v2', JSON.stringify(this._globalCache));
+            } catch (e) {}
+            this._isPreloading = false;
+            return this._globalCache;
+          }
+        } catch (errCombined) {
+          console.warn('Acción getAllData no disponible en servidor remoto. Ejecutando peticiones paralelas por tabla:', errCombined);
+        }
+
+        // Intento 2 (Fallback): Peticiones paralelas por tabla individual a Google Apps Script
+        try {
+          const tables = ['unidades', 'firmas', 'tipo', 'usuarios', 'cursos', 'certificados', 'disenos', 'admin', 'consulta', 'certificados_eliminados'];
+          const results = await Promise.all(
+            tables.map(t => this.fetchRemoteDirect('getAll', { tabla: t }).catch(e => ({ status: 'error', data: [] })))
+          );
+
+          const combined = {};
+          tables.forEach((t, index) => {
+            const res = results[index];
+            combined[t] = (res && res.status === 'success' && Array.isArray(res.data)) ? res.data : [];
+          });
+
+          this._globalCache = combined;
+          this._isPreloaded = true;
+          this._isUsingMockData = false;
+          try {
+            sessionStorage.setItem('uptpc_real_drive_cache_v2', JSON.stringify(this._globalCache));
+          } catch (e) {}
+          this._isPreloading = false;
+          return this._globalCache;
+        } catch (errParallel) {
+          console.error('Error al precargar tablas de Google Drive:', errParallel);
+        }
+      }
+
+      const localDb = getLocalDb();
+      this._globalCache = localDb;
+      this._isPreloaded = true;
+      this._isUsingMockData = true;
+      this._isPreloading = false;
+      return this._globalCache;
+    },
+
+    async refreshData() {
+      return this.preloadAllData(true);
     },
 
     _isUsingMockData: false,
-    
+
     isUsingMockData() {
       return this._isUsingMockData;
     },
 
     async get(action, params = {}) {
-      const apiUrl = window.config.getApiUrl();
-      const adminKey = window.config.getAdminKey();
-      
       const targetTable = params.tabla || params.table;
       if (targetTable) {
         params.tabla = targetTable;
         params.table = targetTable;
       }
-      
-      // Cache para tablas estáticas (unidades, firmas, tipo)
-      const staticTables = ['unidades', 'firmas', 'tipo'];
-      const cacheKey = action + '_' + (targetTable || '') + '_' + JSON.stringify(params);
-      if (action === 'getAll' && targetTable && staticTables.includes(targetTable)) {
-        const cached = this._getCached(cacheKey);
-        if (cached) return cached;
+
+      if (this._forceMockMode) {
+        this._isUsingMockData = true;
+        return this.mockGet(action, params);
       }
 
-      if (apiUrl && !this._forceMockMode) {
-        try {
-          const queryParams = new URLSearchParams({ action, admin_key: adminKey, ...params });
-          const response = await fetch(`${apiUrl}?${queryParams.toString()}`, {
-            method: 'GET',
-            mode: 'cors'
+      // Servir desde la caché global precargada si está disponible
+      if (this._globalCache && this._isPreloaded) {
+        if (action === 'getAll' && targetTable && Array.isArray(this._globalCache[targetTable])) {
+          return { status: 'success', data: this._globalCache[targetTable] };
+        }
+        if (action === 'getAllData') {
+          return { status: 'success', data: this._globalCache };
+        }
+        if (action === 'getById' && targetTable && Array.isArray(this._globalCache[targetTable])) {
+          const found = this._globalCache[targetTable].find(r => String(r.id) === String(params.id));
+          return { status: 'success', data: found || null };
+        }
+        if (action === 'searchCertificado') {
+          const termino = String(params.termino || '').trim().toUpperCase();
+          const vista = this.buildVistaCertificados(this._globalCache);
+          const esCodigo = /^[A-Z]{3}[0-9]{3,4}[A-Z]{3}$/.test(termino);
+          const res = vista.filter(c => {
+            if (esCodigo) {
+              return String(c.codigo).toUpperCase() === termino;
+            } else {
+              const cedulaLimpia = String(c.cedula || '').replace(/[\s-]/g, '').toUpperCase();
+              const termLimpio = termino.replace(/[\s-]/g, '');
+              return cedulaLimpia.includes(termLimpio) || String(c.cedula).toUpperCase() === termino;
+            }
           });
-          if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
-          const json = await response.json();
-
-          if (json && json.status === 'error' && json.code === 403) {
-            console.error('Acceso Denegado por Google Apps Script:', json.message);
-          }
-          
-          // Guardar en caché si es tabla estática
-          if (action === 'getAll' && targetTable && staticTables.includes(targetTable)) {
-            this._setCache(cacheKey, json);
-          }
-
-          this._isUsingMockData = false;
-          return json;
-        } catch (err) {
-          console.warn('Conexión remota con Google Apps Script no disponible, recurriendo a modo local:', err);
+          return { status: 'success', data: res };
+        }
+        if (action === 'getVistaCertificados') {
+          return { status: 'success', data: this.buildVistaCertificados(this._globalCache) };
+        }
+        if (action === 'getDisenoActivo') {
+          const disenos = this._globalCache.disenos || [];
+          const activo = disenos.find(d => String(d.activo).toLowerCase() === 'true' || d.activo === true);
+          return { status: 'success', data: activo || disenos[0] || null };
+        }
+        if (action === 'getDashboardStats') {
+          const vista = this.buildVistaCertificados(this._globalCache);
+          return {
+            status: 'success',
+            data: {
+              totalCertificados: (this._globalCache.certificados || []).length,
+              totalUsuarios: (this._globalCache.usuarios || []).length,
+              totalCursos: (this._globalCache.cursos || []).length,
+              totalUnidades: (this._globalCache.unidades || []).length,
+              totalDisenos: (this._globalCache.disenos || []).length,
+              totalVerificaciones: (this._globalCache.consulta || []).length,
+              ultimosCertificados: vista.slice(-5).reverse()
+            }
+          };
         }
       }
 
-      this._isUsingMockData = true;
-      return this.mockGet(action, params);
+      // Fallback directo a Google Apps Script
+      try {
+        const json = await this.fetchRemoteDirect(action, params);
+        this._isUsingMockData = false;
+        return json;
+      } catch (err) {
+        console.warn('Conexión remota con Google Apps Script no disponible, recurriendo a modo local:', err);
+        this._isUsingMockData = true;
+        return this.mockGet(action, params);
+      }
     },
 
     async post(action, payload = {}) {
@@ -183,11 +306,12 @@
             this._isUsingMockData = false;
             return json;
           }
-          
-          // Además de guardar en Google Sheets, actualizamos la caché local
-          this.mockPost(action, payload);
-          // Invalidar toda la caché para forzar datos frescos en la próxima consulta
-          this.clearCache();
+
+          if (json && json.status === 'success') {
+            // Re-sincronizar datos frescos desde Google Drive en segundo plano
+            this.preloadAllData(true).catch(e => console.warn('Refresco de cache post-edicion:', e));
+          }
+
           this._isUsingMockData = false;
           return json;
         } catch (err) {
@@ -199,7 +323,10 @@
       }
 
       this._isUsingMockData = true;
-      return this.mockPost(action, payload);
+      const localRes = this.mockPost(action, payload);
+      const updatedDb = getLocalDb();
+      this._globalCache = updatedDb;
+      return localRes;
     },
 
     setForceMockMode(force) {

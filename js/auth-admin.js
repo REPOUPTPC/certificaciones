@@ -434,6 +434,13 @@
         this.setSession(usuarioEncontrado);
         this.actualizarUiSesion(usuarioEncontrado);
         this.ocultarModalLogin();
+
+        // Iniciar precarga de todos los datos reales de Google Drive
+        if (window.api && window.api.preloadAllData) {
+          if (window.utils) window.utils.showToast('Precargando datos completos desde Google Drive para navegación fluida...', 'info');
+          await window.api.preloadAllData(true);
+        }
+
         window.utils.showToast(`Bienvenido al sistema, ${usuarioEncontrado.usuario}`, 'success');
 
         if (window.utils && window.utils.hideLoading) window.utils.hideLoading();
@@ -456,6 +463,9 @@
     },
 
     cerrarSesion() {
+      if (window.api && window.api.clearCache) {
+        window.api.clearCache();
+      }
       this.setSession(null);
       this.actualizarUiSesion(null);
       window.utils.showToast('Sesión cerrada correctamente', 'info');
