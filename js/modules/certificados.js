@@ -27,6 +27,7 @@
       document.getElementById('inputSearchUsuariosEmision')?.addEventListener('input', (e) => this.filtrarUsuariosModalEmision(e.target.value));
       document.getElementById('checkSelectAllUsuariosEmision')?.addEventListener('change', (e) => this.toggleSeleccionarTodosUsuarios(e.target.checked));
       document.getElementById('emisionCursoId')?.addEventListener('change', () => this.onCambioCursoEmision());
+      document.getElementById('emisionFecha')?.addEventListener('change', () => this.actualizarLugarConFecha());
       document.getElementById('checkHabilitarTomoFolio')?.addEventListener('change', (e) => this.toggleHabilitarTomoFolio(e.target.checked));
 
       // Eventos Carga Rápida (CSV / Lista de Texto)
@@ -145,16 +146,49 @@
       }
     },
 
+    /**
+     * Genera el texto del lugar en el formato de la BD: "PUERTO CABELLO DD DE MES DE YYYY"
+     */
+    generarTextoLugar(fechaStr) {
+      const meses = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
+      let d;
+      if (fechaStr) {
+        // Interpretar como fecha local para evitar desfase de zona horaria
+        const partes = fechaStr.split('-');
+        if (partes.length === 3) {
+          d = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]));
+        } else {
+          d = new Date(fechaStr);
+        }
+      } else {
+        d = new Date();
+      }
+      if (isNaN(d.getTime())) d = new Date();
+      const dia = String(d.getDate()).padStart(2, '0');
+      const mes = meses[d.getMonth()];
+      const anio = d.getFullYear();
+      return `PUERTO CABELLO ${dia} DE ${mes} DE ${anio}`;
+    },
+
+    /**
+     * Actualiza el campo lugar cuando cambia la fecha de emisión
+     */
+    actualizarLugarConFecha() {
+      const emFecha = document.getElementById('emisionFecha');
+      const emLugar = document.getElementById('emisionLugar');
+      if (emFecha && emLugar) {
+        emLugar.value = this.generarTextoLugar(emFecha.value);
+      }
+    },
+
     async abrirModalCertificar(cursoIdSeleccionado = null) {
       this.bindEvents(); // Garantiza la vinculación de eventos independientemente de la pestaña inicial
 
       const modalEl = document.getElementById('modalCertificar');
       if (!modalEl) return;
 
-      // Solo recargar si no hay datos en memoria
-      if (!certificadosVistaData.length && !usuariosDisponibles.length) {
-        await this.cargarCertificados();
-      }
+      // Siempre recargar datos frescos del servidor al abrir el modal
+      await this.cargarCertificados();
 
       usuariosSeleccionadosEmision = [];
 
@@ -180,8 +214,9 @@
       const emFecha = document.getElementById('emisionFecha');
       if (emFecha) emFecha.value = new Date().toISOString().split('T')[0];
 
+      // Generar lugar con el formato correcto: PUERTO CABELLO DD DE MES DE YYYY
       const emLugar = document.getElementById('emisionLugar');
-      if (emLugar) emLugar.value = 'Puerto Cabello, Venezuela';
+      if (emLugar) emLugar.value = this.generarTextoLugar(emFecha ? emFecha.value : null);
 
       this.onCambioCursoEmision();
 
@@ -300,8 +335,11 @@
             <td><span class="badge bg-dark text-warning font-monospace fw-bold">${window.utils.escapeHtml(c.codigo)}</span></td>
             <td>${window.utils.formatDate(c.fecha_curso)}</td>
             <td class="text-end">
-              <button type="button" class="btn btn-xs btn-outline-success py-0 px-2" onclick="window.certificadosModule.verCertificado('${c.codigo}')" title="Ver Certificado">
+              <button type="button" class="btn btn-xs btn-outline-success py-0 px-2 me-1" onclick="window.certificadosModule.verCertificado('${c.codigo}')" title="Ver Certificado">
                 <i class="fa-solid fa-eye me-1"></i>Ver
+              </button>
+              <button type="button" class="btn btn-xs btn-outline-danger py-0 px-2" onclick="window.certificadosModule.eliminarCertificadoCurso('${c.id}')" title="Eliminar / Anular Certificación de este Curso">
+                <i class="fa-solid fa-trash me-1"></i>Eliminar
               </button>
             </td>
           </tr>
@@ -310,6 +348,50 @@
 
       html += '</tbody></table>';
       container.innerHTML = html;
+    },
+
+    async eliminarCertificadoCurso(id) {
+      const cert = certificadosVistaData.find(c => String(c.id).trim() === String(id).trim());
+      const certNombre = cert ? cert.nombre_completo : 'este participante';
+      const certCodigo = cert ? cert.codigo : '';
+
+      if (!confirm(`¿Está seguro de eliminar la certificación asignada a ${certNombre} (Código: ${certCodigo})?\n\nEsta acción eliminará el certificado del curso y quedará registrada en la bitácora auditada de eliminaciones.`)) {
+        return;
+      }
+
+      try {
+        const sessionUser = (window.authAdmin && window.authAdmin.getSession()) ? window.authAdmin.getSession().usuario : 'ADMIN';
+        
+        // Registrar en bitácora auditada de eliminaciones (hoja: certificados_eliminados)
+        if (cert) {
+          const auditPayload = {
+            id: window.utils.generateUUID(),
+            certificado_id: cert.id || '',
+            codigo: cert.codigo || '',
+            cedula: cert.cedula || '',
+            nombre_completo: cert.nombre_completo || '',
+            curso_id: cert.curso_id || '',
+            nombre_curso: cert.nombre_curso || '',
+            motivo_eliminacion: 'Eliminación manual desde modal de curso',
+            eliminado_por: sessionUser,
+            fecha_eliminacion: new Date().toISOString()
+          };
+          
+          await window.api.post('create', { tabla: 'certificados_eliminados', data: auditPayload }).catch(e => console.warn('Bitácora local error:', e));
+        }
+
+        const res = await window.api.delete('certificados', id);
+        if (res.status === 'success') {
+          window.utils.showToast('Certificación eliminada y registrada en la bitácora auditada', 'success');
+          await this.cargarCertificados();
+          this.onCambioCursoEmision();
+          if (window.cursosModule) await window.cursosModule.cargarCursos();
+        } else {
+          window.utils.showToast(res.message, 'danger');
+        }
+      } catch (e) {
+        window.utils.showToast('Error al eliminar la certificación', 'danger');
+      }
     },
 
     filtrarUsuariosModalEmision(query) {
@@ -392,8 +474,13 @@
 
         if (res.status === 'success') {
           window.utils.showToast(`Se emitieron ${res.count || usuariosSeleccionadosEmision.length} certificados con códigos únicos de verificación (format AAA123AAA)`, 'success');
-          bootstrap.Modal.getOrCreateInstance(document.getElementById('modalCertificar')).hide();
+
+          // Forzar recarga completa de datos del servidor para reflejar los nuevos certificados
           await this.cargarCertificados();
+
+          // Cerrar el modal DESPUÉS de que los datos se hayan refrescado
+          bootstrap.Modal.getOrCreateInstance(document.getElementById('modalCertificar')).hide();
+
           if (window.cursosModule) await window.cursosModule.cargarCursos();
         } else {
           window.utils.showToast(res.message, 'danger');
@@ -455,29 +542,28 @@
 
       const curso_id = document.getElementById('emisionCursoId')?.value;
       const certsEnTaller = certificadosVistaData.filter(c => String(c.curso_id || '').trim() === String(curso_id).trim());
-      const yaCertificadosCedulas = new Set(certsEnTaller.map(c => String(c.cedula || '').replace(/[\s-]/g, '').toUpperCase()));
+      const yaCertificadosCedulas = new Set(certsEnTaller.map(c => window.utils.normalizeCedula(c.cedula).replace(/[\s-]/g, '').toUpperCase()));
 
       let countNuevos = 0;
       let countExistentes = 0;
       let countYaCertificados = 0;
+      let countConflictos = 0;
 
       lineas.forEach((lineaRaw) => {
         const linea = lineaRaw.trim();
         if (!linea) return;
 
         const partes = linea.split(/[,;\t|]+/).map(p => p.trim());
-        let cedula = partes[0] ? partes[0].toUpperCase() : '';
+        let cedulaRaw = partes[0] ? partes[0].toUpperCase() : '';
         let nombre = partes.slice(1).join(' ').trim().toUpperCase();
 
-        if (!cedula) return;
+        if (!cedulaRaw) return;
 
-        if (/^[0-9]+$/.test(cedula)) {
-          cedula = 'V-' + cedula;
-        }
+        let normCedula = window.utils.normalizeCedula(cedulaRaw);
+        let cleanCedula = normCedula.replace(/[\s-]/g, '').toUpperCase();
 
-        const cleanCedula = cedula.replace(/[\s-]/g, '').toUpperCase();
-        const userExistente = usuariosDisponibles.find(u => String(u.cedula || '').replace(/[\s-]/g, '').toUpperCase() === cleanCedula);
-        const yaCertificado = yaCertificadosCedulas.has(cleanCedula);
+        let userExistente = usuariosDisponibles.find(u => window.utils.normalizeCedula(u.cedula).replace(/[\s-]/g, '').toUpperCase() === cleanCedula);
+        let yaCertificado = yaCertificadosCedulas.has(cleanCedula);
 
         let estado = '';
         let estadoBadge = '';
@@ -487,11 +573,20 @@
           estado = 'ya_certificado';
           estadoBadge = '<span class="badge bg-warning text-dark"><i class="fa-solid fa-triangle-exclamation me-1"></i>Ya Certificado (Omitir)</span>';
         } else if (userExistente) {
-          countExistentes++;
-          estado = 'existente';
-          estadoBadge = '<span class="badge bg-success"><i class="fa-solid fa-user-check me-1"></i>Existe en BD (Auto-seleccionar)</span>';
-          if (!nombre || nombre === 'S/N') {
-            nombre = userExistente.nombre_completo;
+          const csvNameClean = String(nombre || '').trim().toUpperCase().replace(/\s+/g, ' ');
+          const bdNameClean = String(userExistente.nombre_completo || '').trim().toUpperCase().replace(/\s+/g, ' ');
+
+          if (csvNameClean && csvNameClean !== 'S/N' && csvNameClean !== bdNameClean) {
+            countConflictos++;
+            estado = 'conflicto_nombre';
+            estadoBadge = `<span class="badge bg-danger text-wrap text-start"><i class="fa-solid fa-circle-exclamation me-1"></i>¡ALERTA! Cédula en BD a nombre de "${window.utils.escapeHtml(userExistente.nombre_completo)}" (No se procesará)</span>`;
+          } else {
+            countExistentes++;
+            estado = 'existente';
+            estadoBadge = '<span class="badge bg-success"><i class="fa-solid fa-user-check me-1"></i>Existe en BD (Auto-seleccionar)</span>';
+            if (!nombre || nombre === 'S/N') {
+              nombre = userExistente.nombre_completo;
+            }
           }
         } else {
           countNuevos++;
@@ -501,7 +596,7 @@
 
         itemsAnalizados.push({
           num: itemsAnalizados.length + 1,
-          cedula,
+          cedula: normCedula,
           nombre: nombre || 'S/N',
           estado,
           estadoBadge,
@@ -513,7 +608,8 @@
         badgeResumen.innerHTML = `
           <span class="badge bg-primary me-1">${countNuevos} nuevos</span>
           <span class="badge bg-success me-1">${countExistentes} en BD</span>
-          <span class="badge bg-warning text-dark">${countYaCertificados} ya certificados</span>
+          <span class="badge bg-warning text-dark me-1">${countYaCertificados} ya certificados</span>
+          ${countConflictos > 0 ? `<span class="badge bg-danger">${countConflictos} conflictos</span>` : ''}
         `;
       }
 
@@ -525,9 +621,9 @@
       let html = '';
       itemsAnalizados.forEach(item => {
         html += `
-          <tr>
+          <tr class="${item.estado === 'conflicto_nombre' ? 'table-danger' : ''}">
             <td>${item.num}</td>
-            <td><span class="badge bg-secondary font-monospace">${window.utils.escapeHtml(item.cedula)}</span></td>
+            <td><span class="badge bg-dark font-monospace">${window.utils.escapeHtml(item.cedula)}</span></td>
             <td class="fw-semibold text-dark">${window.utils.escapeHtml(item.nombre)}</td>
             <td>${item.estadoBadge}</td>
           </tr>
@@ -545,7 +641,7 @@
 
       const curso_id = document.getElementById('emisionCursoId')?.value;
       const certsEnTaller = certificadosVistaData.filter(c => String(c.curso_id || '').trim() === String(curso_id).trim());
-      const yaCertificadosCedulas = new Set(certsEnTaller.map(c => String(c.cedula || '').replace(/[\s-]/g, '').toUpperCase()));
+      const yaCertificadosCedulas = new Set(certsEnTaller.map(c => window.utils.normalizeCedula(c.cedula).replace(/[\s-]/g, '').toUpperCase()));
 
       const lineas = texto.split(/\r?\n/);
       const nuevosParaRegistrar = [];
@@ -556,28 +652,36 @@
         if (!linea) return;
 
         const partes = linea.split(/[,;\t|]+/).map(p => p.trim());
-        let cedula = partes[0] ? partes[0].toUpperCase() : '';
+        let cedulaRaw = partes[0] ? partes[0].toUpperCase() : '';
         let nombre = partes.slice(1).join(' ').trim().toUpperCase();
 
-        if (!cedula) return;
-        if (/^[0-9]+$/.test(cedula)) cedula = 'V-' + cedula;
+        if (!cedulaRaw) return;
+        const normCedula = window.utils.normalizeCedula(cedulaRaw);
+        const cleanCedula = normCedula.replace(/[\s-]/g, '').toUpperCase();
 
-        const cleanCedula = cedula.replace(/[\s-]/g, '').toUpperCase();
         if (yaCertificadosCedulas.has(cleanCedula)) return; // Omitir duplicados ya certificados
 
-        cedulasParaSeleccionar.add(cleanCedula);
+        const userExistente = usuariosDisponibles.find(u => window.utils.normalizeCedula(u.cedula).replace(/[\s-]/g, '').toUpperCase() === cleanCedula);
 
-        const userExistente = usuariosDisponibles.find(u => String(u.cedula || '').replace(/[\s-]/g, '').toUpperCase() === cleanCedula);
-        if (!userExistente) {
+        if (userExistente) {
+          const csvNameClean = String(nombre || '').trim().toUpperCase().replace(/\s+/g, ' ');
+          const bdNameClean = String(userExistente.nombre_completo || '').trim().toUpperCase().replace(/\s+/g, ' ');
+          if (csvNameClean && csvNameClean !== 'S/N' && csvNameClean !== bdNameClean) {
+            // NO PROCESAR si hay conflicto de nombre
+            return;
+          }
+          cedulasParaSeleccionar.add(cleanCedula);
+        } else {
+          cedulasParaSeleccionar.add(cleanCedula);
           nuevosParaRegistrar.push({
-            cedula: cedula,
+            cedula: normCedula,
             nombre_completo: nombre || 'PARTICIPANTE REGISTRADO EN CARGA RÁPIDA'
           });
         }
       });
 
       if (cedulasParaSeleccionar.size === 0) {
-        window.utils.showToast('No hay participantes nuevos ni elegibles para seleccionar en la lista ingresada.', 'info');
+        window.utils.showToast('No hay participantes nuevos ni elegibles válidos para seleccionar en la lista ingresada.', 'info');
         return;
       }
 
@@ -603,7 +707,7 @@
 
         // Auto-seleccionar a todos los usuarios elegibles en usuariosSeleccionadosEmision
         usuariosSeleccionadosEmision = usuariosDisponibles.filter(u => {
-          const cleanCedula = String(u.cedula || '').replace(/[\s-]/g, '').toUpperCase();
+          const cleanCedula = window.utils.normalizeCedula(u.cedula).replace(/[\s-]/g, '').toUpperCase();
           return cedulasParaSeleccionar.has(cleanCedula) && !yaCertificadosCedulas.has(cleanCedula);
         });
 

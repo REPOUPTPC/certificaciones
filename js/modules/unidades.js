@@ -14,6 +14,9 @@
     },
 
     bindEvents() {
+      if (this._eventsBound) return;
+      this._eventsBound = true;
+
       document.getElementById('btnNuevaUnidad')?.addEventListener('click', () => this.abrirModalUnidad());
       document.getElementById('formUnidad')?.addEventListener('submit', (e) => this.guardarUnidad(e));
 

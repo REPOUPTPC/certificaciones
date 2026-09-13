@@ -15,6 +15,9 @@
     },
 
     bindEvents() {
+      if (this._eventsBound) return;
+      this._eventsBound = true;
+
       document.getElementById('btnNuevoUsuario')?.addEventListener('click', () => this.abrirModalUsuario());
       document.getElementById('btnCargaMasivaUsuarios')?.addEventListener('click', () => this.abrirModalCargaMasiva());
       document.getElementById('formUsuario')?.addEventListener('submit', (e) => this.guardarUsuario(e));
@@ -25,7 +28,30 @@
         txtMasivo.addEventListener('input', () => this.procesarTextoMasivo());
       }
 
+      document.getElementById('fileCsvUsuarios')?.addEventListener('change', (e) => this.cargarArchivoCsvMasivo(e));
+      document.getElementById('btnDescargarPlantillaCsvUsuarios')?.addEventListener('click', () => this.descargarPlantillaCsv());
       document.getElementById('btnConfirmarCargaMasiva')?.addEventListener('click', () => this.ejecutarCargaMasiva());
+    },
+
+    descargarPlantillaCsv() {
+      const templateContent = 'cedula,nombre_completo\nV-12345678,PEDRO PEREZ\nV-87654321,MARIA GOMEZ\nE-98765432,JUAN SMITH';
+      window.utils.downloadCsvTemplate('plantilla_usuarios.csv', templateContent);
+    },
+
+    cargarArchivoCsvMasivo(e) {
+      const file = e.target.files ? e.target.files[0] : null;
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const content = event.target.result;
+        const txt = document.getElementById('textareaCargaMasiva');
+        if (txt) {
+          txt.value = content;
+          this.procesarTextoMasivo();
+        }
+      };
+      reader.readAsText(file);
     },
 
     async cargarUsuarios() {
@@ -115,6 +141,21 @@
         return;
       }
 
+      // Validar si la cédula ya existe a nombre de otra persona al crear un nuevo usuario
+      if (!id) {
+        const cleanCedula = cedula.replace(/[\s-]/g, '').toUpperCase();
+        const existente = usuariosData.find(u => window.utils.normalizeCedula(u.cedula).replace(/[\s-]/g, '').toUpperCase() === cleanCedula);
+        if (existente) {
+          if (existente.nombre_completo.trim().toUpperCase() !== nombre_completo.toUpperCase()) {
+            window.utils.showToast(`¡ALERTA! La cédula ${cedula} ya se encuentra registrada a nombre de "${existente.nombre_completo}". No se procesará.`, 'danger', 'Conflicto de Cédula');
+            return;
+          } else {
+            window.utils.showToast(`La cédula ${cedula} ya está registrada para este usuario.`, 'warning');
+            return;
+          }
+        }
+      }
+
       const payload = { cedula, nombre_completo };
       const btn = e.target.querySelector('button[type="submit"]');
       btn.disabled = true;
@@ -162,6 +203,8 @@
       if (!modalEl) return;
 
       document.getElementById('textareaCargaMasiva').value = '';
+      const fileInput = document.getElementById('fileCsvUsuarios');
+      if (fileInput) fileInput.value = '';
       document.getElementById('previewCargaMasivaContainer').innerHTML = '<div class="alert alert-light text-center">Pegue el texto o suba un archivo CSV para previsualizar los usuarios.</div>';
       document.getElementById('btnConfirmarCargaMasiva').disabled = true;
 
@@ -182,25 +225,47 @@
         return;
       }
 
-      const existingCedulas = new Set(usuariosData.map(u => String(u.cedula).toUpperCase()));
+      const existingUsersMap = new Map();
+      usuariosData.forEach(u => {
+        const normC = window.utils.normalizeCedula(u.cedula).replace(/[\s-]/g, '').toUpperCase();
+        if (normC) existingUsersMap.set(normC, u);
+      });
 
       let validadosCount = 0;
-      let duplicadosCount = 0;
+      let omitidosCount = 0;
+      let conflictosCount = 0;
 
       let rowsHtml = '';
       usuariosMasivosParsed.forEach((u, i) => {
-        const esDup = existingCedulas.has(u.cedula.toUpperCase());
-        if (esDup) duplicadosCount++;
-        else validadosCount++;
+        const normCedula = window.utils.normalizeCedula(u.cedula);
+        const cleanCedula = normCedula.replace(/[\s-]/g, '').toUpperCase();
+        const existingUser = existingUsersMap.get(cleanCedula);
 
-        const statusBadge = esDup 
-          ? '<span class="badge bg-warning text-dark"><i class="fa-solid fa-triangle-exclamation me-1"></i>Ya existe (Omitir)</span>'
-          : '<span class="badge bg-success"><i class="fa-solid fa-check me-1"></i>Válido</span>';
+        let statusBadge = '';
+        if (!existingUser) {
+          validadosCount++;
+          u.estadoMasivo = 'nuevo';
+          u.cedulaNormalizada = normCedula;
+          statusBadge = '<span class="badge bg-success"><i class="fa-solid fa-check me-1"></i>Válido (Nuevo)</span>';
+        } else {
+          const csvNameClean = String(u.nombre_completo || '').trim().toUpperCase().replace(/\s+/g, ' ');
+          const bdNameClean = String(existingUser.nombre_completo || '').trim().toUpperCase().replace(/\s+/g, ' ');
+
+          if (csvNameClean === bdNameClean) {
+            omitidosCount++;
+            u.estadoMasivo = 'duplicado_mismo_nombre';
+            statusBadge = '<span class="badge bg-secondary"><i class="fa-solid fa-user-check me-1"></i>Ya existe (Omitir)</span>';
+          } else {
+            conflictosCount++;
+            u.estadoMasivo = 'conflicto_nombre';
+            statusBadge = `<span class="badge bg-danger text-wrap text-start"><i class="fa-solid fa-circle-exclamation me-1"></i>¡ALERTA! Cédula en BD a nombre de "${window.utils.escapeHtml(existingUser.nombre_completo)}" (No se procesará)</span>`;
+          }
+        }
 
         rowsHtml += `
-          <tr>
+          <tr class="${u.estadoMasivo === 'conflicto_nombre' ? 'table-danger' : ''}">
             <td>${i + 1}</td>
-            <td><span class="badge bg-dark font-monospace">${window.utils.escapeHtml(u.cedula)}</span></td>
+            <td><span class="badge bg-dark font-monospace">${window.utils.escapeHtml(normCedula)}</span></td>
             <td>${window.utils.escapeHtml(u.nombre_completo)}</td>
             <td>${statusBadge}</td>
           </tr>
@@ -208,11 +273,15 @@
       });
 
       container.innerHTML = `
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <span><strong>${usuariosMasivosParsed.length}</strong> detectados (<span class="text-success">${validadosCount} nuevos</span>, <span class="text-warning">${duplicadosCount} ya existen</span>)</span>
+        <div class="d-flex justify-content-between align-items-center mb-2 small">
+          <span><strong>${usuariosMasivosParsed.length}</strong> detectados:
+            <span class="text-success fw-bold me-2">${validadosCount} nuevos válidos</span>
+            <span class="text-secondary fw-bold me-2">${omitidosCount} ya existen</span>
+            ${conflictosCount > 0 ? `<span class="text-danger fw-bold"><i class="fa-solid fa-triangle-exclamation me-1"></i>${conflictosCount} conflicto(s) de nombre</span>` : ''}
+          </span>
         </div>
         <div class="table-responsive" style="max-height: 250px;">
-          <table class="table table-sm table-hover border">
+          <table class="table table-sm table-hover border align-middle">
             <thead class="table-light"><tr><th>#</th><th>Cédula</th><th>Nombre Completo</th><th>Estado</th></tr></thead>
             <tbody>${rowsHtml}</tbody>
           </table>
@@ -223,7 +292,15 @@
     },
 
     async ejecutarCargaMasiva() {
-      if (usuariosMasivosParsed.length === 0) return;
+      const nuevosParaRegistrar = usuariosMasivosParsed.filter(u => u.estadoMasivo === 'nuevo').map(u => ({
+        cedula: u.cedulaNormalizada || window.utils.normalizeCedula(u.cedula),
+        nombre_completo: u.nombre_completo
+      }));
+
+      if (nuevosParaRegistrar.length === 0) {
+        window.utils.showToast('No hay registros nuevos válidos para procesar.', 'info');
+        return;
+      }
 
       const btn = document.getElementById('btnConfirmarCargaMasiva');
       const oldText = btn.innerHTML;
@@ -231,7 +308,7 @@
       btn.disabled = true;
 
       try {
-        const res = await window.api.bulkCreateUsuarios(usuariosMasivosParsed);
+        const res = await window.api.bulkCreateUsuarios(nuevosParaRegistrar);
 
         if (res.status === 'success') {
           window.utils.showToast(res.message, 'success');

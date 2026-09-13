@@ -60,7 +60,8 @@
         }
       ],
       disenos: [],
-      consulta: []
+      consulta: [],
+      certificados_eliminados: []
     };
 
     const stored = localStorage.getItem(LOCAL_STORAGE_DB_KEY);
@@ -185,12 +186,8 @@
           
           // Además de guardar en Google Sheets, actualizamos la caché local
           this.mockPost(action, payload);
-          // Invalidar caché de la tabla afectada
-          if (targetTable) {
-            Object.keys(this._cache).forEach(key => {
-              if (key.includes(targetTable)) delete this._cache[key];
-            });
-          }
+          // Invalidar toda la caché para forzar datos frescos en la próxima consulta
+          this.clearCache();
           this._isUsingMockData = false;
           return json;
         } catch (err) {
@@ -375,6 +372,33 @@
           if (!db.certificados) db.certificados = [];
           const existingCodes = new Set(db.certificados.map(c => String(c.codigo).toUpperCase()));
 
+          // Función para generar timestamp en formato PostgreSQL compatible
+          const pgTimestamp = () => {
+            const now = new Date();
+            const pad = (n, len = 2) => String(n).padStart(len, '0');
+            const ms = pad(now.getUTCMilliseconds(), 3);
+            const micros = ms + pad(Math.floor(Math.random() * 1000), 3);
+            return `${now.getUTCFullYear()}-${pad(now.getUTCMonth()+1)}-${pad(now.getUTCDate())} ${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}.${micros}+00`;
+          };
+
+          // Función para generar lugar en formato correcto
+          const generarLugar = (fechaStr) => {
+            const meses = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+            let d;
+            if (fechaStr) {
+              const partes = fechaStr.split('-');
+              if (partes.length === 3) {
+                d = new Date(parseInt(partes[0]), parseInt(partes[1])-1, parseInt(partes[2]));
+              } else {
+                d = new Date(fechaStr);
+              }
+            } else {
+              d = new Date();
+            }
+            if (isNaN(d.getTime())) d = new Date();
+            return `PUERTO CABELLO ${String(d.getDate()).padStart(2,'0')} DE ${meses[d.getMonth()]} DE ${d.getFullYear()}`;
+          };
+
           const created = [];
           usuarios.forEach((u, i) => {
             const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -394,10 +418,10 @@
               curso_id: cursoId,
               codigo: code,
               fecha_curso: datos.fecha_curso || new Date().toISOString().split('T')[0],
-              lugar: datos.lugar || 'Puerto Cabello, Venezuela',
+              lugar: datos.lugar || generarLugar(datos.fecha_curso),
               tomo: datos.tomo || '',
               folio: datos.folio ? String(parseInt(datos.folio) + i) : '',
-              created_at: new Date().toISOString(),
+              created_at: pgTimestamp(),
               matricula: datos.matricula || ''
             };
             db.certificados.push(item);

@@ -35,17 +35,44 @@
     if (!cedula) return '';
     let c = String(cedula).trim().toUpperCase();
     c = c.replace(/[\s\.]/g, '');
-    if (/^[VE]\d{5,8}$/.test(c)) {
+    if (!c) return '';
+
+    // Si ya tiene el formato correcto (Ej: V-12345678, E-12345678, G-12345678, J-12345678, P-12345678)
+    if (/^[VEGJP]-\d{5,9}$/.test(c)) {
+      return c;
+    }
+    // Si viene como V12345678, E12345678, G12345678, etc. (Sin guión)
+    if (/^[VEGJP]\d{5,9}$/.test(c)) {
       return c.charAt(0) + '-' + c.substring(1);
+    }
+    // Si sólo son números (Ej: 12.323.365 -> 12323365 ó 124558745)
+    if (/^\d{5,9}$/.test(c)) {
+      return 'V-' + c;
     }
     return c;
   }
 
+  function downloadCsvTemplate(filename, content) {
+    const blob = new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+
   function escapeHtml(str) {
     if (str === null || str === undefined) return '';
-    const div = document.createElement('div');
-    div.textContent = String(str);
-    return div.innerHTML;
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   function formatDate(dateStr) {
@@ -206,6 +233,7 @@
   window.utils = {
     generateCertificateCode,
     normalizeCedula,
+    downloadCsvTemplate,
     escapeHtml,
     formatDate,
     formatDateExtended,

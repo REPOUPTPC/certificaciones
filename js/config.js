@@ -7,7 +7,7 @@
 (function() {
   const STORAGE_KEY_API_URL = 'uptpc_google_script_url';
   const STORAGE_KEY_ADMIN_KEY = 'uptpc_admin_secret_key';
-  const DEFAULT_GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwEIHa8gnLa-v_NpwfDxNRg72UCHUrltJKP5EE65yWkcGjs9G5LO_53VyS7TaI6nLhX4g/exec';
+  const DEFAULT_GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwZ7cn7EZvUiu1hWSNQp_HSTVYDBrYB9VqbnaW2eCUvdxRibStrWy31n_4mmEWoDNH2FQ/exec';
   const DEFAULT_ADMIN_KEY = 'UPTPC_CYT_SECURE_KEY_2026';
   const PUBLIC_VERIFICATION_BASE_URL = 'https://www.jornaltec.uptpc.edu.ve/p/validador-de-certificados.html';
 

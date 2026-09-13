@@ -436,10 +436,17 @@
         this.ocultarModalLogin();
         window.utils.showToast(`Bienvenido al sistema, ${usuarioEncontrado.usuario}`, 'success');
 
-        await this.autocorregirLogosUnidades();
-        await this.registrarVisitaAdmin(window.location.hash || '#dashboard');
-
         if (window.utils && window.utils.hideLoading) window.utils.hideLoading();
+
+        // Tareas secundarias en segundo plano de forma no bloqueante
+        this.autocorregirLogosUnidades().catch(e => console.warn('Autocorregir logos background:', e));
+        this.registrarVisitaAdmin(window.location.hash || '#dashboard').catch(e => console.warn('Visita admin background:', e));
+
+        // Refrescar datos reales de la sección activa (ej: Dashboard)
+        const currentHash = window.location.hash || '#dashboard';
+        if ((currentHash === '#dashboard' || currentHash === '') && window.dashboardModule) {
+          window.dashboardModule.init().catch(e => console.error('Error cargando dashboard post-login:', e));
+        }
 
       } catch (err) {
         if (window.utils && window.utils.hideLoading) window.utils.hideLoading();

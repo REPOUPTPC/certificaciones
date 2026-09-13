@@ -803,9 +803,17 @@
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <p class="small text-muted mb-2">Pegue la lista de usuarios. Cada línea debe contener la <strong>Cédula</strong> y el <strong>Nombre Completo</strong> separados por coma, punto y coma o tabulación.</p>
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <p class="small text-muted mb-0">Pegue la lista de usuarios o suba un archivo CSV. Debe contener <strong>Cédula</strong> y <strong>Nombre Completo</strong>.</p>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="btnDescargarPlantillaCsvUsuarios">
+              <i class="fa-solid fa-download me-1"></i>Descargar Plantilla CSV
+            </button>
+          </div>
           <div class="mb-3">
-            <textarea class="form-control font-monospace" id="textareaCargaMasiva" rows="5" placeholder="V-12345678, PEDRO PÉREZ&#10;V-87654321, MARIA GÓMEZ"></textarea>
+            <label class="form-label small fw-bold">Subir Archivo CSV / TXT:</label>
+            <input type="file" class="form-control form-control-sm mb-2" id="fileCsvUsuarios" accept=".csv, .txt">
+            <label class="form-label small fw-bold">O Pegar Texto Directo:</label>
+            <textarea class="form-control font-monospace" id="textareaCargaMasiva" rows="4" placeholder="V-12345678, PEDRO PÉREZ&#10;V-87654321, MARIA GÓMEZ"></textarea>
           </div>
 
           <div id="previewCargaMasivaContainer"></div>

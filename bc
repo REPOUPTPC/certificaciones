@@ -1,0 +1,1026 @@
+/**
+ * ==============================================================================
+ * SISTEMA DE GESTIÓN DE CERTIFICACIONES UPTPC - UNIDAD DE CIENCIA Y TECNOLOGÍA
+ * SCRIPT DE IMPLEMENTACIÓN GOOGLE APPS SCRIPT (google_sheet.gs) - VERSIÓN V011 (VISTAS + TIMEOUT)
+ * ==============================================================================
+ * CAMBIOS V011 (V002 release):
+ *   1. getVistaCertificados() ahora lee directamente la hoja `vistas` (precalculada
+ *      en el Sheet con joins ya resueltos). Reduce de 6 lecturas + JOIN en JS a
+ *      1 lectura + JOIN solo de firmas. Esto era la causa #1 del stuck al 60%.
+ *   2. Si la hoja `vistas` no existe o está vacía, cae al método viejo (compatibilidad).
+ *   3. searchCertificado() también usa la hoja `vistas` para acelerar búsquedas públicas.
+ *   4. getDashboardStats() optimizado (heredado de V010).
+ *   5. Confirmación: hoja `cursos` columna `tipo_curso` almacena el ID del registro
+ *      en hoja `tipo`. La UI resuelve ID -> nombre legible.
+ * ==============================================================================
+ */
+
+// Configuración general y de Seguridad
+const SPREADSHEET_ID = SpreadsheetApp.getActiveSpreadsheet().getId();
+const FOLDER_NAME = 'GESTION_CERTIFICADOS';
+
+// Clave Secreta de Administración (Cambie este valor por una clave segura de su elección)
+const ADMIN_SECRET_KEY = 'UPTPC_CYT_SECURE_KEY_2026';
+
+/**
+ * Valida si la solicitud posee la Clave de Administración autorizada
+ */
+function isAuthorizedAdmin(providedKey) {
+  if (!ADMIN_SECRET_KEY) return true; // Si no hay clave configurada, permite por compatibilidad
+  return String(providedKey || '').trim() === String(ADMIN_SECRET_KEY).trim();
+}
+
+/**
+ * Obtiene la carpeta de Google Drive por su nombre.
+ * Si no existe en la raíz de Google Drive, la crea automáticamente.
+ */
+function getOrCreateFolder(folderName) {
+  const folders = DriveApp.getFoldersByName(folderName);
+
+  if (folders.hasNext()) {
+    return folders.next();
+  } else {
+    return DriveApp.createFolder(folderName);
+  }
+}
+
+/**
+ * Función auxiliar para solicitar y autorizar permisos de Google Drive en el editor de Apps Script
+ */
+function testDrivePermission() {
+  const folder = getOrCreateFolder(FOLDER_NAME);
+  Logger.log('Permisos de Drive autorizados correctamente. Carpeta activa: ' + folder.getName() + ' (ID: ' + folder.getId() + ')');
+  return 'OK';
+}
+
+/**
+ * Manejador de solicitudes GET (Consultas de información)
+ */
+function doGet(e) {
+  try {
+    const params = e ? e.parameter : {};
+    const action = params.action || 'getVistaCertificados';
+    const clientAdminKey = params.admin_key || '';
+
+    // Acciones Públicas (Sin restricción de Token):
+    // - ping: Verificación de estado de API
+    // - searchCertificado: Verificación pública por código o cédula
+    // - getDisenoActivo: Carga del diseño SVG para renderizar certificados públicos
+    const publicActions = ['ping', 'searchCertificado', 'getDisenoActivo'];
+
+    if (!publicActions.includes(action) && !isAuthorizedAdmin(clientAdminKey)) {
+      return createJsonResponse({
+        status: 'error',
+        code: 403,
+        message: 'ACCESO DENEGADO: Clave de Administración inválida o no configurada.'
+      });
+    }
+
+    let result = {};
+
+    switch (action) {
+      case 'ping':
+        result = { status: 'success', message: 'API UPTPC activa (Conexión pública disponible)', timestamp: new Date().toISOString() };
+        break;
+
+      case 'verifyAdmin':
+        result = { status: 'success', authenticated: true, message: '¡Clave de Administración autenticada correctamente (v009 Blindada)!', timestamp: new Date().toISOString() };
+        break;
+
+      case 'getAll':
+        result = getAllRecords(params.tabla || params.table);
+        break;
+
+      case 'getAllData':
+        // OPTIMIZACIÓN: retorna múltiples tablas en una sola petición HTTP.
+        // params.tablas es una lista separada por comas: "unidades,tipo,firmas"
+        result = getAllData(params.tablas);
+        break;
+
+      case 'getById':
+        result = getRecordById(params.tabla || params.table, params.id);
+        break;
+
+      case 'searchCertificado':
+        result = searchCertificado(params.termino);
+        break;
+
+      case 'getDisenoActivo':
+        result = getDisenoActivo();
+        break;
+
+      case 'getDashboardStats':
+        result = getDashboardStats();
+        break;
+
+      case 'getVistaCertificados':
+        result = getVistaCertificados();
+        break;
+
+      default:
+        result = { status: 'error', message: 'Acción GET no reconocida: ' + action };
+    }
+
+    return createJsonResponse(result);
+  } catch (err) {
+    return createJsonResponse({ status: 'error', message: err.toString(), stack: err.stack });
+  }
+}
+
+/**
+ * Manejador de solicitudes POST (Creación, Edición, Eliminación, Cargas Masivas y Subida de Imágenes a Google Drive)
+ */
+function doPost(e) {
+  try {
+    let contents = {};
+    if (e && e.postData && e.postData.contents) {
+      contents = JSON.parse(e.postData.contents);
+    } else if (e && e.parameter) {
+      contents = e.parameter;
+    }
+
+    const action = contents.action;
+    const clientAdminKey = contents.admin_key || (e && e.parameter ? e.parameter.admin_key : '');
+
+    // Acciones Públicas POST:
+    // - logConsulta: Bitácora de verificación pública
+    // - verifyAdmin: Verificación de clave de administración (pública para permitir respuesta personalizada)
+    const publicPostActions = ['logConsulta', 'verifyAdmin'];
+
+    // Si la acción NO es pública, se exige clave de administración
+    if (!publicPostActions.includes(action) && !isAuthorizedAdmin(clientAdminKey)) {
+      return createJsonResponse({
+        status: 'error',
+        code: 403,
+        message: 'ACCESO DENEGADO: Se requiere clave de administración válida para realizar modificaciones.'
+      });
+    }
+
+    let result = {};
+
+    switch (action) {
+      case 'create':
+        result = createRecord(contents.tabla || contents.table, contents.data);
+        break;
+
+      case 'update':
+        result = updateRecord(contents.tabla || contents.table, contents.id, contents.data);
+        break;
+
+      case 'delete':
+        result = deleteRecord(contents.tabla || contents.table, contents.id);
+        break;
+
+      case 'bulkCreateUsuarios':
+        result = bulkCreateUsuarios(contents.usuarios || []);
+        break;
+
+      case 'bulkCertificar':
+        result = bulkCertificar(contents.curso_id, contents.usuarios || [], contents.datos_generales || {});
+        break;
+
+      case 'saveDiseno':
+        result = saveDiseno(contents.diseno_data);
+        break;
+
+      case 'setDisenoActivo':
+        result = setDisenoActivo(contents.id);
+        break;
+
+      case 'logConsulta':
+        result = logConsulta(contents.certificado_id, contents.direccion_ip);
+        break;
+
+      case 'uploadImage':
+        result = uploadImageToDrive(contents.base64Data, contents.filename);
+        break;
+
+        // NUEVO CASO: Verificación de clave de administración
+      case 'verifyAdmin':
+        // La clave se obtiene del contenido (ya está en clientAdminKey, pero la usamos directamente)
+        const adminKey = contents.admin_key || (e && e.parameter ? e.parameter.admin_key : '');
+        if (isAuthorizedAdmin(adminKey)) {
+          result = {
+            status: 'success',
+            message: '¡Clave de Administración autenticada correctamente (v009 Blindada)!',
+            valid: true
+          };
+        } else {
+          result = {
+            status: 'error',
+            code: 403,
+            message: 'ACCESO DENEGADO: Clave de Administración inválida o no configurada',
+            valid: false
+          };
+        }
+        break;
+
+      default:
+        result = { status: 'error', message: 'Acción POST no reconocida: ' + action };
+    }
+
+    return createJsonResponse(result);
+  } catch (err) {
+    return createJsonResponse({ status: 'error', message: err.toString(), stack: err.stack });
+  }
+}
+
+/**
+ * Subida directa de archivos de imagen físicos a Google Drive (Carpeta GESTION_CERTIFICADOS)
+ */
+function uploadImageToDrive(base64Data, filename) {
+  if (!base64Data) return { status: 'error', message: 'No se enviaron datos de la imagen' };
+
+  let contentType = 'image/png';
+  let cleanBase64 = base64Data;
+  if (base64Data.indexOf(';base64,') !== -1) {
+    const parts = base64Data.split(';base64,');
+    contentType = parts[0].replace('data:', '');
+    cleanBase64 = parts[1];
+  }
+
+  try {
+    const decoded = Utilities.base64Decode(cleanBase64);
+    const name = filename || `uptpc_img_${Date.now()}.png`;
+    const blob = Utilities.newBlob(decoded, contentType, name);
+
+    const targetFolder = getOrCreateFolder(FOLDER_NAME);
+    const file = targetFolder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    const fileId = file.getId();
+    const directUrl = `https://lh3.googleusercontent.com/d/${fileId}`;
+
+    return {
+      status: 'success',
+      message: 'Archivo físico guardado en la carpeta GESTION_CERTIFICADOS exitosamente',
+      url: directUrl,
+      fileId: fileId,
+      folderId: targetFolder.getId()
+    };
+  } catch (driveError) {
+    return {
+      status: 'error',
+      message: 'Error al crear archivo en Google Drive: ' + driveError.toString()
+    };
+  }
+}
+
+/**
+ * Crea la respuesta JSON con encabezados CORS adecuados
+ */
+function createJsonResponse(data) {
+  return ContentService.createTextOutput(JSON.stringify(data))
+  .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * OPTIMIZACIÓN V010: Recupera múltiples tablas en una sola petición HTTP.
+ * Reduce drásticamente el tiempo de carga de módulos que necesitan varias
+ * dependencias (cursos necesita unidades + tipo + firmas).
+ *
+ * @param {string} tablasStr Lista separada por comas, ej: "unidades,tipo,firmas"
+ * @return {object} { status: 'success', data: { unidades:[...], tipo:[...], ... } }
+ */
+function getAllData(tablasStr) {
+  try {
+    var tablasPorDefecto = ['unidades', 'firmas', 'tipo', 'cursos', 'usuarios', 'certificados'];
+    var lista;
+    if (tablasStr && String(tablasStr).trim()) {
+      lista = String(tablasStr).split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    } else {
+      lista = tablasPorDefecto;
+    }
+
+    var resultado = {};
+    lista.forEach(function(t) {
+      var res = getAllRecords(t);
+      resultado[t] = (res && res.status === 'success') ? (res.data || []) : [];
+    });
+
+    return { status: 'success', data: resultado };
+  } catch (err) {
+    return { status: 'error', message: 'Error en getAllData: ' + err.toString(), data: {} };
+  }
+}
+
+/**
+ * Genera un UUID v4 seguro
+ */
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+/**
+ * Obtiene una hoja por su nombre, la crea con encabezados si no existe
+ */
+function getOrCreateSheet(sheetName) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(sheetName);
+
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+    const headers = getHeadersForSheet(sheetName);
+    if (headers.length > 0) {
+      sheet.appendRow(headers);
+    }
+  }
+  return sheet;
+}
+
+/**
+ * Definición de encabezados de cada tabla
+ */
+function getHeadersForSheet(sheetName) {
+  const schemas = {
+    'certificados': ['id', 'usuario_id', 'curso_id', 'codigo', 'fecha_curso', 'lugar', 'tomo', 'folio', 'created_at', 'matricula'],
+    'cursos': ['id', 'codigo_relacionado', 'nombre', 'contenido', 'tipo_curso', 'idtipo_curso', 'unidad_id', 'horas', 'motivo', 'ponencias', 'idfirma1', 'idfirma2', 'idfirma3', 'created_at', 'matricula_prefijo'],
+    'disenos': ['id', 'nombre', 'descripcion', 'diseno', 'activo', 'ancho', 'alto', 'created_at', 'updated_at'],
+    'unidades': ['id', 'codigo', 'nombre', 'logo_url', 'created_at'],
+    'usuarios': ['id', 'cedula', 'nombre_completo', 'created_at'],
+    'consulta': ['id', 'certificado_id', 'direccion_ip', 'fecha'],
+    'firmas': ['id', 'nombre', 'cargo', 'firma', 'sello', 'created_at'],
+    'tipo': ['id', 'tipo', 'created_at'],
+    'admin': ['id', 'usuario', 'clave', 'tipo', 'status', 'permisos', 'created_at'],
+    'visita_admin': ['id', 'usuario', 'ip', 'sitio', 'fecha_hora'],
+    // V011: esquema de la hoja `vistas` (precualculada por el Sheet)
+    'vistas': ['certificado_id', 'codigo', 'matricula', 'fecha_curso', 'lugar', 'tomo', 'folio', 'usuario_id', 'cedula', 'nombre_completo', 'curso_id', 'codigo_relacionado', 'nombre_curso', 'contenido', 'tipo_curso', 'horas', 'motivo', 'ponencias', 'matricula_prefijo', 'unidad_id', 'unidad_codigo', 'unidad_nombre', 'logo_url']
+  };
+  return schemas[sheetName] || [];
+}
+
+/**
+ * Lee todos los registros de una tabla como un array de objetos
+ */
+function getAllRecords(tableName) {
+  try {
+    const sheet = getOrCreateSheet(tableName);
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) return { status: 'success', data: [] };
+
+    const headers = data[0];
+    const records = [];
+
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (!row[0]) continue;
+      const obj = {};
+      headers.forEach((header, index) => {
+        let val = row[index];
+        if (val instanceof Date) {
+          val = val.toISOString().split('T')[0];
+        }
+        obj[header] = val;
+      });
+      records.push(obj);
+    }
+
+    return { status: 'success', data: records };
+  } catch (err) {
+    return { status: 'error', message: err.toString(), data: [] };
+  }
+}
+
+/**
+ * Obtiene un registro por ID
+ */
+function getRecordById(tableName, id) {
+  const all = getAllRecords(tableName);
+  if (all.status !== 'success') return all;
+  const searchId = String(id).trim();
+  const found = all.data.find(r => String(r.id).trim() === searchId);
+  return { status: 'success', data: found || null };
+}
+
+/**
+ * Búsqueda de Certificados (Simula vista_certificados)
+ */
+function searchCertificado(termino) {
+  if (!termino) return { status: 'success', data: [] };
+
+  const term = String(termino).trim().toUpperCase();
+  const vistaRes = getVistaCertificados();
+
+  if (vistaRes.status !== 'success') return vistaRes;
+
+  const esCodigo = /^[A-Z]{3}[0-9]{3,4}[A-Z]{3}$/.test(term);
+
+  const filtrados = vistaRes.data.filter(c => {
+    if (esCodigo) {
+      return String(c.codigo).trim().toUpperCase() === term;
+    } else {
+      const cedulaNormalizada = String(c.cedula || '').replace(/[\s-]/g, '').toUpperCase();
+      const termNormalizado = term.replace(/[\s-]/g, '');
+      return cedulaNormalizada.includes(termNormalizado) || String(c.cedula).toUpperCase() === term;
+    }
+  });
+
+  return { status: 'success', data: filtrados };
+}
+
+/**
+ * V011 — Genera la vista integrada de certificados.
+ *
+ * ESTRATEGIA (muy rápida):
+ *   1. Lee directamente la hoja `vistas` (precalculada por el Sheet con todos
+ *      los joins ya resueltos: certificado + usuario + curso + tipo + unidad).
+ *      1 sola lectura en lugar de 6.
+ *   2. Lee la hoja `cursos` (para obtener idfirma1/2/3) y la hoja `firmas`
+ *      para agregar los datos de firmantes al resultado.
+ *   3. Total: 3 lecturas (vs 6 del método viejo) y un JOIN mínimo en JS.
+ *
+ * FALLBACK: si la hoja `vistas` no existe o está vacía, cae al método viejo
+ * (compatibilidad hacia atrás).
+ */
+function getVistaCertificados() {
+  try {
+    // Intentar primero leer de la hoja `vistas` (rápido)
+    var vistasRes = getAllRecords('vistas');
+    var vistasData = (vistasRes && vistasRes.status === 'success') ? (vistasRes.data || []) : [];
+
+    if (vistasData.length > 0) {
+      return construirVistaDesdeHojaVistas(vistasData);
+    }
+
+    // Fallback: método viejo (6 lecturas + JOIN completo)
+    return construirVistaDesdeJoinCompleto();
+  } catch (err) {
+    return { status: 'error', message: 'Error en getVistaCertificados v011: ' + err.toString() };
+  }
+}
+
+/**
+ * V011 — Construye la vista usando la hoja `vistas` (3 lecturas: vistas + cursos + firmas).
+ * La hoja `vistas` ya tiene todos los joins principales; solo faltan las firmas.
+ */
+function construirVistaDesdeHojaVistas(vistasData) {
+  // Leer cursos (para obtener idfirma1/2/3) y firmas (para resolverlas)
+  var cursosRes = getAllRecords('cursos');
+  var firmasRes = getAllRecords('firmas');
+  var cursos = (cursosRes && cursosRes.status === 'success') ? (cursosRes.data || []) : [];
+  var firmas = (firmasRes && firmasRes.status === 'success') ? (firmasRes.data || []) : [];
+
+  var cursosMap = {};
+  cursos.forEach(function(c) { if (c && c.id) cursosMap[String(c.id).trim()] = c; });
+
+  var firmasMap = {};
+  firmas.forEach(function(f) { if (f && f.id) firmasMap[String(f.id).trim()] = f; });
+
+  var vista = vistasData.map(function(v) {
+    var curso = cursosMap[String(v.curso_id || '').trim()] || {};
+    var f1 = firmasMap[String(curso.idfirma1 || '').trim()] || {};
+    var f2 = firmasMap[String(curso.idfirma2 || '').trim()] || {};
+    var f3 = firmasMap[String(curso.idfirma3 || '').trim()] || {};
+
+    // Normalizar fecha_curso (puede venir como Date o string)
+    var fechaCur = v.fecha_curso;
+    if (fechaCur instanceof Date) {
+      fechaCur = fechaCur.toISOString().split('T')[0];
+    } else if (fechaCur) {
+      fechaCur = String(fechaCur).split('T')[0];
+    } else {
+      fechaCur = new Date().toISOString().split('T')[0];
+    }
+
+    return {
+      id: v.certificado_id || '',
+      usuario_id: v.usuario_id || '',
+      curso_id: v.curso_id || '',
+      codigo: v.codigo || '',
+      cedula: v.cedula || '',
+      nombre_completo: v.nombre_completo || '',
+      nombre_curso: v.nombre_curso || '',
+      contenido: v.contenido || '',
+      horas: v.horas || 0,
+      tipo_curso: v.tipo_curso || 'Taller',
+      unidad_nombre: v.unidad_nombre || 'Unidad de Ciencia y Tecnología',
+      unidad_codigo: v.unidad_codigo || 'CYT',
+      logo_url: v.logo_url || '',
+      fecha_curso: fechaCur,
+      lugar: v.lugar || 'Puerto Cabello, Venezuela',
+      tomo: v.tomo || '',
+      folio: v.folio || '',
+      motivo: v.motivo || '',
+      ponencias: v.ponencias || '',
+      matricula: v.matricula || '',
+
+      // Firmante 1
+      firma1_nombre: f1.nombre || '',
+      firma1_cargo: f1.cargo || '',
+      firma1_url: f1.firma || '',
+      sello1_url: f1.sello || '',
+
+      // Firmante 2
+      firma2_nombre: f2.nombre || '',
+      firma2_cargo: f2.cargo || '',
+      firma2_url: f2.firma || '',
+      sello2_url: f2.sello || '',
+
+      // Firmante 3
+      firma3_nombre: f3.nombre || '',
+      firma3_cargo: f3.cargo || '',
+      firma3_url: f3.firma || '',
+      sello3_url: f3.sello || ''
+    };
+  });
+
+  return { status: 'success', data: vista };
+}
+
+/**
+ * Fallback — método viejo (6 lecturas + JOIN completo en JS).
+ * Solo se usa si la hoja `vistas` no existe o está vacía.
+ */
+function construirVistaDesdeJoinCompleto() {
+  const certsRes = getAllRecords('certificados');
+  const usersRes = getAllRecords('usuarios');
+  const cursosRes = getAllRecords('cursos');
+  const unidadesRes = getAllRecords('unidades');
+  const tiposRes = getAllRecords('tipo');
+  const firmasRes = getAllRecords('firmas');
+
+  const certs = certsRes.status === 'success' ? (certsRes.data || []) : [];
+  const users = usersRes.status === 'success' ? (usersRes.data || []) : [];
+  const cursos = cursosRes.status === 'success' ? (cursosRes.data || []) : [];
+  const unidades = unidadesRes.status === 'success' ? (unidadesRes.data || []) : [];
+  const tipos = tiposRes.status === 'success' ? (tiposRes.data || []) : [];
+  const firmas = firmasRes.status === 'success' ? (firmasRes.data || []) : [];
+
+  const usersMap = {};
+  users.forEach(u => { if (u && u.id) usersMap[String(u.id).trim()] = u; });
+
+  const cursosMap = {};
+  cursos.forEach(c => { if (c && c.id) cursosMap[String(c.id).trim()] = c; });
+
+  const unidadesMap = {};
+  unidades.forEach(u => { if (u && u.id) unidadesMap[String(u.id).trim()] = u; });
+
+  const tiposMap = {};
+  tipos.forEach(t => {
+    if (t && t.id) tiposMap[String(t.id).trim()] = t;
+    if (t && t.tipo) tiposMap[String(t.tipo).trim()] = t;
+  });
+
+  const firmasMap = {};
+  firmas.forEach(f => { if (f && f.id) firmasMap[String(f.id).trim()] = f; });
+
+  const vista = certs.map(cert => {
+    const user = usersMap[String(cert.usuario_id || '').trim()] || {};
+    const curso = cursosMap[String(cert.curso_id || '').trim()] || {};
+    const unidad = unidadesMap[String(curso.unidad_id || '').trim()] || {};
+
+    const tipoKey = String(curso.tipo_curso || curso.idtipo_curso || '').trim();
+    const tipoObj = tiposMap[tipoKey] || {};
+    const tipoNombre = tipoObj.tipo || (isNaN(tipoKey) && tipoKey ? tipoKey : 'Taller');
+
+    const f1 = firmasMap[String(curso.idfirma1 || '').trim()] || {};
+    const f2 = firmasMap[String(curso.idfirma2 || '').trim()] || {};
+    const f3 = firmasMap[String(curso.idfirma3 || '').trim()] || {};
+
+    return {
+      id: cert.id || '',
+      usuario_id: cert.usuario_id || '',
+      curso_id: cert.curso_id || '',
+      codigo: cert.codigo || '',
+      cedula: user.cedula || '',
+      nombre_completo: user.nombre_completo || '',
+      nombre_curso: curso.nombre || '',
+      contenido: curso.contenido || '',
+      horas: curso.horas || 0,
+      tipo_curso: tipoNombre,
+      unidad_nombre: unidad.nombre || 'Unidad de Ciencia y Tecnología',
+      unidad_codigo: unidad.codigo || 'CYT',
+      logo_url: unidad.logo_url || '',
+      fecha_curso: cert.fecha_curso || curso.fecha_curso || new Date().toISOString().split('T')[0],
+      lugar: cert.lugar || 'Puerto Cabello, Venezuela',
+      tomo: cert.tomo || '',
+      folio: cert.folio || '',
+      motivo: curso.motivo || '',
+      ponencias: curso.ponencias || '',
+      matricula: cert.matricula || '',
+      firma1_nombre: f1.nombre || '',
+      firma1_cargo: f1.cargo || '',
+      firma1_url: f1.firma || '',
+      sello1_url: f1.sello || '',
+      firma2_nombre: f2.nombre || '',
+      firma2_cargo: f2.cargo || '',
+      firma2_url: f2.firma || '',
+      sello2_url: f2.sello || '',
+      firma3_nombre: f3.nombre || '',
+      firma3_cargo: f3.cargo || '',
+      firma3_url: f3.firma || '',
+      sello3_url: f3.sello || ''
+    };
+  });
+
+  return { status: 'success', data: vista };
+}
+
+/**
+ * Crea un nuevo registro en una tabla
+ */
+function createRecord(tableName, recordData) {
+  const sheet = getOrCreateSheet(tableName);
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+
+  const newId = recordData.id || generateUUID();
+  const createdAt = recordData.created_at || new Date().toISOString();
+
+  recordData.id = newId;
+  recordData.created_at = createdAt;
+
+  const row = headers.map(h => {
+    let val = recordData[h];
+    if (val === undefined || val === null) val = '';
+  if (typeof val === 'object') val = JSON.stringify(val);
+
+  if (typeof val === 'string' && val.length > 45000) {
+    val = val.substring(0, 45000);
+  }
+  return val;
+  });
+
+  sheet.appendRow(row);
+  SpreadsheetApp.flush();
+  return { status: 'success', message: 'Registro creado exitosamente en Google Sheets', data: recordData };
+}
+
+/**
+ * Actualiza un registro por ID. Si no se encuentra el ID en la hoja, lo crea automáticamente.
+ */
+function updateRecord(tableName, id, recordData) {
+  const sheet = getOrCreateSheet(tableName);
+  const data = sheet.getDataRange().getValues();
+
+  if (data.length > 1) {
+    const headers = data[0].map(h => String(h).trim());
+    const idIndex = headers.indexOf('id');
+
+    if (idIndex !== -1) {
+      const searchId = String(id).trim();
+      for (let i = 1; i < data.length; i++) {
+        const cellId = String(data[i][idIndex]).trim();
+        if (cellId === searchId) {
+          headers.forEach((h, colIdx) => {
+            if (recordData[h] !== undefined) {
+              let val = recordData[h];
+              if (typeof val === 'object') val = JSON.stringify(val);
+
+              if (typeof val === 'string' && val.length > 45000) {
+                val = val.substring(0, 45000);
+              }
+              sheet.getRange(i + 1, colIdx + 1).setValue(val);
+            }
+          });
+          if (headers.includes('updated_at')) {
+            const uIdx = headers.indexOf('updated_at');
+            sheet.getRange(i + 1, uIdx + 1).setValue(new Date().toISOString());
+          }
+          SpreadsheetApp.flush();
+          return { status: 'success', message: 'Registro actualizado en Google Sheets' };
+        }
+      }
+    }
+  }
+
+  recordData.id = id;
+  return createRecord(tableName, recordData);
+}
+
+/**
+ * Elimina un registro por ID
+ */
+function deleteRecord(tableName, id) {
+  const sheet = getOrCreateSheet(tableName);
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return { status: 'error', message: 'Tabla vacía' };
+
+  const headers = data[0].map(h => String(h).trim());
+  const idIndex = headers.indexOf('id');
+  const searchId = String(id).trim();
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][idIndex]).trim() === searchId) {
+      sheet.deleteRow(i + 1);
+      SpreadsheetApp.flush();
+      return { status: 'success', message: 'Registro eliminado exitosamente de Google Sheets' };
+    }
+  }
+
+  return { status: 'error', message: 'Registro no encontrado en Google Sheets' };
+}
+
+/**
+ * Carga masiva de usuarios
+ */
+function bulkCreateUsuarios(usuariosArray) {
+  if (!Array.isArray(usuariosArray) || usuariosArray.length === 0) {
+    return { status: 'error', message: 'Lista de usuarios vacía o inválida' };
+  }
+
+  const sheet = getOrCreateSheet('usuarios');
+  const existingRes = getAllRecords('usuarios');
+  const existingCedulas = new Set((existingRes.data || []).map(u => String(u.cedula).trim().toUpperCase()));
+
+  const created = [];
+  const skipped = [];
+
+  usuariosArray.forEach(u => {
+    const cedula = String(u.cedula || '').trim().toUpperCase();
+    const nombre = String(u.nombre_completo || '').trim();
+
+    if (!cedula || !nombre) {
+      skipped.push({ cedula, nombre, reason: 'Datos incompletos' });
+      return;
+    }
+
+    if (existingCedulas.has(cedula)) {
+      skipped.push({ cedula, nombre, reason: 'Cédula ya registrada' });
+      return;
+    }
+
+    const newUser = {
+      id: generateUUID(),
+                        cedula: cedula,
+                        nombre_completo: nombre,
+                        created_at: new Date().toISOString()
+    };
+
+    sheet.appendRow([newUser.id, newUser.cedula, newUser.nombre_completo, newUser.created_at]);
+    existingCedulas.add(cedula);
+    created.push(newUser);
+  });
+
+  SpreadsheetApp.flush();
+
+  return {
+    status: 'success',
+    message: `Proceso completado. Registrados: ${created.length}, Omitidos: ${skipped.length}`,
+    createdCount: created.length,
+    skippedCount: skipped.length,
+    created: created,
+    skipped: skipped
+  };
+}
+
+/**
+ * Emisión masiva de certificados para un curso
+ */
+function bulkCertificar(cursoId, usuariosList, datosGenerales) {
+  if (!cursoId || !Array.isArray(usuariosList) || usuariosList.length === 0) {
+    return { status: 'error', message: 'Parámetros incompletos para emisión masiva' };
+  }
+
+  const certSheet = getOrCreateSheet('certificados');
+  const certsRes = getAllRecords('certificados');
+  const existingCodes = new Set((certsRes.data || []).map(c => String(c.codigo).trim().toUpperCase()));
+
+  const created = [];
+
+  usuariosList.forEach((u, index) => {
+    let codigo = generateUniqueCertificateCode(existingCodes);
+    existingCodes.add(codigo);
+
+    const newCert = {
+      id: generateUUID(),
+                       usuario_id: u.id,
+                       curso_id: cursoId,
+                       codigo: codigo,
+                       fecha_curso: datosGenerales.fecha_curso || new Date().toISOString().split('T')[0],
+                       lugar: datosGenerales.lugar || 'Puerto Cabello, Venezuela',
+                       tomo: datosGenerales.tomo || '',
+                       folio: datosGenerales.folio ? String(parseInt(datosGenerales.folio) + index) : '',
+                       created_at: new Date().toISOString(),
+                       matricula: datosGenerales.matricula || ''
+    };
+
+    certSheet.appendRow([
+      newCert.id,
+      newCert.usuario_id,
+      newCert.curso_id,
+      newCert.codigo,
+      newCert.fecha_curso,
+      newCert.lugar,
+      newCert.tomo,
+      newCert.folio,
+      newCert.created_at,
+      newCert.matricula
+    ]);
+
+    created.push(newCert);
+  });
+
+  SpreadsheetApp.flush();
+
+  return {
+    status: 'success',
+    message: `Se emitieron exitosamente ${created.length} certificados`,
+    count: created.length,
+    data: created
+  };
+}
+
+/**
+ * Genera código único formato AAA123AAA (3 letras, 3 números, 3 letras)
+ */
+function generateUniqueCertificateCode(existingCodesSet) {
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const digits = '0123456789';
+
+  function randomString(chars, len) {
+    let str = '';
+    for (let i = 0; i < len; i++) {
+      str += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return str;
+  }
+
+  let code = '';
+  let attempts = 0;
+  do {
+    code = randomString(letters, 3) + randomString(digits, 3) + randomString(letters, 3);
+    attempts++;
+  } while (existingCodesSet && existingCodesSet.has(code) && attempts < 1000);
+
+  return code;
+}
+
+/**
+ * Obtiene el diseño activo
+ */
+function getDisenoActivo() {
+  const disenosRes = getAllRecords('disenos');
+  if (disenosRes.status !== 'success') return disenosRes;
+
+  const disenos = disenosRes.data || [];
+  const activo = disenos.find(d => String(d.activo).toLowerCase() === 'true' || d.activo === true);
+
+  if (activo) {
+    return { status: 'success', data: activo };
+  } else if (disenos.length > 0) {
+    return { status: 'success', data: disenos[0] };
+  } else {
+    return { status: 'success', data: null };
+  }
+}
+
+/**
+ * Guarda o actualiza un diseño de certificado
+ */
+function saveDiseno(disenoData) {
+  if (!disenoData || !disenoData.nombre) {
+    return { status: 'error', message: 'El diseño requiere un nombre' };
+  }
+
+  const sheet = getOrCreateSheet('disenos');
+  const isActivo = String(disenoData.activo).toLowerCase() === 'true' || disenoData.activo === true;
+
+  if (isActivo) {
+    const data = sheet.getDataRange().getValues();
+    if (data.length > 1) {
+      const headers = data[0];
+      const actIdx = headers.indexOf('activo');
+      if (actIdx !== -1) {
+        for (let i = 1; i < data.length; i++) {
+          sheet.getRange(i + 1, actIdx + 1).setValue('FALSE');
+        }
+      }
+    }
+  }
+
+  let disenoJson = disenoData.diseno;
+  if (typeof disenoJson === 'object') {
+    disenoJson = JSON.stringify(disenoJson);
+  }
+
+  let res;
+  if (disenoData.id) {
+    res = updateRecord('disenos', disenoData.id, {
+      nombre: disenoData.nombre,
+      descripcion: disenoData.descripcion || '',
+      diseno: disenoJson,
+      activo: isActivo ? 'TRUE' : 'FALSE',
+      ancho: disenoData.ancho || 1123,
+      alto: disenoData.alto || 794,
+      updated_at: new Date().toISOString()
+    });
+  } else {
+    res = createRecord('disenos', {
+      id: generateUUID(),
+                       nombre: disenoData.nombre,
+                       descripcion: disenoData.descripcion || '',
+                       diseno: disenoJson,
+                       activo: isActivo ? 'TRUE' : 'FALSE',
+                       ancho: disenoData.ancho || 1123,
+                       alto: disenoData.alto || 794,
+                       created_at: new Date().toISOString(),
+                       updated_at: new Date().toISOString()
+    });
+  }
+
+  SpreadsheetApp.flush();
+  return res;
+}
+
+/**
+ * Marca un diseño como el activo principal
+ */
+function setDisenoActivo(disenoId) {
+  const sheet = getOrCreateSheet('disenos');
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return { status: 'error', message: 'No hay diseños' };
+
+  const headers = data[0].map(h => String(h).trim());
+  const idIdx = headers.indexOf('id');
+  const actIdx = headers.indexOf('activo');
+  const searchId = String(disenoId).trim();
+
+  for (let i = 1; i < data.length; i++) {
+    const currentId = String(data[i][idIdx]).trim();
+    if (currentId === searchId) {
+      sheet.getRange(i + 1, actIdx + 1).setValue('TRUE');
+    } else {
+      sheet.getRange(i + 1, actIdx + 1).setValue('FALSE');
+    }
+  }
+
+  SpreadsheetApp.flush();
+  return { status: 'success', message: 'Diseño activado correctamente' };
+}
+
+/**
+ * Registra una consulta de verificación en la bitácora
+ */
+function logConsulta(certificadoId, ip) {
+  return createRecord('consulta', {
+    id: generateUUID(),
+                      certificado_id: certificadoId || '',
+                      direccion_ip: ip || '127.0.0.1',
+                      fecha: new Date().toISOString()
+  });
+}
+
+/**
+ * Estadísticas del Dashboard (V010 OPTIMIZADO)
+ * --------------------------------------------
+ * ANTES: llamaba a getVistaCertificados() que a su vez lee 6 hojas
+ *        (certificados, usuarios, cursos, unidades, tipo, firmas) -> 12 lecturas totales.
+ * AHORA: construye localmente los ultimosCertificados usando los datos
+ *        ya leídos -> solo 6 lecturas (50% menos tiempo).
+ */
+function getDashboardStats() {
+  const certsRes = getAllRecords('certificados');
+  const usersRes = getAllRecords('usuarios');
+  const cursosRes = getAllRecords('cursos');
+  const unidadesRes = getAllRecords('unidades');
+  const disenosRes = getAllRecords('disenos');
+  const consultasRes = getAllRecords('consulta');
+
+  const certs = (certsRes && certsRes.data) || [];
+  const users = (usersRes && usersRes.data) || [];
+  const cursos = (cursosRes && cursosRes.data) || [];
+  const unidades = (unidadesRes && unidadesRes.data) || [];
+  const disenos = (disenosRes && disenosRes.data) || [];
+  const consultas = (consultasRes && consultasRes.data) || [];
+
+  // Mapas locales para construir ultimosCertificados sin llamar a getVistaCertificados
+  const usersMap = {};
+  users.forEach(u => { if (u && u.id) usersMap[String(u.id).trim()] = u; });
+  const cursosMap = {};
+  cursos.forEach(c => { if (c && c.id) cursosMap[String(c.id).trim()] = c; });
+  const unidadesMap = {};
+  unidades.forEach(u => { if (u && u.id) unidadesMap[String(u.id).trim()] = u; });
+
+  const ultimos = certs.slice(-5).reverse().map(cert => {
+    const user = usersMap[String(cert.usuario_id || '').trim()] || {};
+    const curso = cursosMap[String(cert.curso_id || '').trim()] || {};
+    const unidad = unidadesMap[String(curso.unidad_id || '').trim()] || {};
+    return {
+      id: cert.id || '',
+      codigo: cert.codigo || '',
+      cedula: user.cedula || '',
+      nombre_completo: user.nombre_completo || '',
+      nombre_curso: curso.nombre || '',
+      unidad_codigo: unidad.codigo || 'CYT',
+      fecha_curso: cert.fecha_curso || ''
+    };
+  });
+
+  return {
+    status: 'success',
+    data: {
+      totalCertificados: certs.length,
+      totalUsuarios: users.length,
+      totalCursos: cursos.length,
+      totalUnidades: unidades.length,
+      totalDisenos: disenos.length,
+      totalVerificaciones: consultas.length,
+      ultimosCertificados: ultimos
+    }
+  };
+}

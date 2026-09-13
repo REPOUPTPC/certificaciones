@@ -18,6 +18,9 @@
     },
 
     bindEvents() {
+      if (this._eventsBound) return;
+      this._eventsBound = true;
+
       document.getElementById('btnNuevoCurso')?.addEventListener('click', () => this.abrirModalCurso());
       document.getElementById('formCurso')?.addEventListener('submit', (e) => this.guardarCurso(e));
     },
@@ -272,6 +275,21 @@
 
       if (!nombre) {
         window.utils.showToast('Ingrese el nombre del curso', 'warning');
+        return;
+      }
+
+      // Protección contra registro duplicado de eventos / cursos
+      const nombreClean = nombre.toUpperCase();
+      const codClean = codigo_relacionado.toUpperCase();
+      const cursoExistente = cursosData.find(c => {
+        if (id && String(c.id).trim() === String(id).trim()) return false;
+        const sameName = String(c.nombre || '').trim().toUpperCase() === nombreClean;
+        const sameCode = codClean && String(c.codigo_relacionado || '').trim().toUpperCase() === codClean;
+        return sameName || sameCode;
+      });
+
+      if (cursoExistente) {
+        window.utils.showToast(`¡ALERTA! Ya existe un curso/evento registrado con este nombre o código ("${cursoExistente.nombre}"). No se guardará como duplicado.`, 'warning', 'Registro Duplicado');
         return;
       }
 
