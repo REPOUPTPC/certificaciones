@@ -220,6 +220,10 @@
         const rawCedula = parts[0].trim();
         const rawNombre = parts.slice(1).join(' ').trim();
         
+        if (!/\d/.test(rawCedula) || /^(cedula|cédula|ci|dni|id|documento|pasaporte|nro_cedula|nombre|nombre_completo)$/i.test(rawCedula)) {
+          return;
+        }
+
         const cedula = normalizeCedula(rawCedula);
         if (cedula && rawNombre) {
           users.push({ cedula, nombre_completo: rawNombre });

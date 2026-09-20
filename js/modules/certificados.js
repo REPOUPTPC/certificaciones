@@ -576,6 +576,7 @@
         let nombre = partes.slice(1).join(' ').trim().toUpperCase();
 
         if (!cedulaRaw) return;
+        if (!/\d/.test(cedulaRaw) || /^(CEDULA|CÉDULA|CI|DNI|ID|DOCUMENTO|PASAPORTE|NOMBRE|NOMBRE_COMPLETO)$/i.test(cedulaRaw)) return;
 
         let normCedula = window.utils.normalizeCedula(cedulaRaw);
         let cleanCedula = normCedula.replace(/[\s-]/g, '').toUpperCase();
@@ -674,6 +675,7 @@
         let nombre = partes.slice(1).join(' ').trim().toUpperCase();
 
         if (!cedulaRaw) return;
+        if (!/\d/.test(cedulaRaw) || /^(CEDULA|CÉDULA|CI|DNI|ID|DOCUMENTO|PASAPORTE|NOMBRE|NOMBRE_COMPLETO)$/i.test(cedulaRaw)) return;
         const normCedula = window.utils.normalizeCedula(cedulaRaw);
         const cleanCedula = normCedula.replace(/[\s-]/g, '').toUpperCase();
 
