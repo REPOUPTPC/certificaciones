@@ -9,6 +9,7 @@
   let unidadesData = [];
   let tiposData = [];
   let firmasData = [];
+  let disenosData = [];
 
   const cursosModule = {
     async init() {
@@ -28,15 +29,17 @@
 
     async cargarDependencias() {
       try {
-        const [uRes, tRes, fRes] = await Promise.all([
+        const [uRes, tRes, fRes, dRes] = await Promise.all([
           window.api.getAll('unidades'),
           window.api.getAll('tipo'),
-          window.api.getAll('firmas')
+          window.api.getAll('firmas'),
+          window.api.getAll('disenos')
         ]);
 
         unidadesData = uRes.status === 'success' ? uRes.data || [] : [];
         tiposData = tRes.status === 'success' ? tRes.data || [] : [];
         firmasData = fRes.status === 'success' ? fRes.data || [] : [];
+        disenosData = dRes.status === 'success' ? dRes.data || [] : [];
       } catch (e) {
         console.error('Error cargando dependencias de cursos:', e);
       }
@@ -165,6 +168,16 @@
       if (selF1) selF1.innerHTML = firmasOpts;
       if (selF2) selF2.innerHTML = firmasOpts;
       if (selF3) selF3.innerHTML = firmasOpts;
+
+      const selDiseno = document.getElementById('cursoDisenoId');
+      if (selDiseno) {
+        selDiseno.innerHTML = '<option value="">-- Usar Diseño Predeterminado (Activo) --</option>' +
+          disenosData.map(d => {
+            const isAct = (String(d.activo).toLowerCase() === 'true' || d.activo === true) ? ' ⭐ [ACTIVO]' : '';
+            const isTR = (String(d.tiro_retiro).toLowerCase() === 'true' || d.tiro_retiro === true) ? ' (Tiro/Retiro)' : '';
+            return `<option value="${d.id}">${window.utils.escapeHtml(d.nombre)}${isTR}${isAct}</option>`;
+          }).join('');
+      }
     },
 
     abrirModalCurso(id = null) {
@@ -244,6 +257,7 @@
           setSelectSmart('cursoFirma1', c.idfirma1);
           setSelectSmart('cursoFirma2', c.idfirma2);
           setSelectSmart('cursoFirma3', c.idfirma3);
+          setSelectSmart('cursoDisenoId', c.diseno);
         }
       } else {
         setSelectSmart('cursoTipoId', 'Taller', 't1', '1');
@@ -270,6 +284,7 @@
       const horas = parseInt(document.getElementById('cursoHoras')?.value) || 0;
       const motivo = document.getElementById('cursoMotivo')?.value.trim() || '';
       const ponencias = document.getElementById('cursoPonencias')?.value.trim() || '';
+      const diseno = document.getElementById('cursoDisenoId')?.value || '';
       const idfirma1 = document.getElementById('cursoFirma1')?.value || '';
       const idfirma2 = document.getElementById('cursoFirma2')?.value || '';
       const idfirma3 = document.getElementById('cursoFirma3')?.value || '';
@@ -305,6 +320,7 @@
         horas,
         motivo,
         ponencias,
+        diseno,
         idfirma1,
         idfirma2,
         idfirma3,

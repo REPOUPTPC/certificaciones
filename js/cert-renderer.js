@@ -267,16 +267,81 @@
     }
   }
 
-  function renderCertificateSVG(disenoConfig, certData, isEditor = false) {
-    if (!disenoConfig || !disenoConfig.elementos) {
+  function extractSideConfig(disenoConfig, lado = 'tiro') {
+    if (!disenoConfig) return null;
+    if (typeof disenoConfig === 'string') {
+      try { disenoConfig = JSON.parse(disenoConfig); } catch(e) {}
+    }
+    if (!disenoConfig || typeof disenoConfig !== 'object') return null;
+
+    let target = null;
+    if (lado === 'retiro') {
+      target = disenoConfig.retiro;
+    } else {
+      target = disenoConfig.tiro || disenoConfig.diseno;
+    }
+
+    if (typeof target === 'string') {
+      try { target = JSON.parse(target); } catch(e) {}
+    }
+
+    if (target && typeof target === 'object' && (target.elementos || target.fondo || target.marco)) {
+      return {
+        ancho: disenoConfig.ancho || target.ancho || 1123,
+        alto: disenoConfig.alto || target.alto || 794,
+        fondo: target.fondo || { color: '#FFFFFF' },
+        marco: target.marco || {},
+        elementos: target.elementos || []
+      };
+    }
+
+    if (lado === 'retiro') {
+      return {
+        ancho: disenoConfig.ancho || 1123,
+        alto: disenoConfig.alto || 794,
+        fondo: { color: '#FFFFFF' },
+        marco: {},
+        elementos: []
+      };
+    }
+
+    return {
+      ancho: disenoConfig.ancho || 1123,
+      alto: disenoConfig.alto || 794,
+      fondo: disenoConfig.fondo || { color: '#FFFFFF' },
+      marco: disenoConfig.marco || {},
+      elementos: disenoConfig.elementos || []
+    };
+  }
+
+  function hasRetiro(disenoConfig) {
+    if (!disenoConfig) return false;
+    if (typeof disenoConfig === 'string') {
+      try { disenoConfig = JSON.parse(disenoConfig); } catch(e) {}
+    }
+    if (!disenoConfig || typeof disenoConfig !== 'object') return false;
+
+    const isBool = String(disenoConfig.tiro_retiro).toLowerCase() === 'true' || disenoConfig.tiro_retiro === true;
+    if (isBool) return true;
+
+    let r = disenoConfig.retiro;
+    if (typeof r === 'string') {
+      try { r = JSON.parse(r); } catch(e) {}
+    }
+    return !!(r && typeof r === 'object' && Array.isArray(r.elementos) && r.elementos.length > 0);
+  }
+
+  function renderCertificateSVG(disenoConfig, certData, isEditor = false, lado = 'tiro') {
+    const sideConfig = extractSideConfig(disenoConfig, lado);
+    if (!sideConfig || (!sideConfig.elementos && !sideConfig.fondo)) {
       return renderFallbackSVG(certData);
     }
 
-    const svgWidth = disenoConfig.ancho || 1123;
-    const svgHeight = disenoConfig.alto || 794;
-    const fondo = disenoConfig.fondo || {};
-    const marco = disenoConfig.marco || {};
-    const elementos = disenoConfig.elementos || [];
+    const svgWidth = sideConfig.ancho || 1123;
+    const svgHeight = sideConfig.alto || 794;
+    const fondo = sideConfig.fondo || {};
+    const marco = sideConfig.marco || {};
+    const elementos = sideConfig.elementos || [];
 
     let defsContent = '';
     let bodyContent = '';
@@ -506,6 +571,8 @@
     generateQRCodeSVG,
     resolveBinding,
     renderCertificateSVG,
-    renderFallbackSVG
+    renderFallbackSVG,
+    extractSideConfig,
+    hasRetiro
   };
 })();

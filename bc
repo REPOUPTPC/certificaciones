@@ -507,6 +507,7 @@ function construirVistaDesdeHojaVistas(vistasData) {
       motivo: v.motivo || '',
       ponencias: v.ponencias || '',
       matricula: v.matricula || '',
+      diseno: curso.diseno || v.diseno || '',
 
       // Firmante 1
       firma1_nombre: f1.nombre || '',

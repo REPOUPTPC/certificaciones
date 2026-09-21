@@ -7,6 +7,7 @@
 (function() {
   let disenoActual = null;
   let elementoSeleccionado = null;
+  let vistaCara = 'tiro'; // 'tiro' (frente) o 'retiro' (atrás)
   let isDragging = false;
   let dragStartX = 0;
   let dragStartY = 0;
@@ -20,6 +21,7 @@
     ancho: 1123,
     alto: 794,
     activo: true,
+    tiro_retiro: false,
     fondo: {
       color: '#FFFFFF',
       gradiente: {
@@ -67,6 +69,21 @@
       await this.cargarDiseñoActivo();
     },
 
+    getSideData() {
+      if (!disenoActual) return { fondo: { color: '#FFFFFF' }, marco: {}, elementos: [] };
+      if (!disenoActual[vistaCara]) {
+        disenoActual[vistaCara] = {
+          fondo: { color: '#FFFFFF' },
+          marco: {},
+          elementos: []
+        };
+      }
+      if (!disenoActual[vistaCara].elementos) {
+        disenoActual[vistaCara].elementos = [];
+      }
+      return disenoActual[vistaCara];
+    },
+
     bindEvents() {
       document.getElementById('btnNuevoDiseño')?.addEventListener('click', () => this.nuevoDiseño());
       document.getElementById('btnGuardarDiseño')?.addEventListener('click', () => this.guardarDiseño());
@@ -74,6 +91,11 @@
       document.getElementById('btnDesactivarDiseño')?.addEventListener('click', () => this.desactivarDiseñoActual());
       document.getElementById('btnEliminarDiseño')?.addEventListener('click', () => this.eliminarDiseñoActual());
       document.getElementById('btnPrevisualizarCert')?.addEventListener('click', () => this.previsualizarCertificado());
+
+      // Switch Tiro/Retiro y pestañas de cara
+      document.getElementById('switchTiroRetiro')?.addEventListener('change', (e) => this.toggleTiroRetiro(e.target.checked));
+      document.getElementById('btnVerTiro')?.addEventListener('click', () => this.cambiarCara('tiro'));
+      document.getElementById('btnVerRetiro')?.addEventListener('click', () => this.cambiarCara('retiro'));
 
       // Agregar elementos
       document.getElementById('btnAgregarTexto')?.addEventListener('click', () => this.agregarElemento('texto'));
@@ -163,6 +185,41 @@
       });
     },
 
+    toggleTiroRetiro(enabled) {
+      if (!disenoActual) return;
+      disenoActual.tiro_retiro = !!enabled;
+
+      const grupo = document.getElementById('grupoPestañasCara');
+      if (grupo) {
+        grupo.style.display = enabled ? 'inline-flex' : 'none';
+      }
+
+      if (!enabled && vistaCara === 'retiro') {
+        this.cambiarCara('tiro');
+      } else {
+        this.renderLienzo();
+      }
+    },
+
+    cambiarCara(lado) {
+      vistaCara = lado;
+      this.deseleccionarElemento();
+
+      const btnTiro = document.getElementById('btnVerTiro');
+      const btnRetiro = document.getElementById('btnVerRetiro');
+
+      if (lado === 'tiro') {
+        if (btnTiro) btnTiro.className = 'btn btn-primary';
+        if (btnRetiro) btnRetiro.className = 'btn btn-outline-primary';
+      } else {
+        if (btnTiro) btnTiro.className = 'btn btn-outline-primary';
+        if (btnRetiro) btnRetiro.className = 'btn btn-primary';
+      }
+
+      this.renderLienzo();
+      this.actualizarListaElementosUI();
+    },
+
     async cargarListaDiseños() {
       try {
         const res = await window.api.getAll('disenos');
@@ -173,7 +230,8 @@
         if (res.status === 'success' && res.data) {
           res.data.forEach(d => {
             const isAct = (String(d.activo).toLowerCase() === 'true' || d.activo === true) ? ' ⭐ [ACTIVO]' : '';
-            select.insertAdjacentHTML('beforeend', `<option value="${d.id}">${window.utils.escapeHtml(d.nombre)}${isAct}</option>`);
+            const isTR = (String(d.tiro_retiro).toLowerCase() === 'true' || d.tiro_retiro === true) ? ' (Tiro/Retiro)' : '';
+            select.insertAdjacentHTML('beforeend', `<option value="${d.id}">${window.utils.escapeHtml(d.nombre)}${isTR}${isAct}</option>`);
           });
         }
       } catch (err) {
@@ -210,32 +268,55 @@
     },
 
     cargarConfiguracionDiseño(disenoData) {
-      let schema = DEFAULT_DISENO_SCHEMA;
+      vistaCara = 'tiro';
+      let tiroData = null;
+      let retiroData = null;
 
       if (disenoData) {
-        let parsedDiseno = disenoData.diseno;
-        if (typeof parsedDiseno === 'string') {
-          try { parsedDiseno = JSON.parse(parsedDiseno); } catch (e) {}
+        if (disenoData.tiro || disenoData.diseno) {
+          tiroData = disenoData.tiro || disenoData.diseno;
+        } else if (disenoData.elementos) {
+          tiroData = disenoData;
         }
-
-        schema = {
-          id: disenoData.id || '',
-          nombre: disenoData.nombre || 'Nuevo Diseño',
-          descripcion: disenoData.descripcion || '',
-          ancho: disenoData.ancho || 1123,
-          alto: disenoData.alto || 794,
-          activo: String(disenoData.activo).toLowerCase() === 'true' || disenoData.activo === true,
-          fondo: parsedDiseno?.fondo || DEFAULT_DISENO_SCHEMA.fondo,
-          marco: parsedDiseno?.marco || DEFAULT_DISENO_SCHEMA.marco,
-          elementos: parsedDiseno?.elementos || DEFAULT_DISENO_SCHEMA.elementos
-        };
+        retiroData = disenoData.retiro;
       }
+
+      if (typeof tiroData === 'string') { try { tiroData = JSON.parse(tiroData); } catch (e) {} }
+      if (typeof retiroData === 'string') { try { retiroData = JSON.parse(retiroData); } catch (e) {} }
+
+      const isTR = String(disenoData?.tiro_retiro).toLowerCase() === 'true' || disenoData?.tiro_retiro === true || !!(retiroData && retiroData.elementos && retiroData.elementos.length > 0);
+
+      const schema = {
+        id: disenoData?.id || '',
+        nombre: disenoData?.nombre || 'Nuevo Diseño',
+        descripcion: disenoData?.descripcion || '',
+        ancho: disenoData?.ancho || 1123,
+        alto: disenoData?.alto || 794,
+        activo: String(disenoData?.activo).toLowerCase() === 'true' || disenoData?.activo === true,
+        tiro_retiro: isTR,
+        tiro: {
+          fondo: tiroData?.fondo || DEFAULT_DISENO_SCHEMA.fondo,
+          marco: tiroData?.marco || DEFAULT_DISENO_SCHEMA.marco,
+          elementos: tiroData?.elementos || DEFAULT_DISENO_SCHEMA.elementos
+        },
+        retiro: {
+          fondo: retiroData?.fondo || { color: '#FFFFFF' },
+          marco: retiroData?.marco || {},
+          elementos: retiroData?.elementos || []
+        }
+      };
 
       disenoActual = schema;
       elementoSeleccionado = null;
 
       document.getElementById('inputNombreDiseño').value = disenoActual.nombre;
       document.getElementById('inputDescDiseño').value = disenoActual.descripcion;
+
+      const switchTR = document.getElementById('switchTiroRetiro');
+      if (switchTR) switchTR.checked = disenoActual.tiro_retiro;
+
+      const grupo = document.getElementById('grupoPestañasCara');
+      if (grupo) grupo.style.display = disenoActual.tiro_retiro ? 'inline-flex' : 'none';
 
       const badgeActivo = document.getElementById('badgeDiseñoStatus');
       if (badgeActivo) {
@@ -251,18 +332,28 @@
       const select = document.getElementById('selectDiseñoExistente');
       if (select && disenoActual.id) select.value = disenoActual.id;
 
-      this.renderLienzo();
-      this.actualizarListaElementosUI();
-      this.deseleccionarElemento();
+      this.cambiarCara('tiro');
     },
 
     nuevoDiseño() {
       disenoActual = {
-        ...DEFAULT_DISENO_SCHEMA,
         id: '',
         nombre: 'Nuevo Diseño UPTPC ' + new Date().toLocaleDateString(),
         descripcion: 'Diseño personalizado',
-        activo: false
+        ancho: 1123,
+        alto: 794,
+        activo: false,
+        tiro_retiro: false,
+        tiro: {
+          fondo: DEFAULT_DISENO_SCHEMA.fondo,
+          marco: DEFAULT_DISENO_SCHEMA.marco,
+          elementos: [...DEFAULT_DISENO_SCHEMA.elementos]
+        },
+        retiro: {
+          fondo: { color: '#FFFFFF' },
+          marco: {},
+          elementos: []
+        }
       };
       this.cargarConfiguracionDiseño(disenoActual);
       window.utils.showToast('Nuevo lienzo de diseño inicializado', 'info');
@@ -303,7 +394,7 @@
         sello3_url: 'img/IMAGE.png'
       };
 
-      const svgHtml = window.certRenderer.renderCertificateSVG(disenoActual, mockCert, true);
+      const svgHtml = window.certRenderer.renderCertificateSVG(disenoActual, mockCert, true, vistaCara);
       contenedor.innerHTML = svgHtml;
 
       const svgEl = contenedor.querySelector('svg');
@@ -472,9 +563,9 @@
     },
 
     hacerLienzoInteractivo(svgEl) {
-      const elementos = disenoActual.elementos || [];
+      const side = this.getSideData();
+      const elementos = side.elementos || [];
 
-      // Mapear interacciones por grupo o nodo de cada elemento
       elementos.forEach((el, index) => {
         const groupNode = svgEl.querySelector(`g[data-elem-index="${index}"]`);
         const targetNodes = groupNode ? [groupNode] : svgEl.querySelectorAll(`[x="${el.x}"][y="${el.y}"]`);
@@ -556,9 +647,10 @@
     },
 
     seleccionarElemento(index) {
-      if (!disenoActual || !disenoActual.elementos[index]) return;
+      const side = this.getSideData();
+      if (!disenoActual || !side.elementos[index]) return;
 
-      elementoSeleccionado = disenoActual.elementos[index];
+      elementoSeleccionado = side.elementos[index];
 
       document.querySelectorAll('.item-elemento-canvas').forEach(item => item.classList.remove('active'));
       document.getElementById(`item-elem-${index}`)?.classList.add('active');
@@ -665,8 +757,9 @@
       const listaContainer = document.getElementById('listaElementosCanvas');
       if (!listaContainer || !disenoActual) return;
 
+      const side = this.getSideData();
       listaContainer.innerHTML = '';
-      (disenoActual.elementos || []).forEach((el, index) => {
+      (side.elementos || []).forEach((el, index) => {
         const bindingStr = el.binding ? `<span class="badge bg-info text-dark ms-1">${el.binding}</span>` : '';
         const isSel = elementoSeleccionado === el ? 'active' : '';
 
@@ -701,6 +794,7 @@
     agregarElemento(tipo) {
       if (!disenoActual) return;
 
+      const side = this.getSideData();
       const newId = `${tipo}_${Date.now().toString().slice(-4)}`;
       const nuevo = {
         id: newId,
@@ -719,19 +813,20 @@
         }
       };
 
-      disenoActual.elementos.push(nuevo);
+      side.elementos.push(nuevo);
       this.renderLienzo();
       this.actualizarListaElementosUI();
-      this.seleccionarElemento(disenoActual.elementos.length - 1);
-      window.utils.showToast(`Nuevo elemento (${tipo}) agregado`, 'success');
+      this.seleccionarElemento(side.elementos.length - 1);
+      window.utils.showToast(`Nuevo elemento (${tipo}) agregado a ${vistaCara.toUpperCase()}`, 'success');
     },
 
     eliminarElementoSeleccionado() {
       if (!disenoActual || !elementoSeleccionado) return;
 
-      const idx = disenoActual.elementos.indexOf(elementoSeleccionado);
+      const side = this.getSideData();
+      const idx = side.elementos.indexOf(elementoSeleccionado);
       if (idx !== -1) {
-        disenoActual.elementos.splice(idx, 1);
+        side.elementos.splice(idx, 1);
         this.deseleccionarElemento();
         this.renderLienzo();
         this.actualizarListaElementosUI();
@@ -740,13 +835,14 @@
     },
 
     moverElemento(index, direccion) {
-      if (!disenoActual || !disenoActual.elementos) return;
+      const side = this.getSideData();
+      if (!disenoActual || !side.elementos) return;
       const targetIdx = index + direccion;
 
-      if (targetIdx >= 0 && targetIdx < disenoActual.elementos.length) {
-        const temp = disenoActual.elementos[index];
-        disenoActual.elementos[index] = disenoActual.elementos[targetIdx];
-        disenoActual.elementos[targetIdx] = temp;
+      if (targetIdx >= 0 && targetIdx < side.elementos.length) {
+        const temp = side.elementos[index];
+        side.elementos[index] = side.elementos[targetIdx];
+        side.elementos[targetIdx] = temp;
 
         this.renderLienzo();
         this.actualizarListaElementosUI();
@@ -766,6 +862,7 @@
 
       disenoActual.nombre = nombre;
       disenoActual.descripcion = descripcion;
+      disenoActual.tiro_retiro = !!document.getElementById('switchTiroRetiro')?.checked;
 
       const btn = document.getElementById('btnGuardarDiseño');
       const oldText = btn.innerHTML;
@@ -778,13 +875,12 @@
           nombre: disenoActual.nombre,
           descripcion: disenoActual.descripcion,
           activo: disenoActual.activo,
+          tiro_retiro: disenoActual.tiro_retiro,
           ancho: disenoActual.ancho,
           alto: disenoActual.alto,
-          diseno: {
-            fondo: disenoActual.fondo,
-            marco: disenoActual.marco,
-            elementos: disenoActual.elementos
-          }
+          tiro: disenoActual.tiro,
+          retiro: disenoActual.retiro,
+          diseno: disenoActual.tiro
         };
 
         const res = await window.api.saveDiseno(payload);
@@ -928,7 +1024,24 @@
       };
 
       const container = document.getElementById('previewCertContainer');
-      container.innerHTML = window.certRenderer.renderCertificateSVG(disenoActual, mockCert, false);
+      if (window.certRenderer.hasRetiro(disenoActual)) {
+        const tiroSVG = window.certRenderer.renderCertificateSVG(disenoActual, mockCert, false, 'tiro');
+        const retiroSVG = window.certRenderer.renderCertificateSVG(disenoActual, mockCert, false, 'retiro');
+        container.innerHTML = `
+          <div class="row g-3">
+            <div class="col-12 text-center">
+              <span class="badge bg-primary mb-2 px-3 py-1 fs-6"><i class="fa-solid fa-file-lines me-1"></i> Parte de Adelante (Tiro)</span>
+              <div class="border rounded p-2 bg-white shadow-sm">${tiroSVG}</div>
+            </div>
+            <div class="col-12 text-center">
+              <span class="badge bg-secondary mb-2 px-3 py-1 fs-6"><i class="fa-solid fa-file-lines me-1"></i> Parte de Atrás (Retiro)</span>
+              <div class="border rounded p-2 bg-white shadow-sm">${retiroSVG}</div>
+            </div>
+          </div>
+        `;
+      } else {
+        container.innerHTML = window.certRenderer.renderCertificateSVG(disenoActual, mockCert, false, 'tiro');
+      }
 
       const bsModal = new bootstrap.Modal(modalEl);
       bsModal.show();

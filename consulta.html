@@ -185,7 +185,7 @@
 <!-- ═══ CERTIFICADO ═══ -->
 <div id="cert-section">
   <div id="cert-buttons">
-    <button class="btn btn-primary" onclick="window.print()">
+    <button class="btn btn-primary" onclick="imprimirCertificado()">
       <i class="fa-solid fa-print mr-1"></i> Imprimir
     </button>
     <button class="btn btn-success" onclick="descargarPNG()">
@@ -206,18 +206,32 @@
   </div>
 </div>
 
-<!-- Carga de Scripts del Sistema -->
-<script src="https://repouptpc.github.io/certificaciones/js/config.js"></script>
-<script src="https://repouptpc.github.io/certificaciones/js/utils.js"></script>
-<script src="https://repouptpc.github.io/certificaciones/js/cert-renderer.js"></script>
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/cert-renderer.js"></script>
 
 <script>
 // ============================================================
-// VARIABLES GLOBALES
+// CONSTANTES Y VARIABLES GLOBALES
 // ============================================================
+const API_URL = (window.config && window.config.getApiUrl) ? window.config.getApiUrl() : 'https://script.google.com/macros/s/AKfycbwZ7cn7EZvUiu1hWSNQp_HSTVYDBrYB9VqbnaW2eCUvdxRibStrWy31n_4mmEWoDNH2FQ/exec';
+
 let ultimoTerminoBusqueda = "";
 let disenoActivo = null;
 let resultadosGuardados = [];
+// Caché de diseños ya obtenidos por ID para no repetir fetches
+const _cacheDisenos = {};
+
+// ============================================================
+// UTILIDADES INTERNAS
+// ============================================================
+const _esc = (t) => window.utils ? window.utils.escapeHtml(t) : String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const _fmtDate = (d) => window.utils ? window.utils.formatDate(d) : d;
+
+async function _fetchJson(url) {
+  const resp = await fetch(url);
+  return resp.json();
+}
 
 // ============================================================
 // EVENT LISTENERS
@@ -258,9 +272,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // ============================================================
 async function cargarDisenoActivo() {
   try {
-    const apiUrl = window.config ? window.config.getApiUrl() : 'https://script.google.com/macros/s/AKfycbwZ7cn7EZvUiu1hWSNQp_HSTVYDBrYB9VqbnaW2eCUvdxRibStrWy31n_4mmEWoDNH2FQ/exec';
-    const resp = await fetch(`${apiUrl}?action=getDisenoActivo`);
-    const json = await resp.json();
+    const json = await _fetchJson(`${API_URL}?action=getDisenoActivo`);
     if (json.status === 'success' && json.data) {
       disenoActivo = json.data;
     }
@@ -292,11 +304,9 @@ async function buscarCertificado() {
 
   try {
     let resultados = [];
-    const apiUrl = window.config ? window.config.getApiUrl() : 'https://script.google.com/macros/s/AKfycbwZ7cn7EZvUiu1hWSNQp_HSTVYDBrYB9VqbnaW2eCUvdxRibStrWy31n_4mmEWoDNH2FQ/exec';
 
     // 1. Intentar búsqueda con el término normalizado (Ej: V-12345678)
-    const resp = await fetch(`${apiUrl}?action=searchCertificado&termino=${encodeURIComponent(termino)}`);
-    const json = await resp.json();
+    const json = await _fetchJson(`${API_URL}?action=searchCertificado&termino=${encodeURIComponent(termino)}`);
 
     if (json.status === 'success' && Array.isArray(json.data)) {
       resultados = json.data;
@@ -304,8 +314,7 @@ async function buscarCertificado() {
 
     // 2. Si no encontró resultados con la cédula normalizada y difiere del término crudo, probar con el término crudo
     if (resultados.length === 0 && termino !== terminoRaw) {
-      const respRaw = await fetch(`${apiUrl}?action=searchCertificado&termino=${encodeURIComponent(terminoRaw)}`);
-      const jsonRaw = await respRaw.json();
+      const jsonRaw = await _fetchJson(`${API_URL}?action=searchCertificado&termino=${encodeURIComponent(terminoRaw)}`);
       if (jsonRaw.status === 'success' && Array.isArray(jsonRaw.data)) {
         resultados = jsonRaw.data;
       }
@@ -316,9 +325,9 @@ async function buscarCertificado() {
     if (resultados.length > 0) {
       mostrarResultados(resultados);
 
-      // Registrar consulta en la bitácora
+      // Registrar consulta en la bitácora (fire-and-forget)
       if (resultados[0] && resultados[0].id) {
-        fetch(apiUrl, {
+        fetch(API_URL, {
           method: 'POST',
           mode: 'cors',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -326,8 +335,7 @@ async function buscarCertificado() {
         }).catch(() => {});
       }
     } else {
-      const escapeFn = window.utils ? window.utils.escapeHtml : (t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'));
-      resultadosDiv.innerHTML = '<div class="alert alert-danger mt-3"><i class="fa-solid fa-circle-exclamation mr-2"></i>No se encontraron certificados para: <strong>' + escapeFn(terminoRaw) + '</strong> en la Base de Datos.</div>';
+      resultadosDiv.innerHTML = '<div class="alert alert-danger mt-3"><i class="fa-solid fa-circle-exclamation mr-2"></i>No se encontraron certificados para: <strong>' + _esc(terminoRaw) + '</strong> en la Base de Datos.</div>';
     }
   } catch (error) {
     console.error('Error en búsqueda en La Base de Datos:', error);
@@ -346,14 +354,11 @@ function mostrarResultados(resultados) {
   const resultadosInvertidos = [...resultados].reverse();
 
   if (resultadosInvertidos.length === 1) {
-    const cert = resultadosInvertidos[0];
-    resultadosDiv.innerHTML = generarCardCertificado(cert, 1);
+    resultadosDiv.innerHTML = generarCardCertificado(resultadosInvertidos[0], 1);
   } else {
     let html = '<div class="list-group mt-3">';
-    let n = 1;
-    resultadosInvertidos.forEach(cert => {
-      html += generarCardCertificado(cert, n);
-      n++;
+    resultadosInvertidos.forEach((cert, i) => {
+      html += generarCardCertificado(cert, i + 1);
     });
     html += '</div>';
     resultadosDiv.innerHTML = html;
@@ -362,8 +367,6 @@ function mostrarResultados(resultados) {
 
 function generarCardCertificado(cert, numero) {
   const badgeClass = getBadgeClass(cert.unidad_codigo);
-  const escapeFn = window.utils ? window.utils.escapeHtml : (t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'));
-  const formatDateFn = window.utils ? window.utils.formatDate : (d => d);
 
   let tomoFolioHtml = '';
   const hasTomo = cert.tomo && String(cert.tomo).trim() !== '';
@@ -371,35 +374,34 @@ function generarCardCertificado(cert, numero) {
 
   if (hasTomo || hasFolio) {
     const parts = [];
-    if (hasTomo) parts.push(`<strong>Tomo:</strong> ${escapeFn(cert.tomo)}`);
-    if (hasFolio) parts.push(`<strong>Folio:</strong> ${escapeFn(cert.folio)}`);
+    if (hasTomo) parts.push(`<strong>Tomo:</strong> ${_esc(cert.tomo)}`);
+    if (hasFolio) parts.push(`<strong>Folio:</strong> ${_esc(cert.folio)}`);
     tomoFolioHtml = `<br>${parts.join(' &nbsp;|&nbsp; ')}`;
   }
 
   let matriculaHtml = '';
-  const hasMatricula = cert.matricula && String(cert.matricula).trim() !== '';
-  if (hasMatricula) {
-    matriculaHtml = `<br><strong>Matrícula:</strong> ${escapeFn(cert.matricula)}`;
+  if (cert.matricula && String(cert.matricula).trim() !== '') {
+    matriculaHtml = `<br><strong>Matrícula:</strong> ${_esc(cert.matricula)}`;
   }
 
   return `
     <div class="card mb-3 text-left">
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-2">
-          <h5 class="card-title mb-0"><b>${numero}.- ${escapeFn(cert.nombre_curso)}</b></h5>
-          <span class="badge badge-tipo ${badgeClass}">${escapeFn(cert.unidad_codigo || 'CYT')}</span>
+          <h5 class="card-title mb-0"><b>${numero}.- ${_esc(cert.nombre_curso)}</b></h5>
+          <span class="badge badge-tipo ${badgeClass}">${_esc(cert.unidad_codigo || 'CYT')}</span>
         </div>
         <p class="card-text">
-          <strong>Nombre:</strong> ${escapeFn(cert.nombre_completo)}<br>
-          <strong>Cédula:</strong> ${escapeFn(cert.cedula)}<br>
-          <strong>Tipo:</strong> ${escapeFn(cert.tipo_curso || 'Taller')} &nbsp;|&nbsp; <strong>Horas:</strong> ${cert.horas || 0}<br>
-          <strong>Fecha:</strong> ${formatDateFn(cert.fecha_curso)}<br>
-          <strong>Código:</strong> <code>${escapeFn(cert.codigo)}</code>
+          <strong>Nombre:</strong> ${_esc(cert.nombre_completo)}<br>
+          <strong>Cédula:</strong> ${_esc(cert.cedula)}<br>
+          <strong>Tipo:</strong> ${_esc(cert.tipo_curso || 'Taller')} &nbsp;|&nbsp; <strong>Horas:</strong> ${cert.horas || 0}<br>
+          <strong>Fecha:</strong> ${_fmtDate(cert.fecha_curso)}<br>
+          <strong>Código:</strong> <code>${_esc(cert.codigo)}</code>
           ${tomoFolioHtml}
           ${matriculaHtml}
         </p>
         <div class="text-center">
-          <button class="btn btn-success" onclick="mostrarCertificado('${escapeFn(cert.codigo)}')">
+          <button class="btn btn-success" onclick="mostrarCertificado('${_esc(cert.codigo)}')">
             <i class="fa-solid fa-graduation-cap mr-1"></i> Generar Certificado
           </button>
         </div>
@@ -418,16 +420,45 @@ function getBadgeClass(codigo) {
 }
 
 // ============================================================
-// MOSTRAR CERTIFICADO SVG
+// OBTENER DISEÑO PARA UN CERTIFICADO (CON CACHÉ)
+// ============================================================
+async function obtenerDisenoParaCertificadoConsulta(cert) {
+  let disenoObj = null;
+
+  const disenoId = cert ? (cert.diseno || cert.curso_diseno) : null;
+  if (disenoId) {
+    // Verificar caché primero
+    if (_cacheDisenos[disenoId]) {
+      return _cacheDisenos[disenoId];
+    }
+    try {
+      const json = await _fetchJson(`${API_URL}?action=getById&tabla=disenos&id=${encodeURIComponent(disenoId)}`);
+      if (json.status === 'success' && json.data) {
+        disenoObj = json.data;
+        _cacheDisenos[disenoId] = disenoObj;
+      }
+    } catch(e) {}
+  }
+
+  if (!disenoObj) {
+    if (!disenoActivo) {
+      await cargarDisenoActivo();
+    }
+    disenoObj = disenoActivo;
+  }
+
+  return disenoObj;
+}
+
+// ============================================================
+// MOSTRAR CERTIFICADO SVG (TIRO Y RETIRO)
 // ============================================================
 async function mostrarCertificado(codigo) {
   try {
     let cert = resultadosGuardados.find(c => String(c.codigo).trim().toUpperCase() === String(codigo).trim().toUpperCase());
 
     if (!cert) {
-      const apiUrl = window.config ? window.config.getApiUrl() : 'https://script.google.com/macros/s/AKfycbwZ7cn7EZvUiu1hWSNQp_HSTVYDBrYB9VqbnaW2eCUvdxRibStrWy31n_4mmEWoDNH2FQ/exec';
-      const resp = await fetch(`${apiUrl}?action=searchCertificado&termino=${encodeURIComponent(codigo)}`);
-      const json = await resp.json();
+      const json = await _fetchJson(`${API_URL}?action=searchCertificado&termino=${encodeURIComponent(codigo)}`);
       if (json.status === 'success' && Array.isArray(json.data) && json.data.length > 0) {
         cert = json.data[0];
       }
@@ -438,15 +469,31 @@ async function mostrarCertificado(codigo) {
       return;
     }
 
-    if (!disenoActivo) {
-      await cargarDisenoActivo();
-    }
-
-    const disenoConfig = disenoActivo ? (typeof disenoActivo.diseno === 'string' ? JSON.parse(disenoActivo.diseno) : disenoActivo.diseno) : null;
-    const svg = window.certRenderer.renderCertificateSVG(disenoConfig, cert);
+    const disenoObj = await obtenerDisenoParaCertificadoConsulta(cert);
+    const tieneRetiro = window.certRenderer ? window.certRenderer.hasRetiro(disenoObj) : false;
 
     const contenedor = document.getElementById('certificado-container');
-    contenedor.innerHTML = svg;
+    
+    if (tieneRetiro) {
+      const tiroSVG = window.certRenderer.renderCertificateSVG(disenoObj, cert, false, 'tiro');
+      const retiroSVG = window.certRenderer.renderCertificateSVG(disenoObj, cert, false, 'retiro');
+
+      contenedor.innerHTML = `
+        <div class="cert-pages" style="width:100%;">
+          <div class="cert-page text-center mb-4">
+            <span class="badge badge-primary px-3 py-2 fs-6 mb-2" style="background-color: #0f3460; color: white;"><i class="fa-solid fa-file-lines mr-1"></i> PARTE DE ADELANTE (TIRO)</span>
+            <div class="border rounded p-2 bg-white shadow-sm mt-2">${tiroSVG}</div>
+          </div>
+          <div class="cert-page text-center">
+            <span class="badge badge-secondary px-3 py-2 fs-6 mb-2" style="background-color: #424242; color: white;"><i class="fa-solid fa-file-lines mr-1"></i> PARTE DE ATRÁS (RETIRO)</span>
+            <div class="border rounded p-2 bg-white shadow-sm mt-2">${retiroSVG}</div>
+          </div>
+        </div>
+      `;
+    } else {
+      const tiroSVG = window.certRenderer.renderCertificateSVG(disenoObj, cert, false, 'tiro');
+      contenedor.innerHTML = `<div class="p-2 bg-white rounded border shadow-sm">${tiroSVG}</div>`;
+    }
 
     const certSection = document.getElementById('cert-section');
     certSection.style.display = 'block';
@@ -459,45 +506,164 @@ async function mostrarCertificado(codigo) {
 }
 
 // ============================================================
-// DESCARGAR PNG Y NAVEGACIÓN
+// IMPRIMIR CERTIFICADO (1 o 2 páginas)
 // ============================================================
-function descargarPNG() {
+function imprimirCertificado() {
   const container = document.getElementById('certificado-container');
-  const svgEl = container.querySelector('svg');
-  if (!svgEl) { alert('No hay certificado activo para descargar'); return; }
+  const svgEls = container.querySelectorAll('svg');
+  if (!svgEls || svgEls.length === 0) { alert('No hay certificado para imprimir'); return; }
+
+  // Construir el HTML con page-break entre Tiro y Retiro
+  let pagesHtml = '';
+  svgEls.forEach((svgEl, idx) => {
+    const svgStr = new XMLSerializer().serializeToString(svgEl);
+    if (idx > 0) {
+      pagesHtml += '<div style="page-break-before: always;"></div>';
+    }
+    pagesHtml += `<div style="display:flex;justify-content:center;align-items:center;min-height:100vh;">${svgStr}</div>`;
+  });
+
+  const printWin = window.open('', '_blank');
+  printWin.document.write(`
+    <html><head><title>Certificado UPTPC</title>
+    <style>
+      @page { size: landscape; margin: 0; }
+      body { margin: 0; padding: 0; background: white; }
+      svg { display: block; max-width: 100%; height: auto; }
+    </style>
+    </head><body>${pagesHtml}</body></html>
+  `);
+  printWin.document.close();
+  printWin.focus();
+  setTimeout(() => { printWin.print(); printWin.close(); }, 600);
+}
+
+// ============================================================
+// DESCARGAR PNG (Tiro y Retiro como imágenes separadas)
+// ============================================================
+
+/**
+ * Convierte una URL de imagen a base64 data URI.
+ * Si falla (CORS, 404, etc.), devuelve la URL original.
+ */
+async function imageUrlToBase64(url) {
+  try {
+    // Si ya es data URI, no convertir
+    if (url.startsWith('data:')) return url;
+
+    // Resolver URLs relativas a absolutas
+    const absoluteUrl = new URL(url, window.location.href).href;
+
+    const resp = await fetch(absoluteUrl, { mode: 'cors' });
+    if (!resp.ok) return url;
+    const blob = await resp.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = () => resolve(url);
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    // Fallback: intentar con canvas para imágenes del mismo origen
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const c = document.createElement('canvas');
+          c.width = img.naturalWidth;
+          c.height = img.naturalHeight;
+          c.getContext('2d').drawImage(img, 0, 0);
+          resolve(c.toDataURL('image/png'));
+        } catch (e2) { resolve(url); }
+      };
+      img.onerror = () => resolve(url);
+      img.src = url.startsWith('data:') ? url : new URL(url, window.location.href).href;
+    });
+  }
+}
+
+/**
+ * Clona un elemento SVG e incrusta todas sus <image> como base64 inline.
+ * Retorna el SVG clonado listo para serializar.
+ */
+async function embedSvgImages(svgEl) {
+  const clone = svgEl.cloneNode(true);
+  const images = clone.querySelectorAll('image');
+
+  const promises = Array.from(images).map(async (imgEl) => {
+    const href = imgEl.getAttribute('href') || imgEl.getAttributeNS('http://www.w3.org/1999/xlink', 'href');
+    if (href && !href.startsWith('data:')) {
+      const dataUri = await imageUrlToBase64(href);
+      imgEl.setAttribute('href', dataUri);
+      imgEl.removeAttributeNS('http://www.w3.org/1999/xlink', 'href');
+    }
+  });
+
+  await Promise.all(promises);
+  return clone;
+}
+
+async function descargarPNG() {
+  const container = document.getElementById('certificado-container');
+  const svgEls = container.querySelectorAll('svg');
+  if (!svgEls || svgEls.length === 0) { alert('No hay certificado activo para descargar'); return; }
 
   document.getElementById('progressContainer').style.display = 'block';
 
-  const svgData = new XMLSerializer().serializeToString(svgEl);
-  const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-  const url = URL.createObjectURL(svgBlob);
+  let processed = 0;
+  const total = svgEls.length;
 
-  const img = new Image();
-  img.onload = function() {
-    const canvas = document.createElement('canvas');
-    const scale = 2;
-    canvas.width = (svgEl.viewBox.baseVal.width || 1123) * scale;
-    canvas.height = (svgEl.viewBox.baseVal.height || 794) * scale;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    URL.revokeObjectURL(url);
+  for (let idx = 0; idx < svgEls.length; idx++) {
+    const svgEl = svgEls[idx];
+    const label = total > 1 ? (idx === 0 ? '_Tiro_Frente' : '_Retiro_Atras') : '';
 
-    const link = document.createElement('a');
-    link.download = `Certificado_${Date.now()}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
+    try {
+      // Clonar SVG e incrustar imágenes como base64
+      const embeddedSvg = await embedSvgImages(svgEl);
+      const svgData = new XMLSerializer().serializeToString(embeddedSvg);
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
 
-    document.getElementById('progressContainer').style.display = 'none';
-  };
-  img.onerror = function() {
-    alert('Nota: Para la descarga directa en formato PNG con imágenes remotas, use el botón Imprimir y guarde como PDF o imagen.');
-    document.getElementById('progressContainer').style.display = 'none';
-  };
-  img.src = url;
+      await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const scale = 2;
+          canvas.width = (svgEl.viewBox.baseVal.width || 1123) * scale;
+          canvas.height = (svgEl.viewBox.baseVal.height || 794) * scale;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          URL.revokeObjectURL(url);
+
+          const link = document.createElement('a');
+          link.download = `Certificado${label}_${Date.now()}.png`;
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+          resolve();
+        };
+        img.onerror = function() {
+          URL.revokeObjectURL(url);
+          reject(new Error('Error al renderizar SVG'));
+        };
+        img.src = url;
+      });
+    } catch (err) {
+      console.warn('Error descargando PNG:', err);
+    }
+
+    processed++;
+    if (processed >= total) {
+      document.getElementById('progressContainer').style.display = 'none';
+    }
+  }
 }
 
+// ============================================================
+// NAVEGACIÓN
+// ============================================================
 function cerrarCertificado() {
   document.getElementById('cert-section').style.display = 'none';
   document.getElementById('certificado-container').innerHTML = '';

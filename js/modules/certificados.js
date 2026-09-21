@@ -10,6 +10,54 @@
   let cursosDisponibles = [];
   let usuariosSeleccionadosEmision = [];
 
+  // ── Helpers para incrustar imágenes como base64 en SVG antes de exportar PNG ──
+  async function _imageUrlToBase64(url) {
+    try {
+      if (url.startsWith('data:')) return url;
+      const absoluteUrl = new URL(url, window.location.href).href;
+      const resp = await fetch(absoluteUrl, { mode: 'cors' });
+      if (!resp.ok) return url;
+      const blob = await resp.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = () => resolve(url);
+        reader.readAsDataURL(blob);
+      });
+    } catch (e) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          try {
+            const c = document.createElement('canvas');
+            c.width = img.naturalWidth;
+            c.height = img.naturalHeight;
+            c.getContext('2d').drawImage(img, 0, 0);
+            resolve(c.toDataURL('image/png'));
+          } catch (e2) { resolve(url); }
+        };
+        img.onerror = () => resolve(url);
+        img.src = url.startsWith('data:') ? url : new URL(url, window.location.href).href;
+      });
+    }
+  }
+
+  async function _embedSvgImages(svgEl) {
+    const clone = svgEl.cloneNode(true);
+    const images = clone.querySelectorAll('image');
+    const promises = Array.from(images).map(async (imgEl) => {
+      const href = imgEl.getAttribute('href') || imgEl.getAttributeNS('http://www.w3.org/1999/xlink', 'href');
+      if (href && !href.startsWith('data:')) {
+        const dataUri = await _imageUrlToBase64(href);
+        imgEl.setAttribute('href', dataUri);
+        imgEl.removeAttributeNS('http://www.w3.org/1999/xlink', 'href');
+      }
+    });
+    await Promise.all(promises);
+    return clone;
+  }
+
   const certificadosModule = {
     async init() {
       this.bindEvents();
@@ -751,6 +799,32 @@
       }
     },
 
+    async obtenerDisenoParaCertificado(cert) {
+      let disenoConfig = null;
+      if (cert && cert.curso_id && cursosDisponibles) {
+        const cursoObj = cursosDisponibles.find(c => String(c.id).trim() === String(cert.curso_id).trim());
+        if (cursoObj && cursoObj.diseno) {
+          try {
+            const resD = await window.api.getById('disenos', cursoObj.diseno);
+            if (resD && resD.status === 'success' && resD.data) {
+              disenoConfig = resD.data;
+            }
+          } catch (e) {}
+        }
+      }
+
+      if (!disenoConfig) {
+        try {
+          const disenoRes = await window.api.getDisenoActivo();
+          if (disenoRes && disenoRes.status === 'success') {
+            disenoConfig = disenoRes.data;
+          }
+        } catch (e) {}
+      }
+
+      return disenoConfig;
+    },
+
     async verCertificado(codigo) {
       const cert = certificadosVistaData.find(c => String(c.codigo).toUpperCase() === String(codigo).toUpperCase());
       if (!cert) {
@@ -762,31 +836,99 @@
       if (!modalEl) return;
 
       try {
-        const disenoRes = await window.api.getDisenoActivo();
-        const disenoConfig = disenoRes.status === 'success' ? disenoRes.data : null;
+        const disenoConfig = await this.obtenerDisenoParaCertificado(cert);
+        const tieneRetiro = window.certRenderer.hasRetiro(disenoConfig);
 
-        let parsedDiseno = disenoConfig?.diseno;
-        if (typeof parsedDiseno === 'string') {
-          try { parsedDiseno = JSON.parse(parsedDiseno); } catch (e) {}
+        let svgHtmlImpresion = '';
+        let htmlParaModal = '';
+
+        if (tieneRetiro) {
+          const tiroSVG = window.certRenderer.renderCertificateSVG(disenoConfig, cert, false, 'tiro');
+          const retiroSVG = window.certRenderer.renderCertificateSVG(disenoConfig, cert, false, 'retiro');
+          htmlParaModal = `
+            <div class="row g-3">
+              <div class="col-12 text-center">
+                <span class="badge bg-primary mb-2 px-3 py-1 fs-6"><i class="fa-solid fa-file-lines me-1"></i> Parte de Adelante (Tiro)</span>
+                <div class="border rounded p-2 bg-white shadow-sm mb-3">${tiroSVG}</div>
+              </div>
+              <div class="col-12 text-center">
+                <span class="badge bg-secondary mb-2 px-3 py-1 fs-6"><i class="fa-solid fa-file-lines me-1"></i> Parte de Atrás (Retiro)</span>
+                <div class="border rounded p-2 bg-white shadow-sm">${retiroSVG}</div>
+              </div>
+            </div>
+          `;
+          svgHtmlImpresion = `${tiroSVG}<div style="page-break-before: always; height:0;"></div>${retiroSVG}`;
+        } else {
+          svgHtmlImpresion = window.certRenderer.renderCertificateSVG(disenoConfig, cert, false, 'tiro');
+          htmlParaModal = svgHtmlImpresion;
         }
 
-        const svgHtml = window.certRenderer.renderCertificateSVG(parsedDiseno, cert);
-        document.getElementById('verCertificadoContainer').innerHTML = svgHtml;
+        document.getElementById('verCertificadoContainer').innerHTML = htmlParaModal;
 
         document.getElementById('btnImprimirModalCertificado').onclick = () => {
           const printWin = window.open('', '_blank');
           printWin.document.write(`
             <html><head><title>Imprimir Certificado ${cert.codigo}</title>
-            <style>@page { size: landscape; margin: 0; } body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }</style>
-            </head><body>${svgHtml}</body></html>
+            <style>@page { size: landscape; margin: 0; } body { margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }</style>
+            </head><body>${svgHtmlImpresion}</body></html>
           `);
           printWin.document.close();
           printWin.focus();
           setTimeout(() => { printWin.print(); printWin.close(); }, 500);
         };
 
+        document.getElementById('btnDescargarPNGModalCertificado').onclick = async () => {
+          const svgEls = document.getElementById('verCertificadoContainer').querySelectorAll('svg');
+          if (!svgEls || svgEls.length === 0) {
+            window.utils.showToast('No hay certificado para descargar', 'warning');
+            return;
+          }
+          const total = svgEls.length;
+          window.utils.showToast('Preparando imagen(es) PNG...', 'info');
+
+          for (let idx = 0; idx < svgEls.length; idx++) {
+            const svgEl = svgEls[idx];
+            const label = total > 1 ? (idx === 0 ? '_Tiro_Frente' : '_Retiro_Atras') : '';
+            try {
+              const embeddedSvg = await _embedSvgImages(svgEl);
+              const svgData = new XMLSerializer().serializeToString(embeddedSvg);
+              const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+              const url = URL.createObjectURL(svgBlob);
+
+              await new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = function() {
+                  const canvas = document.createElement('canvas');
+                  const scale = 2;
+                  canvas.width = (svgEl.viewBox.baseVal.width || 1123) * scale;
+                  canvas.height = (svgEl.viewBox.baseVal.height || 794) * scale;
+                  const ctx = canvas.getContext('2d');
+                  ctx.fillStyle = '#FFFFFF';
+                  ctx.fillRect(0, 0, canvas.width, canvas.height);
+                  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                  URL.revokeObjectURL(url);
+                  const link = document.createElement('a');
+                  link.download = `Certificado_${cert.codigo}${label}.png`;
+                  link.href = canvas.toDataURL('image/png');
+                  link.click();
+                  resolve();
+                };
+                img.onerror = function() {
+                  URL.revokeObjectURL(url);
+                  reject(new Error('Error al renderizar SVG'));
+                };
+                img.src = url;
+              });
+            } catch (err) {
+              console.warn('Error descargando PNG:', err);
+            }
+          }
+          window.utils.showToast('Imagen(es) PNG descargada(s) correctamente', 'success');
+        };
+
         new bootstrap.Modal(modalEl).show();
       } catch (e) {
+        console.error('Error renderizando certificado:', e);
         window.utils.showToast('Error renderizando el certificado', 'danger');
       }
     },
