@@ -368,10 +368,6 @@
           if (!Array.isArray(this._globalCache.disenos)) this._globalCache.disenos = [];
           const disenoData = (json && json.data) ? json.data : payload.diseno_data;
           if (disenoData) {
-            const isActivo = String(disenoData.activo).toLowerCase() === 'true' || disenoData.activo === true;
-            if (isActivo) {
-              this._globalCache.disenos.forEach(d => d.activo = 'FALSE');
-            }
             const idx = this._globalCache.disenos.findIndex(d => String(d.id) === String(disenoData.id));
             if (idx !== -1) {
               this._globalCache.disenos[idx] = { ...this._globalCache.disenos[idx], ...disenoData };
@@ -385,9 +381,9 @@
         case 'setDisenoActivo': {
           if (Array.isArray(this._globalCache.disenos)) {
             const activeId = String(payload.id);
-            this._globalCache.disenos.forEach(d => {
-              d.activo = (String(d.id) === activeId) ? 'TRUE' : 'FALSE';
-            });
+            const valState = (payload.estado === false || String(payload.estado).toLowerCase() === 'false') ? 'FALSE' : 'TRUE';
+            const target = this._globalCache.disenos.find(d => String(d.id) === activeId);
+            if (target) target.activo = valState;
           }
           break;
         }
@@ -698,10 +694,6 @@
           if (!db.disenos) db.disenos = [];
           const isActivo = String(data.activo) === 'true' || data.activo === true;
 
-          if (isActivo) {
-            db.disenos.forEach(d => d.activo = 'FALSE');
-          }
-
           let item;
           if (data.id) {
             const idx = db.disenos.findIndex(d => String(d.id) === String(data.id));
@@ -732,11 +724,11 @@
 
         case 'setDisenoActivo': {
           if (!db.disenos) db.disenos = [];
-          db.disenos.forEach(d => {
-            d.activo = (String(d.id) === String(payload.id)) ? 'TRUE' : 'FALSE';
-          });
+          const valState = (payload.estado === false || String(payload.estado).toLowerCase() === 'false') ? 'FALSE' : 'TRUE';
+          const item = db.disenos.find(d => String(d.id) === String(payload.id));
+          if (item) item.activo = valState;
           saveLocalDb(db);
-          return { status: 'success', message: 'Diseño activado' };
+          return { status: 'success', message: `Diseño ${valState === 'TRUE' ? 'activado' : 'desactivado'}` };
         }
 
         case 'logConsulta': {

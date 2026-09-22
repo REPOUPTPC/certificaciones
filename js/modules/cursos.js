@@ -171,11 +171,11 @@
 
       const selDiseno = document.getElementById('cursoDisenoId');
       if (selDiseno) {
+        const disenosDisponibles = disenosData.filter(d => String(d.activo).toLowerCase() === 'true' || d.activo === true);
         selDiseno.innerHTML = '<option value="">-- Usar Diseño Predeterminado (Activo) --</option>' +
-          disenosData.map(d => {
-            const isAct = (String(d.activo).toLowerCase() === 'true' || d.activo === true) ? ' ⭐ [ACTIVO]' : '';
+          disenosDisponibles.map(d => {
             const isTR = (String(d.tiro_retiro).toLowerCase() === 'true' || d.tiro_retiro === true) ? ' (Tiro/Retiro)' : '';
-            return `<option value="${d.id}">${window.utils.escapeHtml(d.nombre)}${isTR}${isAct}</option>`;
+            return `<option value="${d.id}">${window.utils.escapeHtml(d.nombre)}${isTR}</option>`;
           }).join('');
       }
     },

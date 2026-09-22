@@ -94,6 +94,7 @@
 
       // Switch Tiro/Retiro y pestañas de cara
       document.getElementById('switchTiroRetiro')?.addEventListener('change', (e) => this.toggleTiroRetiro(e.target.checked));
+      document.getElementById('switchDisenoActivo')?.addEventListener('change', (e) => this.toggleDisenoActivoUI(e.target.checked));
       document.getElementById('btnVerTiro')?.addEventListener('click', () => this.cambiarCara('tiro'));
       document.getElementById('btnVerRetiro')?.addEventListener('click', () => this.cambiarCara('retiro'));
 
@@ -314,6 +315,9 @@
 
       const switchTR = document.getElementById('switchTiroRetiro');
       if (switchTR) switchTR.checked = disenoActual.tiro_retiro;
+
+      const switchAct = document.getElementById('switchDisenoActivo');
+      if (switchAct) switchAct.checked = disenoActual.activo;
 
       const grupo = document.getElementById('grupoPestañasCara');
       if (grupo) grupo.style.display = disenoActual.tiro_retiro ? 'inline-flex' : 'none';
@@ -863,6 +867,8 @@
       disenoActual.nombre = nombre;
       disenoActual.descripcion = descripcion;
       disenoActual.tiro_retiro = !!document.getElementById('switchTiroRetiro')?.checked;
+      const switchAct = document.getElementById('switchDisenoActivo');
+      if (switchAct) disenoActual.activo = !!switchAct.checked;
 
       const btn = document.getElementById('btnGuardarDiseño');
       const oldText = btn.innerHTML;
@@ -903,59 +909,66 @@
       }
     },
 
-    async activarDiseñoActual() {
-      if (!disenoActual || !disenoActual.id) {
-        window.utils.showToast('Primero debe guardar el diseño para poder activarlo', 'warning');
-        return;
-      }
-
-      try {
-        const res = await window.api.setDisenoActivo(disenoActual.id);
-        if (res.status === 'success') {
-          disenoActual.activo = true;
-
-          const badgeActivo = document.getElementById('badgeDiseñoStatus');
-          if (badgeActivo) {
-            badgeActivo.className = 'badge bg-success me-2';
-            badgeActivo.innerHTML = '<i class="fa-solid fa-check-circle me-1"></i>ACTIVO';
-          }
-
-          window.utils.showToast('¡Este diseño es ahora el ÚNICO DISEÑO ACTIVO del sistema!', 'success');
-          await this.cargarListaDiseños();
+    toggleDisenoActivoUI(checked) {
+      if (!disenoActual) return;
+      disenoActual.activo = !!checked;
+      const badgeActivo = document.getElementById('badgeDiseñoStatus');
+      if (badgeActivo) {
+        if (disenoActual.activo) {
+          badgeActivo.className = 'badge bg-success me-2';
+          badgeActivo.innerHTML = '<i class="fa-solid fa-check-circle me-1"></i>ACTIVO';
         } else {
-          window.utils.showToast(res.message, 'danger');
+          badgeActivo.className = 'badge bg-secondary me-2';
+          badgeActivo.innerHTML = '<i class="fa-solid fa-circle-minus me-1"></i>INACTIVO';
         }
-      } catch (e) {
-        window.utils.showToast('Error al activar diseño', 'danger');
+      }
+    },
+
+    async activarDiseñoActual() {
+      if (!disenoActual) return;
+      disenoActual.activo = true;
+      const switchAct = document.getElementById('switchDisenoActivo');
+      if (switchAct) switchAct.checked = true;
+      this.toggleDisenoActivoUI(true);
+
+      if (disenoActual.id) {
+        try {
+          const res = await window.api.setDisenoActivo(disenoActual.id, true);
+          if (res.status === 'success') {
+            window.utils.showToast('Diseño activado correctamente. Ahora está disponible para ser asignado a Cursos y Talleres.', 'success');
+            await this.cargarListaDiseños();
+          } else {
+            window.utils.showToast(res.message, 'danger');
+          }
+        } catch (e) {
+          window.utils.showToast('Error al activar diseño', 'danger');
+        }
+      } else {
+        window.utils.showToast('Diseño marcado como activo. Guarde los cambios para confirmarlo.', 'info');
       }
     },
 
     async desactivarDiseñoActual() {
-      if (!disenoActual || !disenoActual.id) {
-        disenoActual.activo = false;
-        const badgeActivo = document.getElementById('badgeDiseñoStatus');
-        if (badgeActivo) {
-          badgeActivo.className = 'badge bg-secondary me-2';
-          badgeActivo.innerHTML = '<i class="fa-solid fa-circle-minus me-1"></i>INACTIVO';
+      if (!disenoActual) return;
+      disenoActual.activo = false;
+      const switchAct = document.getElementById('switchDisenoActivo');
+      if (switchAct) switchAct.checked = false;
+      this.toggleDisenoActivoUI(false);
+
+      if (disenoActual.id) {
+        try {
+          const res = await window.api.setDisenoActivo(disenoActual.id, false);
+          if (res.status === 'success') {
+            window.utils.showToast('Diseño desactivado. Ya no estará disponible para nuevos Cursos o Talleres.', 'warning');
+            await this.cargarListaDiseños();
+          } else {
+            window.utils.showToast(res.message, 'danger');
+          }
+        } catch (e) {
+          window.utils.showToast('Error al desactivar el diseño', 'danger');
         }
-        window.utils.showToast('Diseño marcado como inactivo', 'info');
-        return;
-      }
-
-      try {
-        disenoActual.activo = false;
-        await this.guardarDiseño();
-
-        const badgeActivo = document.getElementById('badgeDiseñoStatus');
-        if (badgeActivo) {
-          badgeActivo.className = 'badge bg-secondary me-2';
-          badgeActivo.innerHTML = '<i class="fa-solid fa-circle-minus me-1"></i>INACTIVO';
-        }
-
-        window.utils.showToast('Diseño desactivado correctamente', 'warning');
-        await this.cargarListaDiseños();
-      } catch(e) {
-        window.utils.showToast('Error al desactivar el diseño', 'danger');
+      } else {
+        window.utils.showToast('Diseño marcado como inactivo.', 'info');
       }
     },
 

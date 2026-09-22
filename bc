@@ -881,19 +881,6 @@ function saveDiseno(disenoData) {
   const sheet = getOrCreateSheet('disenos');
   const isActivo = String(disenoData.activo).toLowerCase() === 'true' || disenoData.activo === true;
 
-  if (isActivo) {
-    const data = sheet.getDataRange().getValues();
-    if (data.length > 1) {
-      const headers = data[0];
-      const actIdx = headers.indexOf('activo');
-      if (actIdx !== -1) {
-        for (let i = 1; i < data.length; i++) {
-          sheet.getRange(i + 1, actIdx + 1).setValue('FALSE');
-        }
-      }
-    }
-  }
-
   let disenoJson = disenoData.diseno;
   if (typeof disenoJson === 'object') {
     disenoJson = JSON.stringify(disenoJson);
@@ -929,9 +916,9 @@ function saveDiseno(disenoData) {
 }
 
 /**
- * Marca un diseño como el activo principal
+ * Marca o cambia el estado activo de un diseño
  */
-function setDisenoActivo(disenoId) {
+function setDisenoActivo(disenoId, estado = true) {
   const sheet = getOrCreateSheet('disenos');
   const data = sheet.getDataRange().getValues();
   if (data.length <= 1) return { status: 'error', message: 'No hay diseños' };
@@ -940,18 +927,18 @@ function setDisenoActivo(disenoId) {
   const idIdx = headers.indexOf('id');
   const actIdx = headers.indexOf('activo');
   const searchId = String(disenoId).trim();
+  const valActivo = (estado === true || String(estado).toLowerCase() === 'true') ? 'TRUE' : 'FALSE';
 
   for (let i = 1; i < data.length; i++) {
     const currentId = String(data[i][idIdx]).trim();
     if (currentId === searchId) {
-      sheet.getRange(i + 1, actIdx + 1).setValue('TRUE');
-    } else {
-      sheet.getRange(i + 1, actIdx + 1).setValue('FALSE');
+      sheet.getRange(i + 1, actIdx + 1).setValue(valActivo);
+      SpreadsheetApp.flush();
+      return { status: 'success', message: `Diseño ${valActivo === 'TRUE' ? 'activado' : 'desactivado'} correctamente` };
     }
   }
 
-  SpreadsheetApp.flush();
-  return { status: 'success', message: 'Diseño activado correctamente' };
+  return { status: 'error', message: 'Diseño no encontrado' };
 }
 
 /**
