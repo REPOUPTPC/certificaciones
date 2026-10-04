@@ -278,8 +278,10 @@
       bootstrap.Modal.getOrCreateInstance(modalEl).show();
     },
 
-    onCambioCursoEmision() {
-      usuariosSeleccionadosEmision = [];
+    onCambioCursoEmision(preserveSelection = false) {
+      if (!preserveSelection) {
+        usuariosSeleccionadosEmision = [];
+      }
       const searchInput = document.getElementById('inputSearchUsuariosEmision');
       if (searchInput) searchInput.value = '';
 
@@ -772,12 +774,13 @@
           const bulkRes = await window.api.bulkCreateUsuarios(nuevosParaRegistrar);
           if (bulkRes.status === 'success') {
             creadosCount = bulkRes.createdCount || (bulkRes.created ? bulkRes.created.length : nuevosParaRegistrar.length);
-            // Refrescar usuarios del sistema
-            const uRes = await window.api.getAll('usuarios');
-            if (uRes.status === 'success') {
-              usuariosDisponibles = uRes.data || [];
-            }
           }
+        }
+
+        // Refrescar siempre la lista de usuarios para asegurar que tenemos los datos del sistema actualizados
+        const uRes = await window.api.getAll('usuarios');
+        if (uRes.status === 'success') {
+          usuariosDisponibles = uRes.data || [];
         }
 
         // Auto-seleccionar a todos los usuarios elegibles en usuariosSeleccionadosEmision
@@ -786,8 +789,8 @@
           return cedulasParaSeleccionar.has(cleanCedula) && !yaCertificadosCedulas.has(cleanCedula);
         });
 
-        // Sincronizar UI del modal principal
-        this.onCambioCursoEmision();
+        // Sincronizar UI del modal principal preservando la selección realizada
+        this.onCambioCursoEmision(true);
 
         // Cerrar modal de carga rápida
         const modalEl = document.getElementById('modalCargaRapidaEmision');

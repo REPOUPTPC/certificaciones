@@ -348,9 +348,19 @@
           if (!Array.isArray(this._globalCache.usuarios)) this._globalCache.usuarios = [];
           const newUsers = (json && Array.isArray(json.created)) ? json.created : (payload.usuarios || []);
           newUsers.forEach(u => {
-            const exists = this._globalCache.usuarios.some(existing => String(existing.cedula).toUpperCase() === String(u.cedula).toUpperCase());
+            const cleanU = window.utils ? window.utils.normalizeCedula(u.cedula).replace(/[\s-]/g, '').toUpperCase() : String(u.cedula).toUpperCase();
+            const exists = this._globalCache.usuarios.some(existing => {
+              const cleanEx = window.utils ? window.utils.normalizeCedula(existing.cedula).replace(/[\s-]/g, '').toUpperCase() : String(existing.cedula).toUpperCase();
+              return cleanEx === cleanU;
+            });
             if (!exists) {
-              this._globalCache.usuarios.push(u);
+              const itemToAdd = {
+                id: u.id || (window.utils ? window.utils.generateUUID() : 'usr_' + Date.now()),
+                cedula: u.cedula,
+                nombre_completo: u.nombre_completo,
+                created_at: u.created_at || new Date().toISOString()
+              };
+              this._globalCache.usuarios.push(itemToAdd);
             }
           });
           break;
@@ -619,20 +629,21 @@
           const list = payload.usuarios || [];
           if (!db.usuarios) db.usuarios = [];
 
-          const existingCedulas = new Set(db.usuarios.map(u => String(u.cedula).toUpperCase()));
+          const existingCedulas = new Set(db.usuarios.map(u => window.utils ? window.utils.normalizeCedula(u.cedula).replace(/[\s-]/g, '').toUpperCase() : String(u.cedula).toUpperCase()));
           const created = [];
           const skipped = [];
 
           list.forEach(u => {
-            const cedula = String(u.cedula || '').trim().toUpperCase();
+            const normCedula = window.utils ? window.utils.normalizeCedula(u.cedula) : String(u.cedula || '').trim().toUpperCase();
+            const cleanCedula = normCedula.replace(/[\s-]/g, '').toUpperCase();
             const nombre = String(u.nombre_completo || '').trim();
 
-            if (existingCedulas.has(cedula)) {
-              skipped.push({ cedula, nombre, reason: 'Ya existe' });
+            if (existingCedulas.has(cleanCedula)) {
+              skipped.push({ cedula: normCedula, nombre, reason: 'Ya existe' });
             } else {
-              const newItem = { id: window.utils.generateUUID(), cedula, nombre_completo: nombre, created_at: new Date().toISOString() };
+              const newItem = { id: window.utils ? window.utils.generateUUID() : 'usr_' + Date.now(), cedula: normCedula, nombre_completo: nombre, created_at: new Date().toISOString() };
               db.usuarios.push(newItem);
-              existingCedulas.add(cedula);
+              existingCedulas.add(cleanCedula);
               created.push(newItem);
             }
           });
