@@ -76,15 +76,16 @@
     .badge-bienestar { background: #fce4ec; color: #c62828; }
     .badge-extension { background: #e8f5e9; color: #2e7d32; }
 
-    /* ── Certificado Viewer ── */
+    /* ── Certificado Viewer Responsivo ── */
     #cert-section {
       display: none;
       background: rgba(255,255,255,0.97);
       border-radius: 20px;
-      padding: 30px;
-      margin: 40px auto;
+      padding: 20px;
+      margin: 30px auto;
       max-width: 1200px;
       width: 95%;
+      overflow: hidden;
     }
     #cert-buttons {
       display: flex;
@@ -98,20 +99,27 @@
       justify-content: center;
       align-items: center;
       width: 100%;
-      overflow-x: auto;
-      padding: 10px 0;
+      padding: 0;
+      overflow: hidden;
     }
     #certificado-container {
       display: flex;
       justify-content: center;
       align-items: center;
-      flex-shrink: 0;
+      width: 100%;
+      max-width: 100%;
     }
+    /* Escalado visual adaptativo para móviles sin modificar la resolución nativa del SVG */
     #certificado-container svg {
       display: block;
+      width: 100% !important;
+      max-width: 100% !important;
+      height: auto !important;
       box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+    }
+    .cert-pages, .cert-page {
+      width: 100%;
       max-width: 100%;
-      height: auto;
     }
     #progressContainer {
       display: none;
@@ -256,13 +264,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Verificar parámetros URL al cargar (?ID=... o ?cedula=...)
   const urlParams = new URLSearchParams(window.location.search);
-  const idParam = urlParams.get('ID');
+  const idParam = urlParams.get('ID') || urlParams.get('id');
   const cedulaParam = urlParams.get('cedula');
   if (idParam) {
-    document.getElementById('busqueda').value = idParam;
+    document.getElementById('busqueda').value = idParam.trim();
     buscarCertificado();
   } else if (cedulaParam) {
-    document.getElementById('busqueda').value = cedulaParam;
+    document.getElementById('busqueda').value = cedulaParam.trim();
     buscarCertificado();
   }
 });
@@ -492,7 +500,7 @@ async function mostrarCertificado(codigo) {
       `;
     } else {
       const tiroSVG = window.certRenderer.renderCertificateSVG(disenoObj, cert, false, 'tiro');
-      contenedor.innerHTML = `<div class="p-2 bg-white rounded border shadow-sm">${tiroSVG}</div>`;
+      contenedor.innerHTML = `<div class="p-2 bg-white rounded border shadow-sm w-100">${tiroSVG}</div>`;
     }
 
     const certSection = document.getElementById('cert-section');
@@ -548,10 +556,8 @@ function imprimirCertificado() {
  */
 async function imageUrlToBase64(url) {
   try {
-    // Si ya es data URI, no convertir
     if (url.startsWith('data:')) return url;
 
-    // Resolver URLs relativas a absolutas
     const absoluteUrl = new URL(url, window.location.href).href;
 
     const resp = await fetch(absoluteUrl, { mode: 'cors' });
@@ -564,7 +570,6 @@ async function imageUrlToBase64(url) {
       reader.readAsDataURL(blob);
     });
   } catch (e) {
-    // Fallback: intentar con canvas para imágenes del mismo origen
     return new Promise((resolve) => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
@@ -629,7 +634,7 @@ async function descargarPNG() {
         const img = new Image();
         img.onload = function() {
           const canvas = document.createElement('canvas');
-          const scale = 2;
+          const scale = 2; // Mantiene el tamaño y resolución completa
           canvas.width = (svgEl.viewBox.baseVal.width || 1123) * scale;
           canvas.height = (svgEl.viewBox.baseVal.height || 794) * scale;
           const ctx = canvas.getContext('2d');
