@@ -298,16 +298,38 @@
       // Protección contra registro duplicado de eventos / cursos
       const nombreClean = nombre.toUpperCase();
       const codClean = codigo_relacionado.toUpperCase();
-      const cursoExistente = cursosData.find(c => {
-        if (id && String(c.id).trim() === String(id).trim()) return false;
-        const sameName = String(c.nombre || '').trim().toUpperCase() === nombreClean;
-        const sameCode = codClean && String(c.codigo_relacionado || '').trim().toUpperCase() === codClean;
-        return sameName || sameCode;
-      });
 
-      if (cursoExistente) {
-        window.utils.showToast(`¡ALERTA! Ya existe un curso/evento registrado con este nombre o código ("${cursoExistente.nombre}"). No se guardará como duplicado.`, 'warning', 'Registro Duplicado');
-        return;
+      if (id) {
+        // Modo Edición: solo validar si el usuario cambió el nombre o código
+        const cursoActual = cursosData.find(c => String(c.id).trim() === String(id).trim());
+        const cambioNombre = cursoActual ? String(cursoActual.nombre || '').trim().toUpperCase() !== nombreClean : true;
+        const cambioCodigo = (cursoActual && codClean) ? String(cursoActual.codigo_relacionado || '').trim().toUpperCase() !== codClean : Boolean(codClean);
+
+        if (cambioNombre || cambioCodigo) {
+          const otroduplicado = cursosData.find(c => {
+            if (String(c.id).trim() === String(id).trim()) return false;
+            const sameName = cambioNombre && String(c.nombre || '').trim().toUpperCase() === nombreClean;
+            const sameCode = cambioCodigo && codClean && String(c.codigo_relacionado || '').trim().toUpperCase() === codClean;
+            return sameName || sameCode;
+          });
+
+          if (otroduplicado) {
+            window.utils.showToast(`¡ALERTA! Ya existe otro curso registrado con este nombre o código ("${otroduplicado.nombre}").`, 'warning', 'Registro Duplicado');
+            return;
+          }
+        }
+      } else {
+        // Modo Nuevo: validar que no exista un curso con el mismo nombre o código
+        const cursoExistente = cursosData.find(c => {
+          const sameName = String(c.nombre || '').trim().toUpperCase() === nombreClean;
+          const sameCode = codClean && String(c.codigo_relacionado || '').trim().toUpperCase() === codClean;
+          return sameName || sameCode;
+        });
+
+        if (cursoExistente) {
+          window.utils.showToast(`¡ALERTA! Ya existe un curso/evento registrado con este nombre o código ("${cursoExistente.nombre}"). No se guardará como duplicado.`, 'warning', 'Registro Duplicado');
+          return;
+        }
       }
 
       const payload = {
