@@ -55,7 +55,13 @@
         if (window.authAdmin) await window.authAdmin.autocorregirLogosUnidades();
         const res = await window.api.getAll('unidades');
         if (res.status === 'success') {
-          unidadesData = res.data || [];
+          const vistos = new Set();
+          unidadesData = (res.data || []).filter(u => {
+            const k = String(u.codigo || '').trim().toUpperCase();
+            if (!k || vistos.has(k)) return false;
+            vistos.add(k);
+            return true;
+          });
           this.renderTablaUnidades(unidadesData);
         }
       } catch (e) {
@@ -132,6 +138,16 @@
         return;
       }
 
+      const duplicada = unidadesData.find(u =>
+        String(u.codigo || '').trim().toUpperCase() === codigo && String(u.id).trim() !== String(id).trim());
+      if (duplicada) {
+        window.utils.showToast(`Ya existe una unidad con el código ${codigo}.`, 'warning');
+        return;
+      }
+
+      if (this._guardando) return;
+      this._guardando = true;
+
       const payload = { codigo, nombre, logo_url };
       try {
         let res;
@@ -148,6 +164,8 @@
         }
       } catch (err) {
         window.utils.showToast('Error de comunicación', 'danger');
+      } finally {
+        this._guardando = false;
       }
     },
 

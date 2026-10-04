@@ -532,8 +532,15 @@
       btn.disabled = true;
 
       try {
-        const datos_generales = { fecha_curso, lugar, tomo, folio, limite_por_folio };
-        const res = await window.api.bulkCertificar(curso_id, usuariosSeleccionadosEmision, datos_generales);
+        const cursoSel = cursosDisponibles.find(c => String(c.id).trim() === String(curso_id).trim());
+        const matricula_prefijo = cursoSel ? String(cursoSel.matricula_prefijo || '').trim() : '';
+        const datos_generales = { fecha_curso, lugar, tomo, folio, limite_por_folio, matricula_prefijo };
+        // Matrícula automática por participante: PREFIJO + MES + últimos 3 dígitos de la cédula
+        const usuariosConMatricula = usuariosSeleccionadosEmision.map(u => ({
+          ...u,
+          matricula: window.utils.generarMatricula(matricula_prefijo, fecha_curso, u.cedula)
+        }));
+        const res = await window.api.bulkCertificar(curso_id, usuariosConMatricula, datos_generales);
 
         if (res.status === 'success') {
           window.utils.showToast(`Se emitieron ${res.count || usuariosSeleccionadosEmision.length} certificados con códigos únicos de verificación (AAA1234AAA)`, 'success');
@@ -1036,7 +1043,7 @@
       const folio = document.getElementById('editarCertificadoFolio').value.trim();
       const fecha_curso = document.getElementById('editarCertificadoFecha').value;
       const lugar = document.getElementById('editarCertificadoLugar').value.trim();
-      const matricula = document.getElementById('editarCertificadoMatricula').value.trim();
+      let matricula = document.getElementById('editarCertificadoMatricula').value.trim();
 
       if (!id) {
         window.utils.showToast('ID de certificado no especificado', 'danger');
@@ -1049,6 +1056,16 @@
       btn.disabled = true;
 
       try {
+        // Matrícula automática si se deja vacía o si estaba autogenerada y cambió el mes del curso
+        const certActual = certificadosVistaData.find(c => String(c.id).trim() === String(id).trim()) || {};
+        const cursoDeCert = cursosDisponibles.find(c => String(c.id).trim() === String(certActual.curso_id).trim());
+        const prefCurso = cursoDeCert ? cursoDeCert.matricula_prefijo : '';
+        const autoAnterior = window.utils.generarMatricula(prefCurso, certActual.fecha_curso, certActual.cedula);
+        const autoNueva = window.utils.generarMatricula(prefCurso, fecha_curso, certActual.cedula);
+        if (autoNueva && (!matricula || matricula === autoAnterior)) {
+          matricula = autoNueva;
+        }
+
         const editData = { tomo, folio, fecha_curso, lugar, matricula };
         const res = await window.api.update('certificados', id, editData);
 

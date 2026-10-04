@@ -307,7 +307,11 @@
             }
             const newItem = (json && json.data) ? json.data : { ...payload.data };
             if (!newItem.id && payload.data && payload.data.id) newItem.id = payload.data.id;
-            const exists = this._globalCache[targetTable].some(r => String(r.id) === String(newItem.id));
+            const naturalKey = { admin: 'usuario', unidades: 'codigo' }[targetTable];
+            const exists = this._globalCache[targetTable].some(r =>
+              String(r.id) === String(newItem.id) ||
+              (naturalKey && newItem[naturalKey] && String(r[naturalKey]).trim().toUpperCase() === String(newItem[naturalKey]).trim().toUpperCase())
+            );
             if (!exists) {
               this._globalCache[targetTable].push(newItem);
             }
@@ -398,7 +402,26 @@
       } catch (e) {}
     },
 
-    async post(action, payload = {}) {
+    _inflightPosts: {},
+
+    // Evita que la misma mutación (doble clic, listeners repetidos, tareas en paralelo) se envíe dos veces
+    post(action, payload = {}) {
+      let key = null;
+      if (['create', 'update', 'bulkCertificar', 'bulkCreateUsuarios'].includes(action)) {
+        try { key = action + '|' + JSON.stringify(payload); } catch (e) { key = null; }
+      }
+      if (key && this._inflightPosts[key]) return this._inflightPosts[key];
+
+      const p = this._postInternal(action, payload);
+      if (key) {
+        this._inflightPosts[key] = p;
+        const clear = () => { delete this._inflightPosts[key]; };
+        p.then(clear, clear);
+      }
+      return p;
+    },
+
+    async _postInternal(action, payload = {}) {
       const apiUrl = window.config.getApiUrl();
       const adminKey = window.config.getAdminKey();
       const targetTable = payload.tabla || payload.table;
@@ -679,7 +702,7 @@
               tomo: datos.tomo || '',
               folio: folioCalculado,
               created_at: pgTimestamp(),
-              matricula: datos.matricula || ''
+              matricula: u.matricula || window.utils.generarMatricula(datos.matricula_prefijo, datos.fecha_curso, u.cedula) || datos.matricula || ''
             };
             db.certificados.push(item);
             created.push(item);

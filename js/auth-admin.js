@@ -207,22 +207,33 @@
       }
     },
 
-    async autocorregirLogosUnidades() {
-      try {
-        const res = await window.api.getAll('unidades');
-        if (res.status === 'success' && Array.isArray(res.data) && res.data.length > 0) {
-          for (const u of res.data) {
-            const cod = String(u.codigo || '').trim().toUpperCase();
-            const urlOficial = MAP_LOGOS_UNIDADES[cod];
-            if (urlOficial && (u.logo_url !== urlOficial || (u.logo_url && u.logo_url.includes('supabase')))) {
-              u.logo_url = urlOficial;
-              await window.api.post('update', { tabla: 'unidades', id: u.id, data: u });
+    _autocorregirPromise: null,
+
+    // Una sola ejecución a la vez y solo se envía el campo logo_url (nunca se recrea el registro)
+    autocorregirLogosUnidades() {
+      if (this._autocorregirPromise) return this._autocorregirPromise;
+      this._autocorregirPromise = (async () => {
+        try {
+          const res = await window.api.getAll('unidades');
+          if (res.status === 'success' && Array.isArray(res.data) && res.data.length > 0) {
+            const procesados = new Set();
+            for (const u of res.data) {
+              const cod = String(u.codigo || '').trim().toUpperCase();
+              if (procesados.has(cod)) continue;
+              const urlOficial = MAP_LOGOS_UNIDADES[cod];
+              if (urlOficial && u.id && (u.logo_url !== urlOficial || (u.logo_url && u.logo_url.includes('supabase')))) {
+                procesados.add(cod);
+                await window.api.post('update', { tabla: 'unidades', id: u.id, data: { logo_url: urlOficial } });
+              }
             }
           }
+        } catch (e) {
+          console.error('Error al verificar/autocorregir logos de unidades:', e);
+        } finally {
+          this._autocorregirPromise = null;
         }
-      } catch (e) {
-        console.error('Error al verificar/autocorregir logos de unidades:', e);
-      }
+      })();
+      return this._autocorregirPromise;
     },
 
     initEventListeners() {
@@ -402,10 +413,20 @@
 
         let usuarioEncontrado = adminUsers.find(u => String(u.usuario).trim().toUpperCase() === userVal.toUpperCase());
 
-        // Si la tabla admin no posee registros aún en Sheets/local, validar contra SUPER_ADMIN por defecto
+        // Si la tabla admin no posee registros aún, validar contra SUPER_ADMIN por defecto.
+        // Se consulta primero el servidor en vivo para NO crear un duplicado con caché desactualizada.
         if (!usuarioEncontrado && userVal.toUpperCase() === DEFAULT_SUPER_ADMIN.usuario && passVal === DEFAULT_SUPER_ADMIN.clave) {
-          usuarioEncontrado = { ...DEFAULT_SUPER_ADMIN };
-          await window.api.post('create', { tabla: 'admin', data: usuarioEncontrado });
+          let fresco = null;
+          try {
+            const dataFresca = await window.api.preloadAllData(true);
+            fresco = (dataFresca.admin || []).find(u => String(u.usuario).trim().toUpperCase() === DEFAULT_SUPER_ADMIN.usuario);
+          } catch (e) {}
+          if (fresco) {
+            usuarioEncontrado = fresco;
+          } else {
+            usuarioEncontrado = { ...DEFAULT_SUPER_ADMIN };
+            await window.api.post('create', { tabla: 'admin', data: usuarioEncontrado });
+          }
         }
 
         if (window.utils && window.utils.showLoading) window.utils.showLoading(80, 'Validando permisos de sesión...', 'Cargando configuraciones del sistema');
@@ -544,6 +565,15 @@
       try {
         const res = await window.api.getAll('admin');
         let lista = (res.status === 'success' && Array.isArray(res.data)) ? res.data : [];
+
+        // Oculta duplicados históricos (mismo usuario) conservando el primer registro
+        const vistos = new Set();
+        lista = lista.filter(a => {
+          const k = String(a.usuario || '').trim().toUpperCase();
+          if (!k || vistos.has(k)) return false;
+          vistos.add(k);
+          return true;
+        });
 
         if (lista.length === 0) {
           lista = [DEFAULT_SUPER_ADMIN];

@@ -288,7 +288,7 @@
       const idfirma1 = document.getElementById('cursoFirma1')?.value || '';
       const idfirma2 = document.getElementById('cursoFirma2')?.value || '';
       const idfirma3 = document.getElementById('cursoFirma3')?.value || '';
-      const matricula_prefijo = document.getElementById('cursoPrefijoMatricula')?.value.trim() || '';
+      const matricula_prefijo = (document.getElementById('cursoPrefijoMatricula')?.value || '').trim().toUpperCase().replace(/\s+/g, '');
 
       if (!nombre) {
         window.utils.showToast('Ingrese el nombre del curso', 'warning');

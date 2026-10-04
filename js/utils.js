@@ -52,6 +52,34 @@
     return c;
   }
 
+  /**
+   * Genera la matrícula automática: PREFIJO + MES (2 dígitos) + últimos 3 dígitos de la cédula.
+   * Ej: ('EXTMKT', '2026-04-15', 'V-12345678') => 'EXTMKT04678'
+   * Devuelve '' si falta prefijo, fecha válida o cédula con dígitos.
+   */
+  function generarMatricula(prefijo, fecha, cedula) {
+    const pref = String(prefijo || '').trim().toUpperCase().replace(/\s+/g, '');
+    if (!pref) return '';
+
+    let mes = '';
+    const f = String(fecha || '').trim();
+    let m = f.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (m) {
+      mes = m[2];
+    } else {
+      m = f.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+      if (m) mes = m[2];
+    }
+    const mesNum = parseInt(mes, 10);
+    if (!mesNum || mesNum < 1 || mesNum > 12) return '';
+
+    const digitos = String(cedula || '').replace(/\D/g, '');
+    if (!digitos) return '';
+    const ult3 = digitos.slice(-3).padStart(3, '0');
+
+    return pref + String(mesNum).padStart(2, '0') + ult3;
+  }
+
   function downloadCsvTemplate(filename, content) {
     const blob = new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -237,6 +265,7 @@
   window.utils = {
     generateCertificateCode,
     normalizeCedula,
+    generarMatricula,
     downloadCsvTemplate,
     escapeHtml,
     formatDate,
