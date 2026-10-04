@@ -600,6 +600,11 @@
       reader.readAsText(file);
     },
 
+    resolverTodosConflictos(opcion) {
+      const inputs = document.querySelectorAll(`input[type="radio"][data-conflicto-action="${opcion}"]`);
+      inputs.forEach(r => { r.checked = true; });
+    },
+
     analizarTextoCargaRapida() {
       const texto = document.getElementById('textareaCargaRapidaTexto')?.value || '';
       const tbody = document.getElementById('tbodyPreviewCargaRapida');
@@ -647,7 +652,7 @@
         if (yaCertificado) {
           countYaCertificados++;
           estado = 'ya_certificado';
-          estadoBadge = '<span class="badge bg-warning text-dark"><i class="fa-solid fa-triangle-exclamation me-1"></i>Ya Certificado (Omitir)</span>';
+          estadoBadge = '<span class="badge bg-warning text-dark"><i class="fa-solid fa-triangle-exclamation me-1"></i>Ya Certificado en este taller (Omitir)</span>';
         } else if (userExistente) {
           const csvNameClean = String(nombre || '').trim().toUpperCase().replace(/\s+/g, ' ');
           const bdNameClean = String(userExistente.nombre_completo || '').trim().toUpperCase().replace(/\s+/g, ' ');
@@ -655,7 +660,36 @@
           if (csvNameClean && csvNameClean !== 'S/N' && csvNameClean !== bdNameClean) {
             countConflictos++;
             estado = 'conflicto_nombre';
-            estadoBadge = `<span class="badge bg-danger text-wrap text-start"><i class="fa-solid fa-circle-exclamation me-1"></i>¡ALERTA! Cédula en BD a nombre de "${window.utils.escapeHtml(userExistente.nombre_completo)}" (No se procesará)</span>`;
+            const nameNuevoEsc = window.utils.escapeHtml(nombre);
+            const nameBdEsc = window.utils.escapeHtml(userExistente.nombre_completo);
+
+            estadoBadge = `
+              <div class="p-2 rounded border border-warning bg-warning-subtle text-dark">
+                <div class="fw-bold mb-1 small text-warning-emphasis">
+                  <i class="fa-solid fa-triangle-exclamation me-1"></i>¡ALERTA! Conflicto de Nombre:
+                </div>
+                <div class="small mb-2">
+                  • En BD: <strong class="text-secondary">${nameBdEsc}</strong><br>
+                  • En Lista: <strong class="text-primary">${nameNuevoEsc}</strong>
+                </div>
+                <div class="btn-group btn-group-sm w-100" role="group">
+                  <input type="radio" class="btn-check" name="conflicto_act_${cleanCedula}" id="act_actualizar_${cleanCedula}" value="actualizar" data-conflicto-action="actualizar" checked>
+                  <label class="btn btn-outline-primary btn-sm py-0 small" for="act_actualizar_${cleanCedula}" title="Actualizar BD a '${nameNuevoEsc}' y auto-seleccionar">
+                    <i class="fa-solid fa-pen me-1"></i>Actualizar BD a "${nameNuevoEsc}"
+                  </label>
+
+                  <input type="radio" class="btn-check" name="conflicto_act_${cleanCedula}" id="act_usarbd_${cleanCedula}" value="usar_bd" data-conflicto-action="usar_bd">
+                  <label class="btn btn-outline-secondary btn-sm py-0 small" for="act_usarbd_${cleanCedula}" title="Mantener '${nameBdEsc}' y auto-seleccionar">
+                    <i class="fa-solid fa-user-check me-1"></i>Usar BD ("${nameBdEsc}")
+                  </label>
+
+                  <input type="radio" class="btn-check" name="conflicto_act_${cleanCedula}" id="act_omitir_${cleanCedula}" value="omitir" data-conflicto-action="omitir">
+                  <label class="btn btn-outline-danger btn-sm py-0 small" for="act_omitir_${cleanCedula}" title="No incluir este participante">
+                    <i class="fa-solid fa-ban me-1"></i>Omitir
+                  </label>
+                </div>
+              </div>
+            `;
           } else {
             countExistentes++;
             estado = 'existente';
@@ -685,7 +719,21 @@
           <span class="badge bg-primary me-1">${countNuevos} nuevos</span>
           <span class="badge bg-success me-1">${countExistentes} en BD</span>
           <span class="badge bg-warning text-dark me-1">${countYaCertificados} ya certificados</span>
-          ${countConflictos > 0 ? `<span class="badge bg-danger">${countConflictos} conflictos</span>` : ''}
+          ${countConflictos > 0 ? `<span class="badge bg-danger me-1">${countConflictos} conflicto(s)</span>` : ''}
+          ${countConflictos > 0 ? `
+            <div class="mt-2 text-end">
+              <span class="small fw-bold text-dark me-2">Acción masiva conflictos:</span>
+              <button type="button" class="btn btn-xs btn-outline-primary py-0 me-1" onclick="window.certificadosModule.resolverTodosConflictos('actualizar')">
+                <i class="fa-solid fa-pen me-1"></i>Actualizar Todos a Lista
+              </button>
+              <button type="button" class="btn btn-xs btn-outline-secondary py-0 me-1" onclick="window.certificadosModule.resolverTodosConflictos('usar_bd')">
+                <i class="fa-solid fa-user-check me-1"></i>Usar Nombres de BD
+              </button>
+              <button type="button" class="btn btn-xs btn-outline-danger py-0" onclick="window.certificadosModule.resolverTodosConflictos('omitir')">
+                <i class="fa-solid fa-ban me-1"></i>Omitir Todos
+              </button>
+            </div>
+          ` : ''}
         `;
       }
 
@@ -697,7 +745,7 @@
       let html = '';
       itemsAnalizados.forEach(item => {
         html += `
-          <tr class="${item.estado === 'conflicto_nombre' ? 'table-danger' : ''}">
+          <tr class="${item.estado === 'conflicto_nombre' ? 'table-warning' : ''}">
             <td>${item.num}</td>
             <td><span class="badge bg-dark font-monospace">${window.utils.escapeHtml(item.cedula)}</span></td>
             <td class="fw-semibold text-dark">${window.utils.escapeHtml(item.nombre)}</td>
@@ -721,6 +769,7 @@
 
       const lineas = texto.split(/\r?\n/);
       const nuevosParaRegistrar = [];
+      const usuariosParaActualizarNombre = [];
       const cedulasParaSeleccionar = new Set();
 
       lineas.forEach(lineaRaw => {
@@ -743,11 +792,27 @@
         if (userExistente) {
           const csvNameClean = String(nombre || '').trim().toUpperCase().replace(/\s+/g, ' ');
           const bdNameClean = String(userExistente.nombre_completo || '').trim().toUpperCase().replace(/\s+/g, ' ');
+
           if (csvNameClean && csvNameClean !== 'S/N' && csvNameClean !== bdNameClean) {
-            // NO PROCESAR si hay conflicto de nombre
-            return;
+            // Evaluar la opción seleccionada por el usuario para este conflicto
+            const radioSel = document.querySelector(`input[name="conflicto_act_${cleanCedula}"]:checked`);
+            const accion = radioSel ? radioSel.value : 'actualizar';
+
+            if (accion === 'actualizar') {
+              usuariosParaActualizarNombre.push({
+                id: userExistente.id,
+                cedula: normCedula,
+                nombre_completo: nombre
+              });
+              cedulasParaSeleccionar.add(cleanCedula);
+            } else if (accion === 'usar_bd') {
+              cedulasParaSeleccionar.add(cleanCedula);
+            } else if (accion === 'omitir') {
+              // No agregar a cedulasParaSeleccionar
+            }
+          } else {
+            cedulasParaSeleccionar.add(cleanCedula);
           }
-          cedulasParaSeleccionar.add(cleanCedula);
         } else {
           cedulasParaSeleccionar.add(cleanCedula);
           nuevosParaRegistrar.push({
@@ -758,23 +823,32 @@
       });
 
       if (cedulasParaSeleccionar.size === 0) {
-        window.utils.showToast('No hay participantes nuevos ni elegibles válidos para seleccionar en la lista ingresada.', 'info');
+        window.utils.showToast('No hay participantes válidos ni elegibles para seleccionar con las opciones configuradas.', 'info');
         return;
       }
 
       const btnConfirmar = document.getElementById('btnConfirmarCargaRapida');
       if (btnConfirmar) {
         btnConfirmar.disabled = true;
-        btnConfirmar.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Procesando...';
+        btnConfirmar.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Procesando Carga...';
       }
 
       try {
         let creadosCount = 0;
+        let actualizadosCount = 0;
+
         if (nuevosParaRegistrar.length > 0) {
           const bulkRes = await window.api.bulkCreateUsuarios(nuevosParaRegistrar);
           if (bulkRes.status === 'success') {
             creadosCount = bulkRes.createdCount || (bulkRes.created ? bulkRes.created.length : nuevosParaRegistrar.length);
           }
+        }
+
+        if (usuariosParaActualizarNombre.length > 0) {
+          await Promise.all(usuariosParaActualizarNombre.map(u =>
+            window.api.update('usuarios', u.id, { nombre_completo: u.nombre_completo }).catch(e => console.warn('Error actualizando usuario:', e))
+          ));
+          actualizadosCount = usuariosParaActualizarNombre.length;
         }
 
         // Refrescar siempre la lista de usuarios para asegurar que tenemos los datos del sistema actualizados
@@ -798,8 +872,15 @@
           bootstrap.Modal.getInstance(modalEl)?.hide();
         }
 
-        window.utils.showToast(`¡Carga rápida exitosa! Se seleccionaron ${usuariosSeleccionadosEmision.length} participantes (${creadosCount} creados en la BD).`, 'success');
+        let msgDetail = `Se seleccionaron ${usuariosSeleccionadosEmision.length} participantes`;
+        const detalles = [];
+        if (creadosCount > 0) detalles.push(`${creadosCount} creados en la BD`);
+        if (actualizadosCount > 0) detalles.push(`${actualizadosCount} nombres actualizados en la BD`);
+        if (detalles.length > 0) msgDetail += ` (${detalles.join(', ')})`;
+
+        window.utils.showToast(`¡Carga rápida completada! ${msgDetail}.`, 'success');
       } catch (e) {
+        console.error('Error en carga rápida:', e);
         window.utils.showToast('Error procesando la carga rápida de usuarios', 'danger');
       } finally {
         if (btnConfirmar) {
