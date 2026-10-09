@@ -25,8 +25,8 @@
         { id: 't4', tipo: 'Diplomado', created_at: new Date().toISOString() }
       ],
       usuarios: [
-        { id: 'usr-1', cedula: 'V-12345678', nombre_completo: 'JUAN ALBERTO PÉREZ', created_at: new Date().toISOString() },
-        { id: 'usr-2', cedula: 'V-87654321', nombre_completo: 'MARÍA FERNANDA GÓMEZ', created_at: new Date().toISOString() }
+        { id: 'usr-1', cedula: 'V-12345678', nombre_completo: 'JUAN ALBERTO PÉREZ', correo: 'juan.perez@uptpc.edu.ve', telefono: '04121234567', created_at: new Date().toISOString() },
+        { id: 'usr-2', cedula: 'V-87654321', nombre_completo: 'MARÍA FERNANDA GÓMEZ', correo: 'maria.gomez@gmail.com', telefono: '04147654321', created_at: new Date().toISOString() }
       ],
       cursos: [
         {
@@ -61,7 +61,37 @@
       ],
       disenos: [],
       consulta: [],
-      certificados_eliminados: []
+      certificados_eliminados: [],
+      curso_ofertado: [
+        {
+          id: 'co-1',
+          taller: 'DESARROLLO WEB FULL STACK CON JAVASCRIPT Y FRAMEWORKS',
+          descripcion: 'Aprende a construir aplicaciones web completas, modernas y dinámicas desde cero.',
+          valor_estudiante: 10,
+          valor_foraneo: 25,
+          flayer: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600&auto=format&fit=crop&q=80',
+          created_at: new Date().toISOString()
+        },
+        {
+          id: 'co-2',
+          taller: 'FUNDAMENTOS DE INTELIGENCIA ARTIFICIAL Y PROMPT ENGINEERING',
+          descripcion: 'Domina los conceptos de IA generativa, optimización de prompts y automatización.',
+          valor_estudiante: 15,
+          valor_foraneo: 30,
+          flayer: 'https://images.unsplash.com/photo-1677442136019-21780efad99a?w=600&auto=format&fit=crop&q=80',
+          created_at: new Date().toISOString()
+        }
+      ],
+      banco: [
+        { id: 'b-1', banco: 'Banco de Venezuela (0102)', created_at: new Date().toISOString() },
+        { id: 'b-2', banco: 'Banesco (0134)', created_at: new Date().toISOString() },
+        { id: 'b-3', banco: 'Banco Mercantil (0105)', created_at: new Date().toISOString() },
+        { id: 'b-4', banco: 'BBVA Provincial (0108)', created_at: new Date().toISOString() },
+        { id: 'b-5', banco: 'Banco Nacional de Crédito BNC (0191)', created_at: new Date().toISOString() },
+        { id: 'b-6', banco: 'Bancamiga (0172)', created_at: new Date().toISOString() },
+        { id: 'b-7', banco: 'Pago Móvil / Otras Entidades', created_at: new Date().toISOString() }
+      ],
+      pagos: []
     };
 
     const stored = localStorage.getItem(LOCAL_STORAGE_DB_KEY);
@@ -115,7 +145,7 @@
 
     ensureAllTables(cacheObj) {
       if (!cacheObj || typeof cacheObj !== 'object') return cacheObj;
-      const tables = ['unidades', 'firmas', 'tipo', 'usuarios', 'cursos', 'certificados', 'disenos', 'admin', 'consulta', 'certificados_eliminados'];
+      const tables = ['unidades', 'firmas', 'tipo', 'usuarios', 'cursos', 'certificados', 'disenos', 'admin', 'consulta', 'certificados_eliminados', 'curso_ofertado', 'banco', 'pagos'];
       tables.forEach(t => {
         if (!Array.isArray(cacheObj[t])) cacheObj[t] = [];
       });
@@ -176,7 +206,7 @@
 
         // Intento 2 (Fallback): Peticiones paralelas por tabla individual a Google Apps Script
         try {
-          const tables = ['unidades', 'firmas', 'tipo', 'usuarios', 'cursos', 'certificados', 'disenos', 'admin', 'consulta', 'certificados_eliminados'];
+          const tables = ['unidades', 'firmas', 'tipo', 'usuarios', 'cursos', 'certificados', 'disenos', 'admin', 'consulta', 'certificados_eliminados', 'curso_ofertado', 'banco', 'pagos'];
           const results = await Promise.all(
             tables.map(t => this.fetchRemoteDirect('getAll', { tabla: t }).catch(e => ({ status: 'error', data: [] })))
           );
@@ -505,8 +535,33 @@
     async getDashboardStats() { return this.get('getDashboardStats'); },
     async logConsulta(certificado_id, direccion_ip = '') { return this.post('logConsulta', { certificado_id, direccion_ip }); },
     
-    async uploadImage(base64Data, filename = 'imagen.png') {
-      return this.post('uploadImage', { base64Data, filename });
+    async uploadImage(base64Data, filename = 'imagen.png', folderId = '') {
+      return this.post('uploadImage', { base64Data, filename, folderId });
+    },
+
+    _cachedTasaDolar: null,
+    _tasaDolarTime: 0,
+
+    async fetchTasaDolar() {
+      // Usar caché de 5 minutos para la tasa
+      if (this._cachedTasaDolar && (Date.now() - this._tasaDolarTime < 300000)) {
+        return this._cachedTasaDolar;
+      }
+      try {
+        const resp = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+        if (resp.ok) {
+          const data = await resp.json();
+          const tasa = (data && (data.promedio || data.precio)) ? (data.promedio || data.precio) : null;
+          if (tasa && !isNaN(tasa) && tasa > 0) {
+            this._cachedTasaDolar = parseFloat(tasa);
+            this._tasaDolarTime = Date.now();
+            return this._cachedTasaDolar;
+          }
+        }
+      } catch (e) {
+        console.warn('Error al obtener tasa oficial de DolarAPI:', e);
+      }
+      return 36.5; // Tasa por defecto de respaldo
     },
 
     mockGet(action, params) {

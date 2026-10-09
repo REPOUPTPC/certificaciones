@@ -108,6 +108,7 @@
 
     const hashMap = {
       '#dashboard': 'secDashboard',
+      '#ofertas': 'secOfertas',
       '#usuarios': 'secUsuarios',
       '#unidades': 'secUnidades',
       '#firmas': 'secFirmas',
@@ -164,6 +165,9 @@
         switch (targetId) {
           case 'secDashboard':
             if (window.dashboardModule) await window.dashboardModule.init();
+            break;
+          case 'secOfertas':
+            if (window.ofertasModule) await window.ofertasModule.init();
             break;
           case 'secUsuarios':
             if (window.usuariosModule) await window.usuariosModule.init();
@@ -289,6 +293,9 @@
         switch (targetId) {
           case 'secDashboard':
             if (window.dashboardModule) await window.dashboardModule.init();
+            break;
+          case 'secOfertas':
+            if (window.ofertasModule) await window.ofertasModule.init();
             break;
           case 'secUsuarios':
             if (window.usuariosModule) await window.usuariosModule.init();

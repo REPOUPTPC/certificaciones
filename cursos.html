@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tienda Virtual de Cursos y Talleres - UPTPC</title>
+  <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
+  
+  <!-- Bootstrap 5 CSS & FontAwesome -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" rel="stylesheet">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link href="css/styles.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f8fafc;
+      font-family: 'Roboto', sans-serif;
+    }
+    .header-store {
+      background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
+      color: white;
+    }
+    .bank-card {
+      background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+      color: white;
+      border-radius: 16px;
+    }
+    .card-course {
+      border: none;
+      border-radius: 16px;
+      transition: all 0.3s ease;
+      overflow: hidden;
+    }
+    .card-course:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 30px rgba(0,0,0,0.12) !important;
+    }
+    .flayer-img {
+      height: 220px;
+      object-fit: cover;
+      width: 100%;
+    }
+    .price-badge-student {
+      background-color: #dcfce7;
+      color: #166534;
+      border-radius: 20px;
+    }
+    .price-badge-public {
+      background-color: #e0f2fe;
+      color: #075985;
+      border-radius: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header Nav -->
+  <header class="header-store py-3 shadow-sm">
+    <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
+      <div class="d-flex align-items-center gap-3">
+        <img src="img/CYT.png" alt="UPTPC Logo" style="height: 60px; object-fit: contain;" onerror="this.style.display='none'">
+        <div>
+          <h5 class="fw-bold mb-0 text-white">UNIVERSIDAD POLITÉCNICA TERRITORIAL DE PUERTO CABELLO</h5>
+          <small class="text-white-50">Unidad de Ciencia y Tecnología &bull; Oferta Académica</small>
+        </div>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-light text-dark py-2 px-3 fw-bold border" id="badgeTasaDolarHeader">
+          <i class="fa-solid fa-calculator text-primary me-1"></i> BCV: Cargando...
+        </span>
+        <button class="btn btn-outline-light btn-sm font-weight-bold" onclick="abrirModalConsultaPagos()">
+          <i class="fa-solid fa-user-check me-1"></i> Mis Pagos / Estado
+        </button>
+        <a href="consulta.html" class="btn btn-warning btn-sm fw-bold">
+          <i class="fa-solid fa-magnifying-glass me-1"></i> Validador Certificados
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container py-4">
+    <!-- Hero / Información Bancaria -->
+    <div class="bank-card p-4 p-md-5 mb-4 shadow-sm">
+      <div class="row align-items-center g-4">
+        <div class="col-md-7">
+          <span class="badge bg-warning text-dark fw-bold uppercase py-2 px-3 mb-2">
+            <i class="fa-solid fa-graduation-cap me-1"></i> Inscripciones Abiertas
+          </span>
+          <h2 class="fw-bold mb-2">Tienda Virtual de Talleres y Cursos Ofertados</h2>
+          <p class="text-white-50 mb-0">
+            Inscríbete en nuestros programas de formación tecnológica. Los pagos se realizan en Bolívares (Bs.) calculados automáticamente a la Tasa Oficial del Banco Central de Venezuela.
+          </p>
+        </div>
+        <div class="col-md-5">
+          <div class="bg-white text-dark p-3 rounded-3 shadow-sm">
+            <h6 class="fw-bold text-primary mb-2"><i class="fa-solid fa-building-columns me-1"></i>Datos de Cuenta para Transferencias / Pagos:</h6>
+            <ul class="list-unstyled mb-0 small">
+              <li><strong>Titular:</strong> Universidad Politécnica Territorial de Puerto Cabello</li>
+              <li><strong>RIF:</strong> G-20005608-8</li>
+              <li><strong>Banco:</strong> Banco de Venezuela</li>
+              <li><strong>Tipo de Cuenta:</strong> Cuenta Corriente</li>
+              <li><strong>N° Cuenta:</strong> <code>0102-0317-1200-0020-1359</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Catálogo de Cursos -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h4 class="fw-bold text-dark mb-0"><i class="fa-solid fa-store text-primary me-2"></i>Cursos y Talleres Disponibles</h4>
+      <small class="text-muted" id="lblTotalCursosContador">Cargando catálogo...</small>
+    </div>
+
+    <div class="row g-4" id="contenedorCursosOfertados">
+      <div class="col-12 text-center py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="text-muted mt-2">Cargando talleres disponibles...</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal Pago / Inscripción de Curso -->
+  <div class="modal fade" id="modalPagoCurso" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title fw-bold" id="lblModalPagoTitulo">
+            <i class="fa-solid fa-cart-shopping me-2"></i>Inscripción y Registro de Pago
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+
+          <!-- PASO 1: Identificación por Cédula -->
+          <div id="pasoIdentificacionUsuario" class="mb-4">
+            <div class="alert alert-info py-2 px-3 small mb-3">
+              <i class="fa-solid fa-circle-info me-1"></i>Ingrese su cédula para validar si ya está registrado en el sistema.
+            </div>
+            <div class="input-group input-group-lg mb-2">
+              <span class="input-group-text"><i class="fa-solid fa-id-card"></i></span>
+              <input type="text" class="form-control text-uppercase" id="inputPagoCedulaCheck" placeholder="V-12345678">
+              <button class="btn btn-primary font-weight-bold" id="btnCheckUsuarioPago" onclick="verificarUsuarioParaPago()">
+                Verificar Usuario
+              </button>
+            </div>
+            <small class="text-muted">Formato requerido: V-12345678</small>
+          </div>
+
+          <!-- PASO 2: Formulario Inline de Registro Nuevo Usuario (si no existe) -->
+          <div id="pasoRegistroInlineUsuario" style="display: none;" class="card p-3 mb-4 border-warning bg-light">
+            <h6 class="fw-bold text-warning mb-2"><i class="fa-solid fa-user-plus me-1"></i>Usuario No Encontrado - Regístrese para Continuar:</h6>
+            <div class="row g-2">
+              <div class="col-md-6 mb-2">
+                <label class="form-label small fw-bold">Nombre Completo (MAYÚSCULAS):</label>
+                <input type="text" class="form-control text-uppercase" id="inputRegInlineNombre" placeholder="JUAN PÉREZ" oninput="this.value = this.value.toUpperCase()">
+              </div>
+              <div class="col-md-6 mb-2">
+                <label class="form-label small fw-bold">Correo Electrónico:</label>
+                <input type="email" class="form-control" id="inputRegInlineCorreo" placeholder="correo@ejemplo.com">
+              </div>
+              <div class="col-md-6 mb-2">
+                <label class="form-label small fw-bold">Teléfono:</label>
+                <input type="tel" class="form-control" id="inputRegInlineTelefono" placeholder="0412-1234567">
+              </div>
+              <div class="col-md-6 mb-2 d-flex align-items-end">
+                <button class="btn btn-success w-100 fw-bold" onclick="guardarUsuarioInlineYContinuar()">
+                  <i class="fa-solid fa-check me-1"></i>Registrar y Continuar
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- PASO 3: Formulario de Pago (se activa al confirmar usuario) -->
+          <form id="formDeclaracionPago" style="display: none;" onsubmit="guardarDeclaracionPago(event)">
+            <input type="hidden" id="inputPagoUsuarioId">
+            <input type="hidden" id="inputPagoCursoId">
+
+            <div class="alert alert-success d-flex align-items-center justify-content-between p-3 mb-3">
+              <div>
+                <strong id="lblPagoUsuarioIdentificado" class="d-block fs-6">Usuario Identificado</strong>
+                <small id="lblPagoUsuarioCedula" class="text-muted">C.I.: </small>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetearIdentificacionPago()">Cambiar Cédula</button>
+            </div>
+
+            <!-- Taller y Cálculo de Tipo de Usuario -->
+            <div class="card p-3 mb-3 border-0 bg-light">
+              <h6 class="fw-bold text-primary mb-1" id="lblPagoNombreTaller">Taller Seleccionado</h6>
+              <p class="small text-muted mb-2" id="lblPagoDescTaller"></p>
+
+              <div class="row g-2 align-items-center">
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small">Condición de Inscripción:</label>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="radioTipoEstudiante" id="radioEstudiante" value="estudiante" checked onchange="calcularMontoPagoSegunTipo()">
+                    <label class="form-check-label small fw-bold text-success" for="radioEstudiante">
+                      Estudiante UPTPC
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="radioTipoEstudiante" id="radioForaneo" value="foraneo" onchange="calcularMontoPagoSegunTipo()">
+                    <label class="form-check-label small fw-bold text-info" for="radioForaneo">
+                      Público / Foráneo
+                    </label>
+                  </div>
+                </div>
+
+                <div class="col-md-6 text-end">
+                  <small class="text-muted d-block">Monto Exacto a Transferir:</small>
+                  <h4 class="fw-bold text-success mb-0" id="lblPagoMontoCalculadoBs">0.00 Bs.</h4>
+                  <small class="text-muted" id="lblPagoMontoCalculadoUsd">($0.00 USD)</small>
+                </div>
+              </div>
+            </div>
+
+            <!-- Campos de Transferencia -->
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label for="selectPagoBanco" class="form-label fw-bold">Banco de Origen <span class="text-danger">*</span></label>
+                <select class="form-select" id="selectPagoBanco" required>
+                  <option value="">Seleccione el Banco...</option>
+                </select>
+              </div>
+
+              <div class="col-md-6">
+                <label for="inputPagoMontoBs" class="form-label fw-bold">Monto Transferido (Bs.) <span class="text-danger">*</span></label>
+                <input type="number" step="0.01" min="0.01" class="form-control" id="inputPagoMontoBs" required>
+              </div>
+
+              <div class="col-md-6">
+                <label for="inputPagoReferencia" class="form-label fw-bold">N° de Referencia / Transferencia <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="inputPagoReferencia" placeholder="Ej: 0012345678" required>
+              </div>
+
+              <div class="col-md-6">
+                <label for="inputPagoFecha" class="form-label fw-bold">Fecha del Pago <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" id="inputPagoFecha" required>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="inputPagoCaptureFile" class="form-label fw-bold">
+                <i class="fa-solid fa-paperclip me-1"></i>Capture de Pago / Transferencia (Imagen) <span class="text-danger">*</span>
+              </label>
+              <input type="file" class="form-control" id="inputPagoCaptureFile" accept="image/*" required>
+              <small class="text-muted">Se guardará automáticamente en la carpeta oficial de Google Drive de comprobantes.</small>
+            </div>
+
+            <button type="submit" class="btn btn-success btn-lg w-100 fw-bold mt-3 shadow-sm">
+              <i class="fa-solid fa-paper-plane me-2"></i>ENVIAR DECLARACIÓN DE PAGO
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Consulta de Pagos de Usuario -->
+  <div class="modal fade" id="modalConsultaPagos" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-dark text-white">
+          <h5 class="modal-title fw-bold">
+            <i class="fa-solid fa-user-check me-2"></i>Mis Declaraciones de Pago / Estado
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="input-group mb-3">
+            <input type="text" class="form-control text-uppercase" id="inputConsultaCedulaPagos" placeholder="Ingrese su Cédula (V-12345678)">
+            <button class="btn btn-primary font-weight-bold" onclick="consultarPagosPorCedula()">Consultar Mis Pagos</button>
+          </div>
+
+          <div id="contenedorResultadosPagosUsuario" class="mt-3">
+            <div class="text-center text-muted py-4">Ingrese su número de cédula para consultar el estado de sus pagos.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-white border-top py-3 text-center text-muted small mt-5">
+    <div class="container">
+      <p class="mb-0">&copy; 2026 <strong>Unidad de Ciencia y Tecnología</strong> &bull; Universidad Politécnica Territorial de Puerto Cabello</p>
+    </div>
+  </footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/api.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    const CAPTURE_FOLDER_ID = '1HVwi38M9GGlofZ3rcsSRs5WpOEqD2Tgz';
+    let tasaDolar = 36.5;
+    let cursoSeleccionadoActual = null;
+    let usuarioIdentificadoActual = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        tasaDolar = await window.api.fetchTasaDolar();
+      } catch (e) { console.warn(e); }
+
+      document.getElementById('badgeTasaDolarHeader').innerHTML = `
+        <i class="fa-solid fa-calculator text-primary me-1"></i> BCV: ${tasaDolar.toFixed(2)} Bs./$
+      `;
+
+      await cargarCatalogoCursos();
+      await cargarListaBancos();
+    });
+
+    async function cargarCatalogoCursos() {
+      const contenedor = document.getElementById('contenedorCursosOfertados');
+      const lblContador = document.getElementById('lblTotalCursosContador');
+
+      try {
+        const res = await window.api.getAll('curso_ofertado');
+        const cursos = (res && res.status === 'success' && Array.isArray(res.data)) ? res.data : [];
+
+        if (lblContador) lblContador.textContent = `${cursos.length} talleres activos`;
+
+        if (cursos.length === 0) {
+          contenedor.innerHTML = `
+            <div class="col-12 text-center py-5 text-muted">
+              <i class="fa-solid fa-folder-open fa-3x mb-3 text-secondary"></i>
+              <h5>No hay talleres ni cursos ofertados actualmente</h5>
+              <p>Por favor vuelve a consultar más tarde.</p>
+            </div>
+          `;
+          return;
+        }
+
+        let html = '';
+        cursos.forEach(c => {
+          const valEstBs = (parseFloat(c.valor_estudiante || 0) * tasaDolar).toLocaleString('es-VE', { minimumFractionDigits: 2 });
+          const valForBs = (parseFloat(c.valor_foraneo || 0) * tasaDolar).toLocaleString('es-VE', { minimumFractionDigits: 2 });
+          const flyerImg = c.flayer || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600&auto=format&fit=crop&q=80';
+
+          html += `
+            <div class="col-md-6 col-lg-4">
+              <div class="card card-course h-100 shadow-sm">
+                <img src="${window.utils.escapeHtml(flyerImg)}" class="flayer-img" alt="${window.utils.escapeHtml(c.taller)}">
+                <div class="card-body d-flex flex-column p-4">
+                  <h5 class="fw-bold text-dark mb-2">${window.utils.escapeHtml(c.taller)}</h5>
+                  <p class="text-muted small flex-grow-1 mb-3">${window.utils.escapeHtml(c.descripcion || 'Sin descripción detallada.')}</p>
+
+                  <div class="bg-light p-3 rounded-3 mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <span class="badge price-badge-student py-2 px-3 fw-bold"><i class="fa-solid fa-graduation-cap me-1"></i>Estudiante UPTPC:</span>
+                      <div class="text-end">
+                        <strong class="text-success fs-5">${valEstBs} Bs.</strong>
+                        <small class="text-muted d-block">($${parseFloat(c.valor_estudiante || 0).toFixed(2)} USD)</small>
+                      </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                      <span class="badge price-badge-public py-2 px-3 fw-bold"><i class="fa-solid fa-user me-1"></i>Público / Foráneo:</span>
+                      <div class="text-end">
+                        <strong class="text-info fs-5">${valForBs} Bs.</strong>
+                        <small class="text-muted d-block">($${parseFloat(c.valor_foraneo || 0).toFixed(2)} USD)</small>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button class="btn btn-primary w-100 fw-bold py-2 shadow-sm" onclick="abrirModalPagoCurso('${c.id}')">
+                    <i class="fa-solid fa-cart-shopping me-2"></i>INSCRIBIRSE / PAGAR CURSO
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+
+        contenedor.innerHTML = html;
+      } catch (e) {
+        console.error('Error cargando cursos en tienda:', e);
+        contenedor.innerHTML = '<div class="col-12 text-center text-danger py-4">Error al obtener los cursos ofertados.</div>';
+      }
+    }
+
+    async function cargarListaBancos() {
+      const select = document.getElementById('selectPagoBanco');
+      if (!select) return;
+
+      try {
+        const res = await window.api.getAll('banco');
+        const bancos = (res && res.status === 'success' && Array.isArray(res.data)) ? res.data : [];
+
+        let options = '<option value="">Seleccione el Banco...</option>';
+        if (bancos.length > 0) {
+          bancos.forEach(b => {
+            options += `<option value="${window.utils.escapeHtml(b.banco)}">${window.utils.escapeHtml(b.banco)}</option>`;
+          });
+        } else {
+          const bancosDefault = ['Banco de Venezuela (0102)', 'Banesco (0134)', 'Banco Mercantil (0105)', 'BBVA Provincial (0108)', 'Banco Nacional de Crédito BNC (0191)', 'Bancamiga (0172)', 'Pago Móvil / Otras Entidades'];
+          bancosDefault.forEach(b => {
+            options += `<option value="${b}">${b}</option>`;
+          });
+        }
+        select.innerHTML = options;
+      } catch (e) {}
+    }
+
+    async function abrirModalPagoCurso(cursoId) {
+      const res = await window.api.getById('curso_ofertado', cursoId);
+      if (!res || res.status !== 'success' || !res.data) {
+        alert('No se encontró el curso seleccionado');
+        return;
+      }
+
+      cursoSeleccionadoActual = res.data;
+      usuarioIdentificadoActual = null;
+
+      document.getElementById('lblPagoNombreTaller').textContent = cursoSeleccionadoActual.taller;
+      document.getElementById('lblPagoDescTaller').textContent = cursoSeleccionadoActual.descripcion || '';
+      document.getElementById('inputPagoCursoId').value = cursoSeleccionadoActual.id;
+      document.getElementById('inputPagoFecha').value = new Date().toISOString().split('T')[0];
+
+      resetearIdentificacionPago();
+
+      const modalEl = document.getElementById('modalPagoCurso');
+      bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+
+    function resetearIdentificacionPago() {
+      usuarioIdentificadoActual = null;
+      document.getElementById('pasoIdentificacionUsuario').style.display = 'block';
+      document.getElementById('pasoRegistroInlineUsuario').style.display = 'none';
+      document.getElementById('formDeclaracionPago').style.display = 'none';
+      document.getElementById('inputPagoCedulaCheck').value = '';
+    }
+
+    async function verificarUsuarioParaPago() {
+      const rawCedula = document.getElementById('inputPagoCedulaCheck').value.trim();
+      if (!rawCedula) {
+        alert('Ingrese su número de cédula');
+        return;
+      }
+
+      const cedulaNorm = window.utils.normalizeCedula(rawCedula);
+
+      try {
+        const resUsers = await window.api.getAll('usuarios');
+        const usuarios = (resUsers && resUsers.status === 'success' && Array.isArray(resUsers.data)) ? resUsers.data : [];
+
+        const targetNorm = cedulaNorm.replace(/[\s-]/g, '').toUpperCase();
+        const found = usuarios.find(u => {
+          const uNorm = window.utils.normalizeCedula(u.cedula).replace(/[\s-]/g, '').toUpperCase();
+          return uNorm === targetNorm || String(u.cedula).toUpperCase() === rawCedula.toUpperCase();
+        });
+
+        if (found) {
+          activarFormularioPagoConUsuario(found);
+        } else {
+          // Mostrar paso de registro rápido inline
+          document.getElementById('pasoIdentificacionUsuario').style.display = 'none';
+          document.getElementById('pasoRegistroInlineUsuario').style.display = 'block';
+          document.getElementById('inputRegInlineNombre').focus();
+        }
+      } catch (e) {
+        alert('Error verificando usuario: ' + e.message);
+      }
+    }
+
+    async function guardarUsuarioInlineYContinuar() {
+      const rawCedula = document.getElementById('inputPagoCedulaCheck').value.trim();
+      const rawNombre = document.getElementById('inputRegInlineNombre').value.trim();
+      const correo = document.getElementById('inputRegInlineCorreo').value.trim();
+      const telefono = document.getElementById('inputRegInlineTelefono').value.trim();
+
+      if (!rawCedula || !rawNombre || !correo || !telefono) {
+        alert('Por favor complete todos los datos requeridos para registrarse.');
+        return;
+      }
+
+      const cedula = window.utils.normalizeCedula(rawCedula);
+      const nombre_completo = rawNombre.toUpperCase();
+      const id = window.utils.generateUUID();
+
+      const nuevoUsuario = { id, cedula, nombre_completo, correo, telefono, created_at: new Date().toISOString() };
+
+      try {
+        const res = await window.api.create('usuarios', nuevoUsuario);
+        if (res && res.status === 'success') {
+          alert('¡Registro exitoso! Procediendo a la declaración de pago.');
+          activarFormularioPagoConUsuario(nuevoUsuario);
+        } else {
+          alert('Error registrando usuario');
+        }
+      } catch (e) {
+        alert('Error al registrar usuario');
+      }
+    }
+
+    function activarFormularioPagoConUsuario(user) {
+      usuarioIdentificadoActual = user;
+      document.getElementById('pasoIdentificacionUsuario').style.display = 'none';
+      document.getElementById('pasoRegistroInlineUsuario').style.display = 'none';
+      document.getElementById('formDeclaracionPago').style.display = 'block';
+
+      document.getElementById('inputPagoUsuarioId').value = user.id;
+      document.getElementById('lblPagoUsuarioIdentificado').textContent = user.nombre_completo;
+      document.getElementById('lblPagoUsuarioCedula').textContent = `C.I.: ${user.cedula} | Teléfono: ${user.telefono || 'Sin registrar'}`;
+
+      calcularMontoPagoSegunTipo();
+    }
+
+    function calcularMontoPagoSegunTipo() {
+      if (!cursoSeleccionadoActual) return;
+      const isEstudiante = document.getElementById('radioEstudiante').checked;
+
+      const usdPrice = isEstudiante 
+        ? parseFloat(cursoSeleccionadoActual.valor_estudiante || 0)
+        : parseFloat(cursoSeleccionadoActual.valor_foraneo || 0);
+
+      const bsPrice = usdPrice * tasaDolar;
+
+      document.getElementById('lblPagoMontoCalculadoBs').textContent = `${bsPrice.toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.`;
+      document.getElementById('lblPagoMontoCalculadoUsd').textContent = `($${usdPrice.toFixed(2)} USD)`;
+      document.getElementById('inputPagoMontoBs').value = bsPrice.toFixed(2);
+    }
+
+    async function guardarDeclaracionPago(e) {
+      e.preventDefault();
+
+      if (!usuarioIdentificadoActual || !cursoSeleccionadoActual) {
+        alert('Identificación incompleta.');
+        return;
+      }
+
+      const banco_origen = document.getElementById('selectPagoBanco').value;
+      const monto = parseFloat(document.getElementById('inputPagoMontoBs').value) || 0;
+      const numero_transferencia = document.getElementById('inputPagoReferencia').value.trim();
+      const fecha_pago = document.getElementById('inputPagoFecha').value;
+      const fileInput = document.getElementById('inputPagoCaptureFile');
+      const file = fileInput.files[0];
+
+      if (!banco_origen || !monto || !numero_transferencia || !fecha_pago || !file) {
+        alert('Por favor complete todos los datos del pago y adjunte el capture.');
+        return;
+      }
+
+      try {
+        const modalEl = document.getElementById('modalPagoCurso');
+        const modalInst = bootstrap.Modal.getInstance(modalEl);
+
+        const compressedBase64 = await window.utils.compressImage(file, 900, 900, 0.8);
+        const filename = `capture_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9\._-]/g, '')}`;
+
+        // Subir capture a la carpeta Google Drive oficial de Captures (ID: 1HVwi38M9GGlofZ3rcsSRs5WpOEqD2Tgz)
+        const uploadRes = await window.api.uploadImage(compressedBase64, filename, CAPTURE_FOLDER_ID);
+        const captureUrl = (uploadRes && uploadRes.status === 'success') ? uploadRes.url : compressedBase64;
+
+        const nuevoPago = {
+          id: window.utils.generateUUID(),
+          id_usuario: usuarioIdentificadoActual.id,
+          id_curso_ofertado: cursoSeleccionadoActual.id,
+          banco_origen,
+          monto,
+          numero_transferencia,
+          fecha_pago,
+          capture: captureUrl,
+          status: false,
+          created_at: new Date().toISOString()
+        };
+
+        const res = await window.api.create('pagos', nuevoPago);
+
+        if (res && res.status === 'success') {
+          if (modalInst) modalInst.hide();
+          alert('¡Tu declaración de pago ha sido enviada exitosamente! Se encuentra en proceso de verificación por la Administración.');
+        } else {
+          alert('Error guardando declaración de pago.');
+        }
+      } catch (err) {
+        console.error('Error enviando pago:', err);
+        alert('Error al procesar la declaración de pago: ' + err.message);
+      }
+    }
+
+    function abrirModalConsultaPagos() {
+      const modalEl = document.getElementById('modalConsultaPagos');
+      bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+
+    async function consultarPagosPorCedula() {
+      const input = document.getElementById('inputConsultaCedulaPagos');
+      const contenedor = document.getElementById('contenedorResultadosPagosUsuario');
+      const rawCedula = input.value.trim();
+
+      if (!rawCedula) {
+        contenedor.innerHTML = '<div class="alert alert-warning">Ingrese una cédula de identidad para consultar.</div>';
+        return;
+      }
+
+      contenedor.innerHTML = '<div class="text-center py-3"><div class="spinner-border text-primary" role="status"></div></div>';
+
+      try {
+        const [resUsers, resPagos, resCursos] = await Promise.all([
+          window.api.getAll('usuarios'),
+          window.api.getAll('pagos'),
+          window.api.getAll('curso_ofertado')
+        ]);
+
+        const usuarios = (resUsers && resUsers.status === 'success') ? resUsers.data : [];
+        const pagos = (resPagos && resPagos.status === 'success') ? resPagos.data : [];
+        const cursos = (resCursos && resCursos.status === 'success') ? resCursos.data : [];
+
+        const normTarget = window.utils.normalizeCedula(rawCedula).replace(/[\s-]/g, '').toUpperCase();
+        const user = usuarios.find(u => window.utils.normalizeCedula(u.cedula).replace(/[\s-]/g, '').toUpperCase() === normTarget);
+
+        if (!user) {
+          contenedor.innerHTML = `<div class="alert alert-danger">No se encontró ningún usuario registrado con la cédula <strong>${window.utils.escapeHtml(rawCedula)}</strong>.</div>`;
+          return;
+        }
+
+        const cursosMap = Object.fromEntries(cursos.map(c => [String(c.id), c]));
+        const misPagos = pagos.filter(p => String(p.id_usuario) === String(user.id));
+
+        if (misPagos.length === 0) {
+          contenedor.innerHTML = `
+            <div class="alert alert-info">
+              <h5>Hola, ${window.utils.escapeHtml(user.nombre_completo)}</h5>
+              <p class="mb-0">No posees declaraciones de pago registradas en el sistema.</p>
+            </div>
+          `;
+          return;
+        }
+
+        let html = `
+          <div class="card p-3 mb-3 bg-light border-0">
+            <h6 class="fw-bold mb-1 text-primary">${window.utils.escapeHtml(user.nombre_completo)}</h6>
+            <small class="text-muted">C.I.: ${window.utils.escapeHtml(user.cedula)} | Correo: ${window.utils.escapeHtml(user.correo || 'N/A')}</small>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle small">
+              <thead class="table-dark">
+                <tr>
+                  <th>Taller Ofertado</th>
+                  <th>Banco / Ref.</th>
+                  <th>Monto (Bs.)</th>
+                  <th>Fecha Pago</th>
+                  <th class="text-center">Capture</th>
+                  <th class="text-center">Estatus</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+
+        misPagos.forEach(p => {
+          const curso = cursosMap[String(p.id_curso_ofertado)] || {};
+          const isVerificado = (p.status === true || String(p.status).toLowerCase() === 'true');
+          const badge = isVerificado
+            ? '<span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>Verificado / Enviado a Admin</span>'
+            : '<span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i>En Proceso</span>';
+
+          const captureBtn = p.capture 
+            ? `<a href="${window.utils.escapeHtml(p.capture)}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fa-solid fa-image"></i> Ver</a>`
+            : '<span class="text-muted">-</span>';
+
+          html += `
+            <tr>
+              <td class="fw-bold text-dark">${window.utils.escapeHtml(curso.taller || 'Taller')}</td>
+              <td>${window.utils.escapeHtml(p.banco_origen)}<br><code>${window.utils.escapeHtml(p.numero_transferencia)}</code></td>
+              <td class="fw-bold text-success">${parseFloat(p.monto).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.</td>
+              <td>${window.utils.escapeHtml(p.fecha_pago)}</td>
+              <td class="text-center">${captureBtn}</td>
+              <td class="text-center">${badge}</td>
+            </tr>
+          `;
+        });
+
+        html += '</tbody></table></div>';
+        contenedor.innerHTML = html;
+      } catch (e) {
+        console.error('Error consultando pagos:', e);
+        contenedor.innerHTML = '<div class="alert alert-danger">Error al consultar declaraciones de pago.</div>';
+      }
+    }
+  </script>
+</body>
+</html>

@@ -168,17 +168,22 @@
 <!-- Header institucional -->
 <header class="bg-white border-bottom border-primary border-3 shadow-sm py-4 mb-4">
   <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between">
-    <div class="d-flex align-items-center">
-      <!-- Logo con margen a la derecha (mr-4 / margin-right) -->
+    <div class="d-flex align-items-center mb-3 mb-md-0">
+      <!-- Logo con margen a la derecha -->
       <img src="img/CYT.png" alt="Logo UCT UPTPC" class="mr-3" style="height: 70px; max-width: 100%; object-fit: contain;">
       
-      <!-- Línea divisoria vertical (con márgenes mr-4 y pr-4) -->
+      <!-- Línea divisoria vertical -->
       <div class="border-right pr-4 mr-4 d-none d-sm-block" style="height: 50px; border-color: #dee2e6 !important;"></div>
 
       <div>
         <h1 class="h4 fw-bold text-primary mb-0" style="color: #003366 !important;">UNIVERSIDAD POLITÉCNICA TERRITORIAL DE PUERTO CABELLO</h1>
         <p class="text-secondary mb-0 fw-semibold">UNIDAD DE CIENCIA Y TECNOLOGÍA</p>
       </div>
+    </div>
+    <div>
+      <a href="cursos.html" class="btn btn-outline-primary font-weight-bold py-2 px-3 shadow-sm">
+        <i class="fa-solid fa-store mr-2"></i>VER OFERTA DE CURSOS
+      </a>
     </div>
   </div>
 </header>
@@ -231,17 +236,64 @@
   </div>
 </div>
 
-<!-- Footer institucional -->
-  <footer class="bg-white border-top py-3 text-center text-muted small mt-auto">
-    <div class="container">
-      <p class="mb-0">&copy; 2026 <a href="https://cyt.uptpc.edu.ve" target="_blank" rel="noopener noreferrer" class="text-decoration-none text-dark"><strong>Unidad de Ciencia y Tecnología</strong></a> &bull; <a href="https://www.uptpc.edu.ve" target="_blank" rel="noopener noreferrer" class="text-decoration-none text-muted">Universidad Politécnica Territorial de Puerto Cabello</a></p>
-      <span class="text-secondary small">Sistema de Gestión y Consulta Integrado UPTPC</span>
+<!-- Modal Registro Nuevo Usuario -->
+<div class="modal fade" id="modalRegistroUsuario" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content border-0 shadow-lg">
+      <form id="formRegistroUsuarioModal" onsubmit="guardarNuevoUsuarioModal(event)">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title font-weight-bold">
+            <i class="fa-solid fa-user-plus mr-2"></i>Registro de Nuevo Usuario
+          </h5>
+          <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="form-group mb-3">
+            <label for="inputRegCedula" class="font-weight-bold">Cédula de Identidad (Formato V-12345678): <span class="text-danger">*</span></label>
+            <input type="text" class="form-control form-control-lg text-uppercase" id="inputRegCedula" placeholder="V-12345678" required>
+          </div>
+          <div class="form-group mb-3">
+            <label for="inputRegNombre" class="font-weight-bold">Nombre Completo (Se guardará en MAYÚSCULAS): <span class="text-danger">*</span></label>
+            <input type="text" class="form-control form-control-lg text-uppercase" id="inputRegNombre" placeholder="JUAN ALBERTO PÉREZ" oninput="this.value = this.value.toUpperCase()" required>
+          </div>
+          <div class="form-group mb-3">
+            <label for="inputRegCorreo" class="font-weight-bold">Correo Electrónico: <span class="text-danger">*</span></label>
+            <input type="email" class="form-control" id="inputRegCorreo" placeholder="correo@ejemplo.com" required>
+          </div>
+          <div class="form-group mb-3">
+            <label for="inputRegTelefono" class="font-weight-bold">Número de Teléfono: <span class="text-danger">*</span></label>
+            <input type="tel" class="form-control" id="inputRegTelefono" placeholder="0412-1234567" required>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary font-weight-bold px-4">
+            <i class="fa-solid fa-check mr-2"></i>Completar Registro
+          </button>
+        </div>
+      </form>
     </div>
-  </footer>
+  </div>
+</div>
 
-<script src="https://cyt.uptpc.edu.ve/certificaciones/js/config.js"></script>
-<script src="https://cyt.uptpc.edu.ve/certificaciones/js/utils.js"></script>
-<script src="https://cyt.uptpc.edu.ve/certificaciones/js/cert-renderer.js"></script>
+<!-- Footer institucional -->
+<footer class="bg-white border-top py-3 text-center text-muted small mt-auto">
+  <div class="container">
+    <p class="mb-0">&copy; 2026 <a href="https://cyt.uptpc.edu.ve" target="_blank" rel="noopener noreferrer" class="text-decoration-none text-dark"><strong>Unidad de Ciencia y Tecnología</strong></a> &bull; <a href="https://www.uptpc.edu.ve" target="_blank" rel="noopener noreferrer" class="text-decoration-none text-muted">Universidad Politécnica Territorial de Puerto Cabello</a></p>
+    <span class="text-secondary small">Sistema de Gestión y Consulta Integrado UPTPC</span>
+  </div>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/cert-renderer.js"></script>
+<script src="js/api.js"></script>
+
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
 <script>
 // ============================================================
@@ -252,7 +304,6 @@ const API_URL = (window.config && window.config.getApiUrl) ? window.config.getAp
 let ultimoTerminoBusqueda = "";
 let disenoActivo = null;
 let resultadosGuardados = [];
-// Caché de diseños ya obtenidos por ID para no repetir fetches
 const _cacheDisenos = {};
 
 // ============================================================
@@ -271,6 +322,9 @@ async function _fetchJson(url) {
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
   cargarDisenoActivo();
+  if (window.api && window.api.preloadAllData) {
+    window.api.preloadAllData().catch(e => console.warn(e));
+  }
 
   const inputBusqueda = document.getElementById('busqueda');
   if (inputBusqueda) {
@@ -287,7 +341,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Verificar parámetros URL al cargar (?ID=... o ?cedula=...)
   const urlParams = new URLSearchParams(window.location.search);
   const idParam = urlParams.get('ID') || urlParams.get('id');
   const cedulaParam = urlParams.get('cedula');
@@ -300,12 +353,9 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
-// ============================================================
-// CARGAR DISEÑO ACTIVO DE LA BASE DE DATOS
-// ============================================================
 async function cargarDisenoActivo() {
   try {
-    const json = await _fetchJson(`${API_URL}?action=getDisenoActivo`);
+    const json = await window.api.getDisenoActivo();
     if (json.status === 'success' && json.data) {
       disenoActivo = json.data;
     }
@@ -315,7 +365,7 @@ async function cargarDisenoActivo() {
 }
 
 // ============================================================
-// FUNCIÓN PRINCIPAL DE BÚSQUEDA
+// FUNCIÓN PRINCIPAL DE BÚSQUEDA Y EVALUACIÓN DE USUARIOS
 // ============================================================
 async function buscarCertificado() {
   const terminoRaw = document.getElementById('busqueda').value.trim().toUpperCase();
@@ -338,16 +388,15 @@ async function buscarCertificado() {
   try {
     let resultados = [];
 
-    // 1. Intentar búsqueda con el término normalizado (Ej: V-12345678)
-    const json = await _fetchJson(`${API_URL}?action=searchCertificado&termino=${encodeURIComponent(termino)}`);
-
+    // 1. Intentar búsqueda de certificados con término normalizado
+    const json = await window.api.searchCertificados(termino);
     if (json.status === 'success' && Array.isArray(json.data)) {
       resultados = json.data;
     }
 
-    // 2. Si no encontró resultados con la cédula normalizada y difiere del término crudo, probar con el término crudo
+    // 2. Si no hay certificados y el término difiere, probar término crudo
     if (resultados.length === 0 && termino !== terminoRaw) {
-      const jsonRaw = await _fetchJson(`${API_URL}?action=searchCertificado&termino=${encodeURIComponent(terminoRaw)}`);
+      const jsonRaw = await window.api.searchCertificados(terminoRaw);
       if (jsonRaw.status === 'success' && Array.isArray(jsonRaw.data)) {
         resultados = jsonRaw.data;
       }
@@ -357,18 +406,12 @@ async function buscarCertificado() {
 
     if (resultados.length > 0) {
       mostrarResultados(resultados);
-
-      // Registrar consulta en la bitácora (fire-and-forget)
       if (resultados[0] && resultados[0].id) {
-        fetch(API_URL, {
-          method: 'POST',
-          mode: 'cors',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'logConsulta', certificado_id: resultados[0].id })
-        }).catch(() => {});
+        window.api.logConsulta(resultados[0].id).catch(() => {});
       }
     } else {
-      resultadosDiv.innerHTML = '<div class="alert alert-danger mt-3"><i class="fa-solid fa-circle-exclamation mr-2"></i>No se encontraron certificados para: <strong>' + _esc(terminoRaw) + '</strong> en la Base de Datos.</div>';
+      // 3. No se encontraron certificados. Verificar si el término es una Cédula y evaluar la tabla 'usuarios'
+      await manejarBusquedaSinCertificados(terminoRaw, termino);
     }
   } catch (error) {
     console.error('Error en búsqueda en La Base de Datos:', error);
@@ -379,8 +422,158 @@ async function buscarCertificado() {
   }
 }
 
+async function manejarBusquedaSinCertificados(terminoRaw, terminoNorm) {
+  const resultadosDiv = document.getElementById('resultados');
+
+  try {
+    const resUsuarios = await window.api.getAll('usuarios');
+    const usuarios = (resUsuarios && resUsuarios.status === 'success' && Array.isArray(resUsuarios.data)) ? resUsuarios.data : [];
+
+    const normTarget = terminoNorm.replace(/[\s-]/g, '').toUpperCase();
+    const rawTarget = terminoRaw.replace(/[\s-]/g, '').toUpperCase();
+
+    const usuario = usuarios.find(u => {
+      const uNorm = window.utils ? window.utils.normalizeCedula(u.cedula).replace(/[\s-]/g, '').toUpperCase() : String(u.cedula).replace(/[\s-]/g, '').toUpperCase();
+      return uNorm === normTarget || uNorm === rawTarget || String(u.cedula).trim().toUpperCase() === terminoRaw;
+    });
+
+    if (usuario) {
+      // Caso 1: El usuario existe pero NO posee certificaciones
+      resultadosDiv.innerHTML = `
+        <div class="alert alert-info p-4 rounded-3 text-center border-0 shadow-sm mt-3">
+          <i class="fa-solid fa-circle-info fa-3x mb-3 text-info"></i>
+          <h4 class="font-weight-bold mb-2">El usuario no posee certificaciones en el sistema</h4>
+          <p class="mb-0">El usuario <strong>${_esc(usuario.nombre_completo)}</strong> (C.I. ${_esc(usuario.cedula)}) se encuentra registrado en el sistema, pero no posee certificados emitidos hasta la fecha.</p>
+        </div>
+
+        <!-- Card Perfil de Usuario -->
+        <div class="card shadow-sm border-0 mt-4 text-left">
+          <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 font-weight-bold"><i class="fa-solid fa-user-gear mr-2"></i>Perfil de Usuario</h5>
+            <span class="badge badge-light text-primary font-weight-bold">${_esc(usuario.cedula)}</span>
+          </div>
+          <div class="card-body p-4">
+            <form id="formPerfilUsuario" onsubmit="guardarPerfilUsuario(event, '${_esc(usuario.id)}')">
+              <div class="form-group mb-3">
+                <label class="font-weight-bold">Cédula de Identidad:</label>
+                <input type="text" class="form-control bg-light" value="${_esc(usuario.cedula)}" disabled readonly>
+              </div>
+              <div class="form-group mb-3">
+                <label class="font-weight-bold">Nombre Completo:</label>
+                <input type="text" class="form-control bg-light" value="${_esc(usuario.nombre_completo)}" disabled readonly>
+              </div>
+              <div class="form-group mb-3">
+                <label for="inputPerfilCorreo" class="font-weight-bold text-primary">Correo Electrónico: <span class="text-danger">*</span></label>
+                <input type="email" class="form-control" id="inputPerfilCorreo" value="${_esc(usuario.correo || '')}" placeholder="correo@ejemplo.com" required>
+              </div>
+              <div class="form-group mb-3">
+                <label for="inputPerfilTelefono" class="font-weight-bold text-primary">Número de Teléfono: <span class="text-danger">*</span></label>
+                <input type="tel" class="form-control" id="inputPerfilTelefono" value="${_esc(usuario.telefono || '')}" placeholder="0412-1234567" required>
+              </div>
+              <div class="alert alert-warning py-2 mb-3 small">
+                <i class="fa-solid fa-circle-info mr-1"></i><strong>Nota importante:</strong> Los usuarios podrán actualizar desde su perfil SOLAMENTE su número de teléfono o correo. Si por alguna razón necesitan editar su nombre deben ponerse en contacto con el correo: <a href="mailto:sereinf@uptpc.edu.ve" class="alert-link font-weight-bold">sereinf@uptpc.edu.ve</a>
+              </div>
+              <button type="submit" class="btn btn-primary btn-block font-weight-bold py-2">
+                <i class="fa-solid fa-floppy-disk mr-2"></i>Guardar Cambios de Perfil
+              </button>
+            </form>
+          </div>
+        </div>
+      `;
+    } else {
+      // Caso 2: El usuario no existe en la base de datos de usuarios
+      resultadosDiv.innerHTML = `
+        <div class="alert alert-warning p-4 rounded-3 text-center border-0 shadow-sm mt-3">
+          <i class="fa-solid fa-user-xmark fa-3x mb-3 text-warning"></i>
+          <h4 class="font-weight-bold mb-2">Cédula no registrada en el sistema</h4>
+          <p class="mb-3">La cédula <strong>${_esc(terminoRaw)}</strong> no aparece registrada como usuario ni posee certificados en el sistema UPTPC.</p>
+          <button class="btn btn-success btn-lg px-4 font-weight-bold shadow-sm" onclick="abrirModalRegistroUsuario('${_esc(terminoNorm)}')">
+            <i class="fa-solid fa-user-plus mr-2"></i>REGISTRARSE AHORA
+          </button>
+        </div>
+      `;
+    }
+  } catch (err) {
+    console.error('Error al evaluar usuario:', err);
+    resultadosDiv.innerHTML = '<div class="alert alert-danger mt-3"><i class="fa-solid fa-circle-exclamation mr-2"></i>No se encontraron certificados ni registros para el término ingresado.</div>';
+  }
+}
+
+function abrirModalRegistroUsuario(cedulaSugerida) {
+  const norm = window.utils ? window.utils.normalizeCedula(cedulaSugerida) : cedulaSugerida;
+  document.getElementById('inputRegCedula').value = norm || '';
+  document.getElementById('inputRegNombre').value = '';
+  document.getElementById('inputRegCorreo').value = '';
+  document.getElementById('inputRegTelefono').value = '';
+  $('#modalRegistroUsuario').modal('show');
+}
+
+async function guardarNuevoUsuarioModal(e) {
+  e.preventDefault();
+  const rawCedula = document.getElementById('inputRegCedula').value.trim();
+  const rawNombre = document.getElementById('inputRegNombre').value.trim();
+  const correo = document.getElementById('inputRegCorreo').value.trim();
+  const telefono = document.getElementById('inputRegTelefono').value.trim();
+
+  if (!rawCedula || !rawNombre || !correo || !telefono) {
+    alert('Por favor complete todos los campos requeridos.');
+    return;
+  }
+
+  const cedula = window.utils ? window.utils.normalizeCedula(rawCedula) : rawCedula.toUpperCase();
+  const nombre_completo = rawNombre.toUpperCase();
+  const id = window.utils ? window.utils.generateUUID() : 'usr_' + Date.now();
+
+  const nuevoUsuario = {
+    id,
+    cedula,
+    nombre_completo,
+    correo,
+    telefono,
+    created_at: new Date().toISOString()
+  };
+
+  try {
+    const res = await window.api.create('usuarios', nuevoUsuario);
+    if (res && res.status === 'success') {
+      $('#modalRegistroUsuario').modal('hide');
+      alert('¡Registro de usuario completado exitosamente!');
+      document.getElementById('busqueda').value = cedula;
+      buscarCertificado();
+    } else {
+      alert('Error al registrar usuario: ' + ((res && res.message) || 'Intente nuevamente'));
+    }
+  } catch (err) {
+    console.error('Error creando usuario:', err);
+    alert('Error al conectar con la base de datos para registrar el usuario.');
+  }
+}
+
+async function guardarPerfilUsuario(e, userId) {
+  e.preventDefault();
+  const correo = document.getElementById('inputPerfilCorreo').value.trim();
+  const telefono = document.getElementById('inputPerfilTelefono').value.trim();
+
+  if (!correo || !telefono) {
+    alert('El correo y teléfono no pueden estar vacíos.');
+    return;
+  }
+
+  try {
+    const res = await window.api.update('usuarios', userId, { correo, telefono });
+    if (res && res.status === 'success') {
+      alert('¡Perfil de usuario actualizado exitosamente!');
+    } else {
+      alert('Error al actualizar el perfil.');
+    }
+  } catch (err) {
+    console.error('Error actualizando perfil:', err);
+    alert('Error al guardar cambios de perfil.');
+  }
+}
+
 // ============================================================
-// MOSTRAR RESULTADOS
+// MOSTRAR RESULTADOS CERTIFICADOS
 // ============================================================
 function mostrarResultados(resultados) {
   const resultadosDiv = document.getElementById('resultados');
@@ -452,20 +645,16 @@ function getBadgeClass(codigo) {
   }
 }
 
-// ============================================================
-// OBTENER DISEÑO PARA UN CERTIFICADO (CON CACHÉ)
-// ============================================================
 async function obtenerDisenoParaCertificadoConsulta(cert) {
   let disenoObj = null;
 
   const disenoId = cert ? (cert.diseno || cert.curso_diseno) : null;
   if (disenoId) {
-    // Verificar caché primero
     if (_cacheDisenos[disenoId]) {
       return _cacheDisenos[disenoId];
     }
     try {
-      const json = await _fetchJson(`${API_URL}?action=getById&tabla=disenos&id=${encodeURIComponent(disenoId)}`);
+      const json = await window.api.getById('disenos', disenoId);
       if (json.status === 'success' && json.data) {
         disenoObj = json.data;
         _cacheDisenos[disenoId] = disenoObj;
@@ -483,15 +672,12 @@ async function obtenerDisenoParaCertificadoConsulta(cert) {
   return disenoObj;
 }
 
-// ============================================================
-// MOSTRAR CERTIFICADO SVG (TIRO Y RETIRO)
-// ============================================================
 async function mostrarCertificado(codigo) {
   try {
     let cert = resultadosGuardados.find(c => String(c.codigo).trim().toUpperCase() === String(codigo).trim().toUpperCase());
 
     if (!cert) {
-      const json = await _fetchJson(`${API_URL}?action=searchCertificado&termino=${encodeURIComponent(codigo)}`);
+      const json = await window.api.searchCertificados(codigo);
       if (json.status === 'success' && Array.isArray(json.data) && json.data.length > 0) {
         cert = json.data[0];
       }
@@ -538,15 +724,11 @@ async function mostrarCertificado(codigo) {
   }
 }
 
-// ============================================================
-// IMPRIMIR CERTIFICADO (1 o 2 páginas)
-// ============================================================
 function imprimirCertificado() {
   const container = document.getElementById('certificado-container');
   const svgEls = container.querySelectorAll('svg');
   if (!svgEls || svgEls.length === 0) { alert('No hay certificado para imprimir'); return; }
 
-  // Construir el HTML con page-break entre Tiro y Retiro
   let pagesHtml = '';
   svgEls.forEach((svgEl, idx) => {
     const svgStr = new XMLSerializer().serializeToString(svgEl);
@@ -571,20 +753,10 @@ function imprimirCertificado() {
   setTimeout(() => { printWin.print(); printWin.close(); }, 600);
 }
 
-// ============================================================
-// DESCARGAR PNG (Tiro y Retiro como imágenes separadas)
-// ============================================================
-
-/**
- * Convierte una URL de imagen a base64 data URI.
- * Si falla (CORS, 404, etc.), devuelve la URL original.
- */
 async function imageUrlToBase64(url) {
   try {
     if (url.startsWith('data:')) return url;
-
     const absoluteUrl = new URL(url, window.location.href).href;
-
     const resp = await fetch(absoluteUrl, { mode: 'cors' });
     if (!resp.ok) return url;
     const blob = await resp.blob();
@@ -613,14 +785,9 @@ async function imageUrlToBase64(url) {
   }
 }
 
-/**
- * Clona un elemento SVG e incrusta todas sus <image> como base64 inline.
- * Retorna el SVG clonado listo para serializar.
- */
 async function embedSvgImages(svgEl) {
   const clone = svgEl.cloneNode(true);
   const images = clone.querySelectorAll('image');
-
   const promises = Array.from(images).map(async (imgEl) => {
     const href = imgEl.getAttribute('href') || imgEl.getAttributeNS('http://www.w3.org/1999/xlink', 'href');
     if (href && !href.startsWith('data:')) {
@@ -629,7 +796,6 @@ async function embedSvgImages(svgEl) {
       imgEl.removeAttributeNS('http://www.w3.org/1999/xlink', 'href');
     }
   });
-
   await Promise.all(promises);
   return clone;
 }
@@ -640,7 +806,6 @@ async function descargarPNG() {
   if (!svgEls || svgEls.length === 0) { alert('No hay certificado activo para descargar'); return; }
 
   document.getElementById('progressContainer').style.display = 'block';
-
   let processed = 0;
   const total = svgEls.length;
 
@@ -649,7 +814,6 @@ async function descargarPNG() {
     const label = total > 1 ? (idx === 0 ? '_Tiro_Frente' : '_Retiro_Atras') : '';
 
     try {
-      // Clonar SVG e incrustar imágenes como base64
       const embeddedSvg = await embedSvgImages(svgEl);
       const svgData = new XMLSerializer().serializeToString(embeddedSvg);
       const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
@@ -659,7 +823,7 @@ async function descargarPNG() {
         const img = new Image();
         img.onload = function() {
           const canvas = document.createElement('canvas');
-          const scale = 2; // Mantiene el tamaño y resolución completa
+          const scale = 2;
           canvas.width = (svgEl.viewBox.baseVal.width || 1123) * scale;
           canvas.height = (svgEl.viewBox.baseVal.height || 794) * scale;
           const ctx = canvas.getContext('2d');
@@ -691,9 +855,6 @@ async function descargarPNG() {
   }
 }
 
-// ============================================================
-// NAVEGACIÓN
-// ============================================================
 function cerrarCertificado() {
   document.getElementById('cert-section').style.display = 'none';
   document.getElementById('certificado-container').innerHTML = '';

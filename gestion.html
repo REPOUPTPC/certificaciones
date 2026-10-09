@@ -34,6 +34,9 @@
       <a href="#dashboard" class="nav-link-tab active" data-target="secDashboard">
         <i class="fa-solid fa-chart-line me-2"></i> <span class="sidebar-text">Dashboard</span>
       </a>
+      <a href="#ofertas" class="nav-link-tab" data-target="secOfertas">
+        <i class="fa-solid fa-store me-2"></i> <span class="sidebar-text">Ofertas Cursos</span>
+      </a>
       <a href="#usuarios" class="nav-link-tab" data-target="secUsuarios">
         <i class="fa-solid fa-users me-2"></i> <span class="sidebar-text">Usuarios</span>
       </a>
@@ -205,6 +208,92 @@
               <button class="btn btn-outline-dark p-3 text-start" onclick="document.querySelector('[data-target=\'secDisenador\']').click()">
                 <i class="fa-solid fa-palette fa-lg me-2"></i> Diseñador Interactivo SVG
               </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <!-- SECCIÓN OFERTAS DE CURSOS Y PAGOS -->
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <section id="secOfertas" class="tab-section" style="display: none;">
+      <div class="card border-0 shadow-sm p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+          <div>
+            <h4 class="fw-bold mb-0" style="color: var(--primary-color);">
+              <i class="fa-solid fa-store me-2"></i>Gestión de Ofertas de Cursos y Pagos
+            </h4>
+            <small class="text-muted">Administración de la tienda virtual, precios en USD y verificación de transferencias</small>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-dark py-2 px-3 fs-6" id="lblTasaDolarOfertas">
+              Tasa Oficial BCV: Cargando...
+            </span>
+            <button class="btn btn-primary" id="btnNuevaOfertaCurso">
+              <i class="fa-solid fa-plus-circle me-1"></i> Nuevo Taller Ofertado
+            </button>
+          </div>
+        </div>
+
+        <!-- Pestanas secundarias: Ofertas vs Pagos -->
+        <ul class="nav nav-tabs mb-4" id="ofertasTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-bold" id="tab-talleres-tab" data-bs-toggle="tab" data-bs-target="#tab-talleres" type="button" role="tab">
+              <i class="fa-solid fa-list-check me-2"></i>Talleres Ofertados (Tienda)
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold text-success" id="tab-pagos-tab" data-bs-toggle="tab" data-bs-target="#tab-pagos" type="button" role="tab">
+              <i class="fa-solid fa-receipt me-2"></i>Verificación de Pagos
+            </button>
+          </li>
+        </ul>
+
+        <div class="tab-content" id="ofertasTabsContent">
+          <!-- TAB 1: TALLERES OFERTADOS -->
+          <div class="tab-pane fade show active" id="tab-talleres" role="tabpanel">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th class="text-center" style="width: 80px;">Portada</th>
+                    <th>Taller / Curso</th>
+                    <th>Descripción</th>
+                    <th class="text-center">Valor Estudiante</th>
+                    <th class="text-center">Valor Foráneo</th>
+                    <th class="text-center">Fecha Creación</th>
+                    <th class="text-center">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyOfertasCursos">
+                  <tr><td colspan="7" class="text-center text-muted py-4">Cargando ofertas...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- TAB 2: VERIFICACIÓN DE PAGOS -->
+          <div class="tab-pane fade" id="tab-pagos" role="tabpanel">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Usuario / Participante</th>
+                    <th>Curso Ofertado</th>
+                    <th>Banco Origen</th>
+                    <th class="text-center">Monto (Bs.)</th>
+                    <th class="text-center">N° Referencia</th>
+                    <th class="text-center">Capture</th>
+                    <th class="text-center">Estatus</th>
+                    <th class="text-center">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyPagosAdministracion">
+                  <tr><td colspan="9" class="text-center text-muted py-4">Cargando declaraciones de pagos...</td></tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -1596,6 +1685,93 @@
     </div>
   </div>
 
+  <!-- Modal Crear / Editar Oferta de Curso -->
+  <div class="modal fade" id="modalOfertaCurso" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <form id="formOfertaCurso">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title fw-bold" id="lblModalOfertaTitulo">
+              <i class="fa-solid fa-plus-circle me-2"></i>Nuevo Taller / Curso Ofertado
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body p-4">
+            <input type="hidden" id="inputOfertaId">
+            <input type="hidden" id="inputOfertaFlayerUrl">
+
+            <div class="mb-3">
+              <label for="inputOfertaTaller" class="form-label fw-bold">Nombre del Taller / Curso <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-control-lg" id="inputOfertaTaller" placeholder="Ej: TALLER DE DESARROLLO WEB FULL STACK" required>
+            </div>
+
+            <div class="mb-3">
+              <label for="inputOfertaDescripcion" class="form-label fw-bold">Descripción del Contenido / Programa</label>
+              <textarea class="form-control" id="inputOfertaDescripcion" rows="3" placeholder="Resumen del taller, módulos, contenido y objetivos..."></textarea>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label for="inputOfertaValorEstudiante" class="form-label fw-bold text-success">
+                  <i class="fa-solid fa-graduation-cap me-1"></i>Valor Estudiante UPTPC ($ USD) <span class="text-danger">*</span>
+                </label>
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input type="number" step="0.01" min="0" class="form-control" id="inputOfertaValorEstudiante" placeholder="10.00" required>
+                </div>
+                <small class="text-muted">Precio preferencial para estudiantes activos de la universidad</small>
+              </div>
+
+              <div class="col-md-6">
+                <label for="inputOfertaValorForaneo" class="form-label fw-bold text-info">
+                  <i class="fa-solid fa-user me-1"></i>Valor Foráneo / Público ($ USD) <span class="text-danger">*</span>
+                </label>
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input type="number" step="0.01" min="0" class="form-control" id="inputOfertaValorForaneo" placeholder="25.00" required>
+                </div>
+                <small class="text-muted">Precio regular para profesionales y público externo</small>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="inputOfertaFlayerFile" class="form-label fw-bold">
+                <i class="fa-solid fa-image me-1"></i>Flayer / Portada Promocional (Google Drive)
+              </label>
+              <input type="file" class="form-control" id="inputOfertaFlayerFile" accept="image/*">
+              <small class="text-muted">Subirá automáticamente la imagen a la carpeta de Google Drive configurada (ID: 110EX5edxA-UP1_Q3JpfLZ3qAN7Y92J9J)</small>
+            </div>
+
+            <div class="text-center mt-2">
+              <img id="imgOfertaFlayerPreview" src="" alt="Vista previa de Flayer" class="img-thumbnail" style="max-height: 200px; display: none;">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary fw-bold px-4">
+              <i class="fa-solid fa-floppy-disk me-1"></i> Guardar Taller Ofertado
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Visualizar Imagen Full -->
+  <div class="modal fade" id="modalVerImagenFull" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold" id="lblModalImagenFullTitulo">Vista Previa de Imagen</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center p-3">
+          <img id="imgModalFullPreview" src="" class="img-fluid rounded shadow-sm" style="max-height: 80vh;" alt="Vista previa full">
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Loading Overlay Global con Porcentaje -->
   <div id="globalLoadingOverlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15,23,42,0.8); backdrop-filter:blur(4px); z-index:99999; align-items:center; justify-content:center;">
     <div class="card shadow-lg border-0 text-center p-4" style="max-width:420px; width:90%; border-radius:16px;">
@@ -1617,6 +1793,7 @@
   <script src="js/cert-renderer.js"></script>
   <script src="js/api.js"></script>
   <script src="js/modules/dashboard.js"></script>
+  <script src="js/modules/ofertas.js"></script>
   <script src="js/modules/usuarios.js"></script>
   <script src="js/modules/unidades.js"></script>
   <script src="js/modules/firmas.js"></script>
