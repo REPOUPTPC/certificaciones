@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="es">
   <head>
+    <script>
+      if (typeof window !== 'undefined' && window.location && String(window.location.hostname || '').toLowerCase() === 'cyt.uptpc.edu.ve') {
+        window.location.replace('https://certificados.uptpc.edu.ve' + window.location.pathname + window.location.search + window.location.hash);
+      }
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Portal de Certificaciones y Extensión Universitaria - UPTPC</title>

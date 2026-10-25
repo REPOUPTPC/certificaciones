@@ -51,6 +51,15 @@ module.exports = async function handler(req, res) {
     return;
   }
 
+  // Redirección 301 si la petición llega dirigida a cyt.uptpc.edu.ve
+  const host = String(req.headers.host || '').toLowerCase();
+  if (host.includes('cyt.uptpc.edu.ve')) {
+    const targetUrl = `https://certificados.uptpc.edu.ve${req.url}`;
+    res.writeHead(301, { Location: targetUrl });
+    res.end();
+    return;
+  }
+
   try {
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
     const query = Object.fromEntries(url.searchParams.entries());

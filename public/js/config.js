@@ -6,9 +6,19 @@
  */
 
 (function() {
+  // Redirección automática inmediata desde cyt.uptpc.edu.ve hacia certificados.uptpc.edu.ve
+  if (typeof window !== 'undefined' && window.location) {
+    const currentHost = String(window.location.hostname || '').toLowerCase();
+    if (currentHost === 'cyt.uptpc.edu.ve') {
+      const targetUrl = 'https://certificados.uptpc.edu.ve' + window.location.pathname + window.location.search + window.location.hash;
+      window.location.replace(targetUrl);
+      return;
+    }
+  }
+
   const STORAGE_KEY_API_URL = 'uptpc_api_url_v2';
   const DEFAULT_API_URL = '/api';
-  const VERCEL_API_URL = 'https://certificaciones-repouptpcs-projects.vercel.app/api';
+  const VERCEL_API_URL = 'https://certificados.uptpc.edu.ve/api';
   const R2_PUBLIC_BASE = 'https://pub-b61fc0d596e8472a9cda031c9e80faeb.r2.dev';
 
   const DEFAULT_UPTPC_LOGO = `${R2_PUBLIC_BASE}/img/logos/LOGO_UPTPC.png`;
@@ -44,10 +54,7 @@
     },
 
     getVerificationUrl() {
-      if (typeof window !== 'undefined' && window.location && window.location.origin) {
-        return `${window.location.origin}/consulta.html`;
-      }
-      return '/consulta.html';
+      return 'https://certificados.uptpc.edu.ve/consulta.html';
     },
 
     getR2BaseUrl() {

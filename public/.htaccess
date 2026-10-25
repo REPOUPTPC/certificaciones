@@ -1,0 +1,8 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /certificaciones/
+
+  # Redirección automática permanente de cyt.uptpc.edu.ve hacia certificados.uptpc.edu.ve
+  RewriteCond %{HTTP_HOST} ^(www\.)?cyt\.uptpc\.edu\.ve$ [NC]
+  RewriteRule ^(.*)$ https://certificados.uptpc.edu.ve/certificaciones/$1 [R=301,L,QSA]
+</IfModule>

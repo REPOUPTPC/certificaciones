@@ -1,7 +1,40 @@
 {
   "version": 2,
   "outputDirectory": "public",
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "cyt.uptpc.edu.ve"
+        }
+      ],
+      "destination": "https://certificados.uptpc.edu.ve/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
+    {
+      "source": "/certificaciones/api/(.*)",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/certificaciones/api",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/certificaciones",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/certificaciones/",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/certificaciones/(.*)",
+      "destination": "/$1"
+    },
     {
       "source": "/api/(.*)",
       "destination": "/api/index.js"
@@ -13,7 +46,7 @@
   ],
   "headers": [
     {
-      "source": "/api/(.*)",
+      "source": "/(.*)api/(.*)",
       "headers": [
         { "key": "Access-Control-Allow-Credentials", "value": "true" },
         { "key": "Access-Control-Allow-Origin", "value": "*" },

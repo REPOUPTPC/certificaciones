@@ -9,7 +9,7 @@ if (!fs.existsSync(publicDir)) {
 }
 
 // Copiar archivos html y assets
-const files = ['index.html', 'consulta.html', 'gestion.html', 'cursos.html', 'favicon.svg'];
+const files = ['index.html', 'consulta.html', 'gestion.html', 'cursos.html', 'favicon.svg', '.htaccess'];
 files.forEach(file => {
   const src = path.join(rootDir, file);
   const dest = path.join(publicDir, file);
