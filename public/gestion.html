@@ -1,0 +1,2460 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Gestión de Certificaciones - UPTPC</title>
+
+  <!-- ========================================== -->
+  <!-- META TAGS DE SEO & BUSCADORES -->
+  <!-- ========================================== -->
+  <meta name="description" content="Sistema de Gestión de Certificaciones de Extensión Universitaria y la Unidad de Ciencia y Tecnología de la Universidad Politécnica Territorial de Puerto Cabello (UPTPC)." />
+  <meta name="keywords" content="Sistema de Gestión, Certificaciones, UPTPC, Extensión Universitaria, Unidad de Ciencia y Tecnología, SEREINF, Cursos, Talleres, Diplomados, Administración, Puerto Cabello, Carabobo, Venezuela" />
+  <meta name="author" content="Universidad Politécnica Territorial de Puerto Cabello (UPTPC) - Unidad de Ciencia y Tecnología" />
+  <meta name="publisher" content="Universidad Politécnica Territorial de Puerto Cabello" />
+  <meta name="robots" content="index, follow" />
+  <meta name="language" content="Spanish" />
+  <meta name="revisit-after" content="7 days" />
+
+  <!-- Geolocalización y Ubicación en Puerto Cabello -->
+  <meta name="geo.region" content="VE-G" />
+  <meta name="geo.placename" content="Puerto Cabello, Estado Carabobo, Venezuela" />
+  <meta name="geo.position" content="10.4731;-68.0125" />
+  <meta name="ICBM" content="10.4731, -68.0125" />
+
+  <!-- Contacto Oficial -->
+  <meta name="contact" content="sereinf@uptpc.edu.ve" />
+  <meta name="reply-to" content="sereinf@uptpc.edu.ve" />
+  <meta name="owner" content="Unidad de Ciencia y Tecnología - UPTPC" />
+
+  <!-- Open Graph (Facebook, WhatsApp, LinkedIn, Telegram) -->
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="es_VE" />
+  <meta property="og:site_name" content="UPTPC - Extensión Universitaria y Unidad de Ciencia y Tecnología" />
+  <meta property="og:title" content="Sistema de Gestión de Certificaciones - UPTPC" />
+  <meta property="og:description" content="Plataforma de gestión académica y control de emisión de certificados para cursos, talleres y diplomados de la UPTPC Puerto Cabello." />
+  <meta property="og:url" content="https://cyt.uptpc.edu.ve/certificaciones/gestion.html" />
+  <meta property="og:image" content="https://cyt.uptpc.edu.ve/certificaciones/img/CYT.png" />
+
+  <!-- Twitter Cards -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Sistema de Gestión de Certificaciones - UPTPC" />
+  <meta name="twitter:description" content="Panel de administración y control de certificaciones académicas UPTPC Puerto Cabello." />
+  <meta name="twitter:image" content="https://cyt.uptpc.edu.ve/certificaciones/img/CYT.png" />
+
+  <!-- Color de tema móvil -->
+  <meta name="theme-color" content="#1e3a8a" />
+
+  <!-- Datos Estructurados JSON-LD (Schema.org) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Sistema de Gestión de Certificaciones UPTPC",
+    "description": "Sistema de administración para la gestión de alumnos, cursos, talleres, diplomados y emisión de certificados digitales.",
+    "url": "https://cyt.uptpc.edu.ve/certificaciones/gestion.html",
+    "applicationCategory": "EducationalApplication",
+    "operatingSystem": "All",
+    "author": {
+      "@type": "EducationalOrganization",
+      "name": "Universidad Politécnica Territorial de Puerto Cabello - Unidad de Ciencia y Tecnología",
+      "email": "sereinf@uptpc.edu.ve",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Puerto Cabello",
+        "addressRegion": "Estado Carabobo",
+        "addressCountry": "VE"
+      }
+    }
+  }
+  </script>
+
+  <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
+  
+  <!-- Bootstrap 5 CSS & FontAwesome -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" rel="stylesheet">
+
+  <!-- Fuentes de Acceso Libre Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Cinzel:wght@400;700&family=Great+Vibes&family=Lora:ital,wght@0,400;0,700;1,400;1,700&family=Merriweather:ital,wght@0,400;0,700;1,400;1,700&family=Montserrat:ital,wght@0,400;0,700;1,400;1,700&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Roboto:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+
+  <!-- Chart.js para estadísticas -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <link href="css/styles.css" rel="stylesheet">
+</head>
+<body>
+
+  <!-- ═══ SIDEBAR NAV ═══ -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <img src="img/CYT.png" alt="UPTPC Logo" class="sidebar-logo img-fluid mb-2" onerror="this.style.display='none'">
+      <h6 class="mb-0 font-weight-bold text-white">UPTPC - Ciencia y Tecnología</h6>
+      <small class="text-white-50">Certificaciones v2.0</small>
+    </div>
+
+    <div class="sidebar-menu">
+      <a href="#dashboard" class="nav-link-tab active" data-target="secDashboard">
+        <i class="fa-solid fa-chart-line me-2"></i> <span class="sidebar-text">Dashboard</span>
+      </a>
+      <a href="#ofertas" class="nav-link-tab" data-target="secOfertas">
+        <i class="fa-solid fa-store me-2"></i> <span class="sidebar-text">Ofertas Cursos</span>
+      </a>
+      <a href="#usuarios" class="nav-link-tab" data-target="secUsuarios">
+        <i class="fa-solid fa-users me-2"></i> <span class="sidebar-text">Usuarios</span>
+      </a>
+      <a href="#unidades" class="nav-link-tab" data-target="secUnidades">
+        <i class="fa-solid fa-building-columns me-2"></i> <span class="sidebar-text">Unidades</span>
+      </a>
+      <a href="#firmas" class="nav-link-tab" data-target="secFirmas">
+        <i class="fa-solid fa-signature me-2"></i> <span class="sidebar-text">Firmas y Sellos</span>
+      </a>
+      <a href="#cursos" class="nav-link-tab" data-target="secCursos">
+        <i class="fa-solid fa-book-open me-2"></i> <span class="sidebar-text">Cursos / Talleres</span>
+      </a>
+      <a href="#certificados" class="nav-link-tab" data-target="secCertificados">
+        <i class="fa-solid fa-graduation-cap me-2"></i> <span class="sidebar-text">Emisión Certificados</span>
+      </a>
+      <a href="#disenador" class="nav-link-tab" data-target="secDisenador">
+        <i class="fa-solid fa-palette me-2"></i> <span class="sidebar-text">Diseñador Canvas</span>
+      </a>
+      <a href="#consultas" class="nav-link-tab" data-target="secConsultas">
+        <i class="fa-solid fa-clock-rotate-left me-2"></i> <span class="sidebar-text">Bitácora Consultas</span>
+      </a>
+      <a href="#administradores" class="nav-link-tab" data-target="secAdministradores" id="navLinkAdministradores" style="display: none;">
+        <i class="fa-solid fa-user-shield me-2"></i> <span class="sidebar-text">Gestión Administradores</span>
+      </a>
+      <a href="#mantenimiento" class="nav-link-tab" data-target="secMantenimiento" id="navLinkMantenimiento" style="display: none;">
+        <i class="fa-solid fa-database me-2"></i> <span class="sidebar-text">Mantenimiento y Respaldo</span>
+      </a>
+      <a href="#configuracion" class="nav-link-tab" data-target="secConfiguracion" id="navLinkConfiguracion" style="display: none;">
+        <i class="fa-solid fa-sliders me-2"></i> <span class="sidebar-text">Configuración Global</span>
+      </a>
+    </div>
+
+    <div class="p-3 border-top border-secondary">
+      <div class="small text-white-50 text-center mb-2">
+        <span class="badge bg-success"><i class="fa-solid fa-bolt me-1"></i> Vercel + Turso + R2</span>
+      </div>
+      <button class="btn btn-outline-light w-100 btn-sm text-start" id="btnAbrirConfiguracion">
+        <i class="fa-solid fa-circle-nodes me-2"></i> Estado de Conexión
+      </button>
+    </div>
+  </aside>
+
+  <!-- ═══ CONTENIDO PRINCIPAL ═══ -->
+  <main class="main-content">
+    
+    <!-- Navbar Top -->
+    <header class="top-navbar">
+      <div>
+        <h4 class="mb-0 font-weight-bold" style="color: var(--primary-color);">Sistema de Gestión de Certificaciones</h4>
+        <small class="text-muted">Unidad de Ciencia y Tecnología - UPTPC Puerto Cabello</small>
+      </div>
+
+      <div class="d-flex align-items-center flex-wrap gap-2">
+        <span class="badge bg-primary py-2 px-3 me-1" id="badgeUserConnected" style="display: none;">
+          <i class="fa-solid fa-user-shield me-1"></i> <span id="lblUserNombre">CIENCIA_TECNOLOGIA</span> (<span id="lblUserTipo">SUPER_ADMIN</span>)
+        </span>
+
+        <!-- Switch Origen de Datos (Datos Reales / Datos de Prueba) -->
+        <div class="form-check form-switch bg-light border rounded px-3 py-1 me-1 d-flex align-items-center gap-2" title="Alternar entre Google Sheets (Reales) y Almacenamiento Local (Prueba)">
+          <input class="form-check-input cursor-pointer my-0" type="checkbox" id="switchModoConexion" checked style="width: 2.2em; height: 1.2em;">
+          <label class="form-check-label fw-bold small cursor-pointer mb-0 text-success" for="switchModoConexion" id="lblModoConexion">
+            <i class="fa-solid fa-cloud me-1"></i> Datos Reales
+          </label>
+        </div>
+
+        <button class="btn btn-outline-success btn-sm me-1" id="btnSincronizarDatos" title="Sincronizar datos frescos desde Google Drive">
+          <i class="fa-solid fa-arrows-rotate me-1"></i> Sincronizar
+        </button>
+
+        <button class="btn btn-outline-secondary btn-sm" id="btnCambiarClaveGlobal" title="Cambiar mi contraseña">
+          <i class="fa-solid fa-key me-1"></i> Cambiar Clave
+        </button>
+        <button class="btn btn-outline-danger btn-sm" id="btnCerrarSesionGlobal" title="Cerrar sesión">
+          <i class="fa-solid fa-right-from-bracket me-1"></i> Cerrar Sesión
+        </button>
+        <a href="consulta.html" target="_blank" class="btn btn-outline-primary btn-sm">
+          <i class="fa-solid fa-magnifying-glass me-1"></i> Validador Público
+        </a>
+      </div>
+    </header>
+
+    <!-- Banner de Información para Perfil AUDITOR (Solo Lectura) -->
+    <div class="alert alert-info py-2 px-3 mb-3 auditor-banner align-items-center justify-content-between shadow-sm border-info" style="display: none;">
+      <div class="d-flex align-items-center">
+        <i class="fa-solid fa-shield-halved fa-2x me-3 text-primary"></i>
+        <div>
+          <h6 class="mb-0 fw-bold text-dark"><i class="fa-solid fa-eye me-1 text-primary"></i> Perfil AUDITOR Activo (Acceso de Solo Lectura y Fiscalización)</h6>
+          <small class="text-muted">Usted cuenta con permisos de inspección y auditoría sobre Usuarios, Unidades, Firmas, Cursos, Certificados y Bitácoras. Todas las funciones de creación, edición, emisión masiva y eliminación se encuentran restringidas.</small>
+        </div>
+      </div>
+      <span class="badge bg-primary fs-6 px-3 py-2"><i class="fa-solid fa-lock me-1"></i> Auditoría Segura</span>
+    </div>
+
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <!-- SECCIÓN 1: DASHBOARD -->
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <section id="secDashboard" class="tab-section">
+      <div class="row g-4 mb-4">
+        <div class="col-md-3">
+          <div class="card card-metric p-3">
+            <div class="d-flex align-items-center">
+              <div class="metric-icon bg-primary text-white me-3">
+                <i class="fa-solid fa-graduation-cap"></i>
+              </div>
+              <div>
+                <small class="text-muted fw-semibold">Certificados Emitidos</small>
+                <h3 class="mb-0 fw-bold" id="metricTotalCertificados">0</h3>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <div class="card card-metric p-3">
+            <div class="d-flex align-items-center">
+              <div class="metric-icon bg-success text-white me-3">
+                <i class="fa-solid fa-users"></i>
+              </div>
+              <div>
+                <small class="text-muted fw-semibold">Usuarios Registrados</small>
+                <h3 class="mb-0 fw-bold" id="metricTotalUsuarios">0</h3>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <div class="card card-metric p-3">
+            <div class="d-flex align-items-center">
+              <div class="metric-icon bg-warning text-dark me-3">
+                <i class="fa-solid fa-book-open"></i>
+              </div>
+              <div>
+                <small class="text-muted fw-semibold">Cursos / Talleres</small>
+                <h3 class="mb-0 fw-bold" id="metricTotalCursos">0</h3>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <div class="card card-metric p-3">
+            <div class="d-flex align-items-center">
+              <div class="metric-icon bg-info text-white me-3">
+                <i class="fa-solid fa-eye"></i>
+              </div>
+              <div>
+                <small class="text-muted fw-semibold">Verificaciones Bitácora</small>
+                <h3 class="mb-0 fw-bold" id="metricTotalVerificaciones">0</h3>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Accesos Rápidos y Últimos Certificados -->
+      <div class="row g-4">
+        <div class="col-md-8">
+          <div class="card border-0 shadow-sm p-4">
+            <h5 class="fw-bold mb-3" style="color: var(--primary-color);">Últimos Certificados Emitidos</h5>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Código</th>
+                    <th>Participante</th>
+                    <th>Curso / Taller</th>
+                    <th>Unidad</th>
+                    <th>Fecha</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyUltimosCertificadosDashboard">
+                  <tr><td colspan="5" class="text-center text-muted py-3">Cargando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="card border-0 shadow-sm p-4">
+            <h5 class="fw-bold mb-3" style="color: var(--primary-color);">Acciones Rápidas</h5>
+            <div class="d-grid gap-2">
+              <button class="btn btn-primary p-3 text-start" onclick="document.querySelector('[data-target=\'secCertificados\']').click()">
+                <i class="fa-solid fa-graduation-cap fa-lg me-2"></i> Emitir Certificados Masivos
+              </button>
+              <button class="btn btn-success p-3 text-start" onclick="window.usuariosModule.abrirModalCargaMasiva()">
+                <i class="fa-solid fa-file-import fa-lg me-2"></i> Carga Masiva de Usuarios
+              </button>
+              <button class="btn btn-outline-dark p-3 text-start" onclick="document.querySelector('[data-target=\'secDisenador\']').click()">
+                <i class="fa-solid fa-palette fa-lg me-2"></i> Diseñador Interactivo SVG
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <!-- SECCIÓN OFERTAS DE CURSOS Y PAGOS -->
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <section id="secOfertas" class="tab-section" style="display: none;">
+      <div class="card border-0 shadow-sm p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+          <div>
+            <h4 class="fw-bold mb-0" style="color: var(--primary-color);">
+              <i class="fa-solid fa-store me-2"></i>Gestión de Ofertas de Cursos y Pagos
+            </h4>
+            <small class="text-muted">Administración de la tienda virtual, precios en USD y verificación de transferencias</small>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-dark py-2 px-3 fs-6" id="lblTasaDolarOfertas">
+              Tasa Oficial BCV: Cargando...
+            </span>
+            <button class="btn btn-primary" id="btnNuevaOfertaCurso">
+              <i class="fa-solid fa-plus-circle me-1"></i> Nuevo Taller Ofertado
+            </button>
+          </div>
+        </div>
+
+        <!-- Pestanas secundarias: Ofertas vs Pagos -->
+        <ul class="nav nav-tabs mb-4" id="ofertasTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-bold" id="tab-talleres-tab" data-bs-toggle="tab" data-bs-target="#tab-talleres" type="button" role="tab">
+              <i class="fa-solid fa-list-check me-2"></i>Talleres Ofertados (Tienda)
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold text-success" id="tab-pagos-tab" data-bs-toggle="tab" data-bs-target="#tab-pagos" type="button" role="tab">
+              <i class="fa-solid fa-receipt me-2"></i>Verificación de Pagos
+            </button>
+          </li>
+        </ul>
+
+        <div class="tab-content" id="ofertasTabsContent">
+          <!-- TAB 1: TALLERES OFERTADOS -->
+          <div class="tab-pane fade show active" id="tab-talleres" role="tabpanel">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th class="text-center" style="width: 80px;">Portada</th>
+                    <th>Taller / Curso</th>
+                    <th>Descripción</th>
+                    <th class="text-center">Valor Estudiante</th>
+                    <th class="text-center">Valor Foráneo</th>
+                    <th class="text-center">Fecha Creación</th>
+                    <th class="text-center">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyOfertasCursos">
+                  <tr><td colspan="7" class="text-center text-muted py-4">Cargando ofertas...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- TAB 2: VERIFICACIÓN DE PAGOS -->
+          <div class="tab-pane fade" id="tab-pagos" role="tabpanel">
+            <!-- Tarjetas de Métricas de Pagos -->
+            <div class="row g-3 mb-4">
+              <div class="col-md-3">
+                <div class="card border-0 shadow-sm p-3 bg-light">
+                  <div class="d-flex align-items-center">
+                    <div class="bg-primary text-white p-3 rounded-3 me-3">
+                      <i class="fa-solid fa-receipt fa-xl"></i>
+                    </div>
+                    <div>
+                      <small class="text-muted fw-bold text-uppercase d-block">Total Declarados</small>
+                      <h4 class="fw-bold mb-0" id="cardTotalPagos">0</h4>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card border-0 shadow-sm p-3 bg-light">
+                  <div class="d-flex align-items-center">
+                    <div class="bg-warning text-dark p-3 rounded-3 me-3">
+                      <i class="fa-solid fa-clock-rotate-left fa-xl"></i>
+                    </div>
+                    <div>
+                      <small class="text-muted fw-bold text-uppercase d-block">Por Validar</small>
+                      <h4 class="fw-bold mb-0 text-warning" id="cardPagosPendientes">0</h4>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card border-0 shadow-sm p-3 bg-light">
+                  <div class="d-flex align-items-center">
+                    <div class="bg-success text-white p-3 rounded-3 me-3">
+                      <i class="fa-solid fa-circle-check fa-xl"></i>
+                    </div>
+                    <div>
+                      <small class="text-muted fw-bold text-uppercase d-block">Aprobados</small>
+                      <h4 class="fw-bold mb-0 text-success" id="cardPagosAprobados">0</h4>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card border-0 shadow-sm p-3 bg-light">
+                  <div class="d-flex align-items-center">
+                    <div class="bg-info text-white p-3 rounded-3 me-3">
+                      <i class="fa-solid fa-money-bill-wave fa-xl"></i>
+                    </div>
+                    <div>
+                      <small class="text-muted fw-bold text-uppercase d-block">Monto Validado</small>
+                      <h5 class="fw-bold mb-0 text-dark" id="cardMontoRecaudado">0.00 Bs.</h5>
+                      <small class="text-muted" id="cardMontoDolares">($0.00 USD)</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Barra de Herramientas y Búsqueda -->
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 bg-white p-3 rounded border">
+              <div class="d-flex align-items-center flex-grow-1 flex-wrap gap-2" style="max-width: 600px;">
+                <div class="input-group" style="min-width: 280px; flex: 1;">
+                  <span class="input-group-text bg-light"><i class="fa-solid fa-magnifying-glass"></i></span>
+                  <input type="text" class="form-control" id="inputBuscarPago" placeholder="Buscar por cédula, usuario o referencia...">
+                </div>
+                <select class="form-select" id="selectFiltroEstatusPago" style="width: auto;">
+                  <option value="todos">Todos los Estados</option>
+                  <option value="pendientes">Pendientes por Validar</option>
+                  <option value="aprobados">Aprobados / Confirmados</option>
+                </select>
+              </div>
+
+              <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-outline-secondary" id="btnRefrescarPagos" title="Refrescar pagos">
+                  <i class="fa-solid fa-arrows-rotate me-1"></i> Actualizar
+                </button>
+                <button class="btn btn-success" id="btnNuevoPagoManual">
+                  <i class="fa-solid fa-plus-circle me-1"></i> Registrar Pago Manual
+                </button>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-hover align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Usuario / Participante</th>
+                    <th>Curso Ofertado</th>
+                    <th>Banco Origen</th>
+                    <th class="text-center">Monto (Bs.)</th>
+                    <th class="text-center">N° Referencia</th>
+                    <th class="text-center">Capture</th>
+                    <th class="text-center">Estatus</th>
+                    <th class="text-center" style="min-width: 200px;">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyPagosAdministracion">
+                  <tr><td colspan="9" class="text-center text-muted py-4">Cargando declaraciones de pagos...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <!-- SECCIÓN 2: USUARIOS -->
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <section id="secUsuarios" class="tab-section" style="display: none;">
+      <div class="card border-0 shadow-sm p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <h4 class="fw-bold mb-0">Gestión de Usuarios / Participantes</h4>
+            <span class="badge bg-primary mt-1" id="badgeTotalUsuarios">0 registrados</span>
+          </div>
+          <div>
+            <button class="btn btn-success me-2" id="btnCargaMasivaUsuarios">
+              <i class="fa-solid fa-file-csv me-1"></i> Carga Masiva (CSV / Texto)
+            </button>
+            <button class="btn btn-primary" id="btnNuevoUsuario">
+              <i class="fa-solid fa-user-plus me-1"></i> Nuevo Usuario
+            </button>
+          </div>
+        </div>
+
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <div class="input-group">
+              <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
+              <input type="text" class="form-control" id="inputSearchUsuarios" placeholder="Buscar por Cédula o Nombre Completo...">
+            </div>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>#</th>
+                <th>Cédula</th>
+                <th>Nombre Completo</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyUsuarios">
+              <tr><td colspan="4" class="text-center text-muted py-4">Cargando usuarios...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <!-- SECCIÓN 3: UNIDADES -->
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <section id="secUnidades" class="tab-section" style="display: none;">
+      <div class="card border-0 shadow-sm p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4 class="fw-bold mb-0">Unidades Organizativas UPTPC</h4>
+          <button class="btn btn-primary" id="btnNuevaUnidad">
+            <i class="fa-solid fa-plus me-1"></i> Nueva Unidad
+          </button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>#</th>
+                <th>Código</th>
+                <th>Nombre de la Unidad</th>
+                <th>Logo PNG</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyUnidades">
+              <tr><td colspan="5" class="text-center text-muted py-4">Cargando unidades...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <!-- SECCIÓN 4: FIRMAS Y SELLOS -->
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <section id="secFirmas" class="tab-section" style="display: none;">
+      <div class="card border-0 shadow-sm p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4 class="fw-bold mb-0">Autoridades y Firmantes</h4>
+          <button class="btn btn-primary" id="btnNuevaFirma">
+            <i class="fa-solid fa-signature me-1"></i> Nueva Firma
+          </button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>#</th>
+                <th>Nombre Autoridad</th>
+                <th>Cargo Institucional</th>
+                <th>Firma / Sello</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyFirmas">
+              <tr><td colspan="5" class="text-center text-muted py-4">Cargando firmantes...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <!-- SECCIÓN 5: CURSOS / TALLERES -->
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <section id="secCursos" class="tab-section" style="display: none;">
+      <div class="card border-0 shadow-sm p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4 class="fw-bold mb-0">Cursos, Talleres y Diplomados</h4>
+          <button class="btn btn-primary" id="btnNuevoCurso">
+            <i class="fa-solid fa-plus me-1"></i> Nuevo Curso / Taller
+          </button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>#</th>
+                <th>Código Taller</th>
+                <th>Nombre del Curso / Taller</th>
+                <th>Tipo</th>
+                <th>Unidad Responsable</th>
+                <th>Horas</th>
+                <th>Certificados</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyCursos">
+              <tr><td colspan="8" class="text-center text-muted py-4">Cargando cursos...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <!-- SECCIÓN 6: EMISIÓN DE CERTIFICADOS -->
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <section id="secCertificados" class="tab-section" style="display: none;">
+      <div class="card border-0 shadow-sm p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <h4 class="fw-bold mb-0">Certificados Emitidos</h4>
+            <span class="badge bg-success mt-1" id="badgeTotalCertificadosEmitidos">0 emitidos</span>
+          </div>
+          <button class="btn btn-success btn-lg" id="btnNuevoCertificado">
+            <i class="fa-solid fa-graduation-cap me-2"></i> Emitir Certificados por Taller
+          </button>
+        </div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <div class="input-group">
+              <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
+              <input type="text" class="form-control" id="inputSearchCertificados" placeholder="Buscar por Código AAA1234AAA, Cédula o Nombre...">
+            </div>
+          </div>
+          <div class="col-md-6">
+            <select class="form-select" id="selectFiltroCursoCertificado">
+              <option value="">-- Todos los Cursos --</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>#</th>
+                <th>Código Verificación</th>
+                <th>Participante</th>
+                <th>Curso / Taller</th>
+                <th>Unidad</th>
+                <th>Fecha Emisión</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyCertificados">
+              <tr><td colspan="7" class="text-center text-muted py-4">Cargando certificados...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <!-- SECCIÓN 7: DISEÑADOR INTERACTIVO CANVAS SVG -->
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <section id="secDisenador" class="tab-section" style="display: none;">
+      <div class="card border-0 shadow-sm p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>
+            <h4 class="fw-bold mb-1">
+              Diseñador Interactivo de Certificados (Canvas Editor)
+              <span id="badgeDiseñoStatus" class="badge bg-secondary ms-2"><i class="fa-solid fa-circle-minus me-1"></i>INACTIVO</span>
+            </h4>
+            <p class="text-muted small mb-0">Arrastre y mueva cualquier elemento directamente en el lienzo SVG, agregue variables, imágenes y controle el estado activo/inactivo.</p>
+          </div>
+          <div class="d-flex gap-1 flex-wrap">
+            <button class="btn btn-outline-secondary btn-sm" id="btnNuevoDiseño"><i class="fa-solid fa-file-circle-plus me-1"></i> Nuevo</button>
+            <button class="btn btn-outline-primary btn-sm" id="btnPrevisualizarCert"><i class="fa-solid fa-eye me-1"></i> Previsualizar</button>
+            <button class="btn btn-warning btn-sm text-dark" id="btnActivarDiseño"><i class="fa-solid fa-star me-1"></i> Activar este Diseño</button>
+            <button class="btn btn-outline-secondary btn-sm" id="btnDesactivarDiseño"><i class="fa-solid fa-circle-pause me-1"></i> Desactivar</button>
+            <button class="btn btn-outline-danger btn-sm" id="btnEliminarDiseño"><i class="fa-solid fa-trash me-1"></i> Eliminar</button>
+            <button class="btn btn-success btn-sm" id="btnGuardarDiseño"><i class="fa-solid fa-floppy-disk me-1"></i> Guardar Diseño</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-4">
+        <!-- Toolbar izquierda & Lienzo -->
+        <div class="col-md-9">
+          <div class="card border-0 shadow-sm p-3 mb-3">
+            <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <label class="fw-bold me-1 small">Seleccionar Diseño:</label>
+                <select class="form-select form-select-sm" id="selectDiseñoExistente" style="max-width: 260px;"></select>
+                <div class="form-check form-switch ms-2 mb-0">
+                  <input class="form-check-input" type="checkbox" id="switchTiroRetiro">
+                  <label class="form-check-label small fw-bold" for="switchTiroRetiro">Habilitar Retiro (Atrás)</label>
+                </div>
+                <div class="form-check form-switch ms-2 mb-0">
+                  <input class="form-check-input" type="checkbox" id="switchDisenoActivo">
+                  <label class="form-check-label small fw-bold text-success" for="switchDisenoActivo"><i class="fa-solid fa-star text-warning me-1"></i>Activo (Disponible)</label>
+                </div>
+                <div class="btn-group btn-group-sm ms-2" id="grupoPestañasCara" style="display: none;">
+                  <button type="button" class="btn btn-primary" id="btnVerTiro"><i class="fa-solid fa-file-lines me-1"></i>Frente (Tiro)</button>
+                  <button type="button" class="btn btn-outline-primary" id="btnVerRetiro"><i class="fa-solid fa-file-lines me-1"></i>Atrás (Retiro)</button>
+                </div>
+              </div>
+
+              <!-- Paleta de elementos para agregar -->
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-dark" id="btnAgregarTexto"><i class="fa-solid fa-font me-1"></i> Texto</button>
+                <button class="btn btn-outline-dark" id="btnAgregarTextoMulti"><i class="fa-solid fa-align-left me-1"></i> Multilínea</button>
+                <button class="btn btn-outline-dark" id="btnAgregarImagen"><i class="fa-solid fa-image me-1"></i> Imagen</button>
+                <button class="btn btn-outline-dark" id="btnAgregarLinea"><i class="fa-solid fa-minus me-1"></i> Línea</button>
+                <button class="btn btn-outline-dark" id="btnAgregarRect"><i class="fa-solid fa-square me-1"></i> Marco</button>
+                <button class="btn btn-outline-dark" id="btnAgregarQR"><i class="fa-solid fa-qrcode me-1"></i> QR</button>
+              </div>
+              <button class="btn btn-outline-success btn-sm fw-bold ms-2" id="btnExplorarPresetsDisenador" title="Insertar logo o imagen oficial desde presets">
+                <i class="fa-solid fa-images me-1"></i> Presets Oficiales
+              </button>
+            </div>
+
+            <!-- Contenedor del Lienzo SVG -->
+            <div id="canvasContainer" style="overflow-x: auto; background-color: #f8f9fa; border: 1px dashed #ccc; border-radius: 8px; padding: 10px;"></div>
+          </div>
+        </div>
+
+        <!-- Panel lateral derecho: Lista de elementos & Inspector de propiedades -->
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm p-3 mb-3">
+            <h6 class="fw-bold mb-2 text-dark"><i class="fa-solid fa-sliders me-2"></i>Datos del Diseño</h6>
+            <div class="mb-2">
+              <label class="form-label small mb-1">Nombre del Diseño:</label>
+              <input type="text" class="form-control form-control-sm" id="inputNombreDiseño" placeholder="Ej: Certificado Institucional UPTPC">
+            </div>
+            <div class="mb-2">
+              <label class="form-label small mb-1">Descripción:</label>
+              <input type="text" class="form-control form-control-sm" id="inputDescDiseño" placeholder="Ej: Diseño oficial con fondos y firmas">
+            </div>
+          </div>
+
+          <!-- Inspector de propiedades de elemento seleccionado -->
+          <div class="card border-0 shadow-sm p-3 mb-3" id="panelPropiedadesElemento" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
+              <h6 class="fw-bold mb-0 text-primary"><i class="fa-solid fa-pen-to-square me-1"></i> Propiedades</h6>
+              <button class="btn btn-sm btn-danger py-0 px-2" id="btnEliminarElemento" title="Eliminar del lienzo"><i class="fa-solid fa-trash"></i></button>
+            </div>
+
+            <form id="formPropiedadesElemento">
+              <div class="mb-2">
+                <label class="form-label small mb-1">ID Elemento (Nombre):</label>
+                <input type="text" class="form-control form-control-sm" id="propElemId">
+              </div>
+              <div class="mb-2">
+                <label class="form-label small mb-1">Tipo de Elemento:</label>
+                <input type="text" class="form-control form-control-sm bg-light" id="propElemTipo" readonly>
+              </div>
+              <div class="row g-2 mb-2">
+                <div class="col-6">
+                  <label class="form-label small mb-1">Pos X:</label>
+                  <input type="number" class="form-control form-control-sm" id="propElemX">
+                </div>
+                <div class="col-6">
+                  <label class="form-label small mb-1">Pos Y:</label>
+                  <input type="number" class="form-control form-control-sm" id="propElemY">
+                </div>
+              </div>
+              <div class="row g-2 mb-2">
+                <div class="col-6">
+                  <label class="form-label small mb-1">Ancho:</label>
+                  <input type="number" class="form-control form-control-sm" id="propElemAncho">
+                </div>
+                <div class="col-6">
+                  <label class="form-label small mb-1">Alto:</label>
+                  <input type="number" class="form-control form-control-sm" id="propElemAlto">
+                </div>
+              </div>
+
+              <div class="mb-2">
+                <label class="form-label small mb-1 fw-bold text-primary">Amarrar a Variable:</label>
+                <select class="form-select form-select-sm" id="propElemBinding">
+                  <option value="">-- Ninguno (Texto / Imagen fija) --</option>
+                  <optgroup label="Datos del Participante">
+                    <option value="nombre_completo">Nombre Completo Participante</option>
+                    <option value="cedula_label">Cédula con Label (Ej: Cédula...)</option>
+                    <option value="cedula">Cédula Sólo Número</option>
+                  </optgroup>
+                  <optgroup label="Datos del Curso / Evento">
+                    <option value="curso_nombre">Nombre del Curso / Taller</option>
+                    <option value="unidad_nombre">Nombre de la Unidad</option>
+                    <option value="motivo">Motivo del Certificado</option>
+                    <option value="ponencias">Ponencias / Contenido</option>
+                    <option value="tipo_horas">Tipo y Horas Académicas</option>
+                    <option value="tomo_folio">Tomo y Folio</option>
+                    <option value="matricula">Matrícula</option>
+                    <option value="lugar">Lugar y Fecha</option>
+                    <option value="fecha_curso">Fecha Formateada</option>
+                    <option value="codigo_label">Código Verificación Label</option>
+                    <option value="qr_url">Código QR URL</option>
+                    <option value="url_verificacion">URL Texto Verificación</option>
+                  </optgroup>
+                  <optgroup label="Logos Institucionales">
+                    <option value="logo_url">Logo Unidad (logo_url)</option>
+                    <option value="logo_universidad">Logo UPTPC (logo_universidad)</option>
+                  </optgroup>
+                  <optgroup label="Firmante 1 (Principal)">
+                    <option value="firma1_nombre">Nombre Firmante 1 (firma1_nombre)</option>
+                    <option value="firma1_cargo">Cargo Firmante 1 (firma1_cargo)</option>
+                    <option value="firma1_url">Imagen Firma 1 (firma1_url)</option>
+                    <option value="sello1_url">Imagen Sello 1 (sello1_url)</option>
+                  </optgroup>
+                  <optgroup label="Firmante 2 (Secundario)">
+                    <option value="firma2_nombre">Nombre Firmante 2 (firma2_nombre)</option>
+                    <option value="firma2_cargo">Cargo Firmante 2 (firma2_cargo)</option>
+                    <option value="firma2_url">Imagen Firma 2 (firma2_url)</option>
+                    <option value="sello2_url">Imagen Sello 2 (sello2_url)</option>
+                  </optgroup>
+                  <optgroup label="Firmante 3 (Secretaría/Coordinación)">
+                    <option value="firma3_nombre">Nombre Firmante 3 (firma3_nombre)</option>
+                    <option value="firma3_cargo">Cargo Firmante 3 (firma3_cargo)</option>
+                    <option value="firma3_url">Imagen Firma 3 (firma3_url)</option>
+                    <option value="sello3_url">Imagen Sello 3 (sello3_url)</option>
+                  </optgroup>
+                  <optgroup label="Personalizado">
+                    <option value="__custom__">➕ Crear Variable Personalizada...</option>
+                  </optgroup>
+                </select>
+              </div>
+
+              <!-- Cargar Imagen de archivo para logos o imágenes fijas -->
+              <div class="mb-2" id="containerPropImagen" style="display: none;">
+                <label class="form-label small mb-1 fw-bold text-success"><i class="fa-solid fa-images me-1"></i>Preset Oficial (Cloudflare R2):</label>
+                <div class="input-group input-group-sm mb-2">
+                  <select class="form-select form-select-sm" id="propElemSelectPreset">
+                    <option value="">-- Seleccionar Logo / Escudo Oficial --</option>
+                  </select>
+                  <button class="btn btn-outline-success btn-sm" type="button" id="btnAbrirGaleriaPresetsModal" title="Explorar Galería Visual">
+                    <i class="fa-solid fa-table-cells"></i>
+                  </button>
+                </div>
+
+                <label class="form-label small mb-1">O Subir Archivo Nuevo a R2:</label>
+                <input type="file" class="form-control form-control-sm" id="propElemImageFile" accept="image/*">
+              </div>
+
+              <div class="mb-2">
+                <label class="form-label small mb-1">Texto Fijo / URL Imagen:</label>
+                <input type="text" class="form-control form-control-sm font-monospace small" id="propElemTextoFijo" placeholder="Ej: Texto estático o URL http...">
+              </div>
+
+              <div class="mb-2">
+                <label class="form-label small mb-1 fw-bold text-dark"><i class="fa-solid fa-font me-1"></i>Tipo de Fuente (Tipografía):</label>
+                <select class="form-select form-select-sm" id="propElemFontFamily">
+                  <option value="Arial, sans-serif">Arial / Helvetica (Estándar)</option>
+                  <option value="'Montserrat', sans-serif">Montserrat (Moderna & Limpia)</option>
+                  <option value="'Roboto', sans-serif">Roboto (Alta Legibilidad)</option>
+                  <option value="'Playfair Display', serif">Playfair Display (Serif Elegante)</option>
+                  <option value="'Cinzel', serif">Cinzel (Clásica Formal Universitaria)</option>
+                  <option value="'Merriweather', serif">Merriweather (Serif Tradicional)</option>
+                  <option value="'Lora', serif">Lora (Serif Contemporánea)</option>
+                  <option value="'Great Vibes', cursive">Great Vibes (Caligrafía Ceremonial)</option>
+                  <option value="'Alex Brush', cursive">Alex Brush (Caligrafía Fina)</option>
+                </select>
+              </div>
+
+              <div class="row g-2 mb-2">
+                <div class="col-6">
+                  <label class="form-label small mb-1">Tamaño Fuente:</label>
+                  <input type="number" class="form-control form-control-sm" id="propElemFontSize" min="8" max="120">
+                </div>
+                <div class="col-6">
+                  <label class="form-label small mb-1">Estilo y Peso:</label>
+                  <select class="form-select form-select-sm" id="propElemStyleWeight">
+                    <option value="normal|normal">Normal</option>
+                    <option value="normal|bold">Negrita (Bold)</option>
+                    <option value="italic|normal">Cursiva (Italic)</option>
+                    <option value="italic|bold">Negrita Cursiva (Bold Italic)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="row g-2 mb-2">
+                <div class="col-6">
+                  <label class="form-label small mb-1">Color Fill:</label>
+                  <input type="color" class="form-control form-control-color w-100 btn-sm" id="propElemColor">
+                </div>
+                <div class="col-6">
+                  <label class="form-label small mb-1">Alineación:</label>
+                  <select class="form-select form-select-sm" id="propElemTextAnchor">
+                    <option value="middle">Centro</option>
+                    <option value="start">Izquierda</option>
+                    <option value="end">Derecha</option>
+                  </select>
+                </div>
+              </div>
+
+                <!-- Controles de Efectos Adicionales -->
+                <div class="effect-control-group" id="panelEfectosExtra">
+                  <label class="form-label mb-1"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>Efectos</label>
+                  <div class="row g-2 mb-2">
+                    <div class="col-6">
+                      <label class="form-label small mb-0">Opacidad</label>
+                      <input type="range" class="form-range" id="propElemOpacity" min="0" max="100" value="100">
+                    </div>
+                    <div class="col-6">
+                      <label class="form-label small mb-0">Espaciado Letras</label>
+                      <input type="number" class="form-control form-control-sm" id="propElemLetterSpacing" min="0" max="20" value="0">
+                    </div>
+                  </div>
+                </div>
+            </form>
+          </div>
+
+          <!-- Lista de capas/elementos -->
+          <div class="card border-0 shadow-sm p-3">
+            <h6 class="fw-bold mb-2"><i class="fa-solid fa-layer-group me-2"></i>Capas del Lienzo</h6>
+            <div class="list-group list-group-flush border rounded" id="listaElementosCanvas" style="max-height: 250px; overflow-y: auto;"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <!-- SECCIÓN 8: BITÁCORA DE CONSULTAS -->
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <section id="secConsultas" class="tab-section" style="display: none;">
+      <div class="card border-0 shadow-sm p-4">
+        <h4 class="fw-bold mb-3">Bitácora de Verificaciones de Certificados</h4>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>#</th>
+                <th>Código Certificado Consultado</th>
+                <th>Dirección IP / Origen</th>
+                <th>Fecha y Hora Consulta</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyConsultasLog">
+              <tr><td colspan="4" class="text-center text-muted py-4">Cargando bitácora...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <!-- SECCIÓN 9: GESTIÓN DE ADMINISTRADORES (EXCLUSIVO SUPER_ADMIN) -->
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <section id="secAdministradores" class="tab-section" style="display: none;">
+      <div class="card border-0 shadow-sm p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <h4 class="fw-bold mb-0"><i class="fa-solid fa-user-shield text-primary me-2"></i>Gestión de Administradores del Sistema</h4>
+            <small class="text-muted">Gestione usuarios administradores, claves, estatus y permisos de acceso a las secciones.</small>
+          </div>
+          <button class="btn btn-primary" id="btnNuevoAdmin">
+            <i class="fa-solid fa-user-plus me-1"></i> Nuevo Administrador
+          </button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>#</th>
+                <th>Usuario Admin</th>
+                <th>Rol / Tipo</th>
+                <th>Estatus</th>
+                <th>Secciones Permitidas</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyAdministradores">
+              <tr><td colspan="6" class="text-center text-muted py-4">Cargando administradores...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- ══ SECCIÓN ESTADÍSTICAS DE CONEXIÓN ADMIN (GRÁFICOS) ══ -->
+        <div class="mt-4 pt-3 border-top">
+          <h5 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-chart-pie me-2 text-primary"></i>Estadísticas de Conexión de Administradores</h5>
+          
+          <div class="row g-4">
+            <!-- Gráfico Circular / Donut: Usuarios que más se conectan -->
+            <div class="col-md-6">
+              <div class="card border-0 bg-light p-3 h-100">
+                <h6 class="fw-bold text-center mb-3"><i class="fa-solid fa-users me-1 text-info"></i> Usuarios con Más Conexiones</h6>
+                <div style="position: relative; height: 260px; width: 100%;">
+                  <canvas id="chartUsuariosConexiones"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <!-- Gráfico de Barras: Horas con más conexiones -->
+            <div class="col-md-6">
+              <div class="card border-0 bg-light p-3 h-100">
+                <h6 class="fw-bold text-center mb-3"><i class="fa-solid fa-clock me-1 text-warning"></i> Horas de Mayor Frecuencia de Conexión</h6>
+                <div style="position: relative; height: 260px; width: 100%;">
+                  <canvas id="chartHorasConexiones"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ══ SECCIÓN BITÁCORA DE CERTIFICADOS ELIMINADOS ══ -->
+        <div class="mt-4 pt-3 border-top">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold mb-0 text-dark">
+              <i class="fa-solid fa-trash-can-arrow-up me-2 text-danger"></i>Bitácora Auditada de Certificados Eliminados
+            </h5>
+            <span class="badge bg-danger fs-6" id="badgeTotalCertificadosEliminados">0 registros</span>
+          </div>
+
+          <div class="table-responsive border rounded bg-white">
+            <table class="table table-hover align-middle mb-0 small">
+              <thead class="table-dark">
+                <tr>
+                  <th>#</th>
+                  <th>Código</th>
+                  <th>Participante</th>
+                  <th>Curso / Evento</th>
+                  <th>Motivo de Eliminación</th>
+                  <th>Eliminado Por</th>
+                  <th>Fecha y Hora</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyCertificadosEliminados">
+                <tr><td colspan="7" class="text-center text-muted py-4">Cargando bitácora de eliminaciones...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <!-- SECCIÓN 11: MANTENIMIENTO Y RESPALDO (SOLO SUPER ADMIN)           -->
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <section id="secMantenimiento" class="tab-section" style="display: none;">
+      <div class="card border-0 shadow-sm p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <h4 class="fw-bold mb-0 text-success"><i class="fa-solid fa-database me-2"></i>Mantenimiento y Respaldo de Base de Datos</h4>
+            <small class="text-muted">Herramientas de respaldo descargable, diagnóstico de conexión Turso y salud de almacenamiento Cloudflare R2.</small>
+          </div>
+          <span class="badge bg-success-subtle text-success border border-success px-3 py-2">
+            <i class="fa-solid fa-shield-halved me-1"></i> Área Exclusiva SUPER_ADMIN
+          </span>
+        </div>
+
+        <div class="row g-4 mt-1">
+          <!-- Card 1: Respaldo Descargable -->
+          <div class="col-lg-6">
+            <div class="card border-0 bg-light p-4 h-100 shadow-sm">
+              <div class="d-flex align-items-center mb-3">
+                <div class="bg-success text-white rounded-circle p-3 me-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                  <i class="fa-solid fa-file-arrow-down fs-4"></i>
+                </div>
+                <div>
+                  <h5 class="fw-bold mb-0">Copia de Seguridad Completa</h5>
+                  <small class="text-muted">Exportación íntegra de la base de datos en formato JSON</small>
+                </div>
+              </div>
+              <p class="small text-muted mb-4">
+                Genera un archivo descargable con todas las 15 tablas relacionales (usuarios, cursos, certificados, firmas, diseños, pagos, etc.) directamente desde la base de datos distribuida <strong>Turso (LibSQL)</strong>.
+              </p>
+              <div class="mt-auto">
+                <button class="btn btn-success btn-lg w-100 fw-bold shadow-sm" id="btnDescargarRespaldoJson">
+                  <i class="fa-solid fa-download me-2"></i> Descargar Respaldo JSON
+                </button>
+                <div id="statusDescargaRespaldo" class="mt-2"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2: Limpieza de Caché -->
+          <div class="col-lg-6">
+            <div class="card border-0 bg-light p-4 h-100 shadow-sm">
+              <div class="d-flex align-items-center mb-3">
+                <div class="bg-primary text-white rounded-circle p-3 me-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                  <i class="fa-solid fa-arrows-rotate fs-4"></i>
+                </div>
+                <div>
+                  <h5 class="fw-bold mb-0">Sincronización y Caché</h5>
+                  <small class="text-muted">Refresco forzado con la base de datos Turso</small>
+                </div>
+              </div>
+              <p class="small text-muted mb-4">
+                Limpia los datos temporales guardados en la memoria del navegador y descarga la versión más reciente directamente desde los servidores de base de datos.
+              </p>
+              <div class="mt-auto">
+                <button class="btn btn-outline-primary btn-lg w-100 fw-bold" id="btnLimpiarCacheForzado">
+                  <i class="fa-solid fa-broom me-2"></i> Forzar Sincronización y Limpiar Caché
+                </button>
+                <div id="statusLimpiezaCache" class="mt-2"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3: Diagnóstico en Vivo -->
+          <div class="col-12">
+            <div class="card border-0 bg-white border p-4 shadow-sm">
+              <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                <div>
+                  <h5 class="fw-bold mb-0"><i class="fa-solid fa-stethoscope text-info me-2"></i>Diagnóstico de Infraestructura y Servicios</h5>
+                  <small class="text-muted">Verifique la latencia, conectividad y salud de Vercel, Turso y Cloudflare R2 en tiempo real.</small>
+                </div>
+                <button class="btn btn-outline-info" id="btnEjecutarDiagnostico">
+                  <i class="fa-solid fa-play me-1"></i> Ejecutar Prueba de Conexión
+                </button>
+              </div>
+
+              <div class="row g-3" id="contenedorDiagnosticoServicios">
+                <div class="col-md-4">
+                  <div class="border rounded p-3 bg-light">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                      <span class="fw-bold"><i class="fa-solid fa-server text-primary me-2"></i>Vercel Serverless</span>
+                      <span class="badge bg-success" id="badgeStatusVercel">En Línea</span>
+                    </div>
+                    <small class="text-muted d-block">Runtime: Node.js (Vercel Functions)</small>
+                    <small class="text-muted d-block">Endpoint: <code>/api</code></small>
+                  </div>
+                </div>
+
+                <div class="col-md-4">
+                  <div class="border rounded p-3 bg-light">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                      <span class="fw-bold"><i class="fa-solid fa-database text-info me-2"></i>Turso (LibSQL)</span>
+                      <span class="badge bg-success" id="badgeStatusTurso">Conectado</span>
+                    </div>
+                    <small class="text-muted d-block">Host: <code>certificados-repouptpc...turso.io</code></small>
+                    <small class="text-muted d-block">Latencia: <strong id="valLatenciaTurso">&lt; 20 ms</strong></small>
+                  </div>
+                </div>
+
+                <div class="col-md-4">
+                  <div class="border rounded p-3 bg-light">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                      <span class="fw-bold"><i class="fa-solid fa-cloud text-warning me-2"></i>Cloudflare R2</span>
+                      <span class="badge bg-success" id="badgeStatusR2">Operativo</span>
+                    </div>
+                    <small class="text-muted d-block">Bucket: <code>certificaciones</code></small>
+                    <small class="text-muted d-block">CDN: <code>pub-b61fc0d5...r2.dev</code></small>
+                  </div>
+                </div>
+              </div>
+
+              <div id="diagnosticoDetallesConsola" class="mt-3"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <!-- SECCIÓN 12: CONFIGURACIÓN GLOBAL (SOLO SUPER ADMIN)                -->
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <section id="secConfiguracion" class="tab-section" style="display: none;">
+      <div class="card border-0 shadow-sm p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <h4 class="fw-bold mb-0 text-primary"><i class="fa-solid fa-sliders me-2"></i>Configuración Global del Sistema</h4>
+            <small class="text-muted">Parámetros institucionales, formato de emisión, apariencia y opciones avanzadas administrables.</small>
+          </div>
+          <span class="badge bg-primary-subtle text-primary border border-primary px-3 py-2">
+            <i class="fa-solid fa-lock me-1"></i> Control Exclusivo SUPER_ADMIN
+          </span>
+        </div>
+
+        <form id="formConfiguracionesGlobales">
+          <div class="row g-4 mt-1">
+            <!-- Bloque 1: Parámetros Institucionales -->
+            <div class="col-lg-6">
+              <div class="card border p-3 h-100 shadow-sm bg-white">
+                <h6 class="fw-bold text-primary mb-3 border-bottom pb-2">
+                  <i class="fa-solid fa-building-columns me-2"></i>Identidad Institucional
+                </h6>
+
+                <div class="mb-3">
+                  <label class="form-label fw-bold small">Nombre Oficial de la Universidad:</label>
+                  <input type="text" class="form-control" id="cfgInstitucionNombre" required>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label fw-bold small">Siglas / Abreviatura:</label>
+                  <input type="text" class="form-control" id="cfgInstitucionSiglas" required>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label fw-bold small">Unidad Rectora:</label>
+                  <input type="text" class="form-control" id="cfgUnidadPrincipal" required>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label fw-bold small">Sitio Web Oficial:</label>
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="fa-solid fa-globe"></i></span>
+                    <input type="url" class="form-control" id="cfgWebsiteOficial" required>
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label fw-bold small">URL del Logo Oficial (Cloudflare R2 CDN):</label>
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="fa-solid fa-image"></i></span>
+                    <input type="text" class="form-control font-monospace small" id="cfgLogoPrincipalUrl">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bloque 2: Parámetros de Certificados y Emisión -->
+            <div class="col-lg-6">
+              <div class="card border p-3 h-100 shadow-sm bg-white">
+                <h6 class="fw-bold text-primary mb-3 border-bottom pb-2">
+                  <i class="fa-solid fa-graduation-cap me-2"></i>Parámetros de Certificación
+                </h6>
+
+                <div class="mb-3">
+                  <label class="form-label fw-bold small">Formato de Código Único de Certificado:</label>
+                  <input type="text" class="form-control font-monospace" id="cfgFormatoCodigo" readonly value="AAA1234AAA (3 letras + 4 números + 3 letras)">
+                  <small class="text-muted">Generador criptográfico aleatorio con verificación en Turso.</small>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label fw-bold small">Límite de Participantes por Folio:</label>
+                  <input type="number" class="form-control" id="cfgLimiteFolio" min="1" max="100" value="15">
+                  <small class="text-muted">Número máximo de certificados agrupados bajo un mismo número de folio.</small>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label fw-bold small">Ruta del Validador Público de Certificados:</label>
+                  <input type="text" class="form-control font-monospace" id="cfgUrlValidador" value="/consulta.html">
+                </div>
+
+                <hr class="my-3">
+
+                <h6 class="fw-bold text-primary mb-3">
+                  <i class="fa-solid fa-wallet me-2"></i>Módulo de Ofertas y Pagos
+                </h6>
+
+                <div class="form-check form-switch mb-3">
+                  <input class="form-check-input" type="checkbox" id="cfgSwitchRegistroPagos" checked>
+                  <label class="form-check-label fw-bold small" for="cfgSwitchRegistroPagos">
+                    Habilitar recepción y registro de pagos para talleres
+                  </label>
+                </div>
+
+                <div class="form-check form-switch mb-3">
+                  <input class="form-check-input" type="checkbox" id="cfgSwitchTasaAuto" checked>
+                  <label class="form-check-label fw-bold small" for="cfgSwitchTasaAuto">
+                    Actualización automática de Tasa BCV (Dólar Oficial)
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end align-items-center gap-3 mt-4 pt-3 border-top">
+            <div id="statusConfiguraciones" class="me-auto"></div>
+            <button type="submit" class="btn btn-primary btn-lg px-4 fw-bold shadow-sm" id="btnGuardarConfiguraciones">
+              <i class="fa-solid fa-floppy-disk me-2"></i> Guardar Configuraciones
+            </button>
+          </div>
+        </form>
+
+        <!-- Bloque 3: Presets Oficiales de Imágenes y Logos (Cloudflare R2) -->
+        <div class="card border p-4 mt-4 shadow-sm bg-white rounded-3">
+          <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 border-bottom pb-3">
+            <div>
+              <h5 class="fw-bold mb-1 text-primary">
+                <i class="fa-solid fa-images me-2"></i>Presets Oficiales de Imágenes y Logos
+              </h5>
+              <small class="text-muted">
+                Biblioteca centralizada de logos de ministerios, escudos nacionales, logotipos de unidades e imágenes institucionales almacenadas en <strong>Cloudflare R2</strong> (carpeta <code>/img/logos/</code>) disponibles para su uso en el diseñador de certificados.
+              </small>
+            </div>
+            <button type="button" class="btn btn-success fw-bold shadow-sm" onclick="window.mantenimientoModule.abrirModalNuevoPreset()">
+              <i class="fa-solid fa-cloud-arrow-up me-2"></i> Subir Nuevo Logo / Preset
+            </button>
+          </div>
+
+          <div class="row g-3" id="contenedorPresetsConfiguracion">
+            <div class="col-12 text-center py-4 text-muted">
+              <div class="spinner-border text-primary spinner-border-sm me-2"></div> Cargando presets oficiales...
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ═══ MODALES DE LA APLICACIÓN ═══ -->
+
+  <!-- Modal Estado de Infraestructura y Conexión -->
+  <div class="modal fade" id="modalConfiguracion" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content shadow-lg border-0">
+        <div class="modal-header bg-dark text-white">
+          <h5 class="modal-title"><i class="fa-solid fa-circle-nodes me-2 text-success"></i>Estado de Infraestructura y Backend</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <p class="small text-muted mb-3">Arquitectura activa de alta velocidad: Vercel (Node.js) + Base de Datos Turso + Cloudflare R2.</p>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Endpoint API Serverless (Vercel):</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light"><i class="fa-solid fa-server text-primary"></i></span>
+              <input type="text" class="form-control bg-light font-monospace small" id="inputApiEndpointUrl" value="/api" readonly>
+            </div>
+            <small class="text-success"><i class="fa-solid fa-circle-check me-1"></i> Conexión Directa en Edge (Latencia &lt; 50ms)</small>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Base de Datos Distribuida:</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light"><i class="fa-solid fa-database text-info"></i></span>
+              <input type="text" class="form-control bg-light font-monospace small" value="Turso (LibSQL) - AWS US-East-2" readonly>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Almacenamiento de Archivos e Imágenes:</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light"><i class="fa-solid fa-cloud text-warning"></i></span>
+              <input type="text" class="form-control bg-light font-monospace small" value="Cloudflare R2 (certificaciones) + CDN Global" readonly>
+            </div>
+          </div>
+
+          <div id="statusConexionScript" class="mb-2"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-info me-auto" id="btnProbarConexionScript"><i class="fa-solid fa-plug me-1"></i> Probar Conexión</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Usuario (Crear/Editar) -->
+  <div class="modal fade" id="modalUsuario" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <form id="formUsuario">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalUsuarioTitle">Nuevo Usuario</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="usuarioId">
+            <div class="mb-3">
+              <label class="form-label fw-bold">Cédula de Identidad (ej: V-12345678):</label>
+              <input type="text" class="form-control" id="usuarioCedula" required placeholder="V-12345678">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Nombre Completo:</label>
+              <input type="text" class="form-control" id="usuarioNombre" required placeholder="Nombres y Apellidos">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Guardar Usuario</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Carga Masiva Usuarios -->
+  <div class="modal fade" id="modalCargaMasivaUsuarios" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title"><i class="fa-solid fa-file-import me-2"></i>Carga Masiva de Usuarios (CSV / Texto Copiado)</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <p class="small text-muted mb-0">Pegue la lista de usuarios o suba un archivo CSV. Debe contener <strong>Cédula</strong> y <strong>Nombre Completo</strong>.</p>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="btnDescargarPlantillaCsvUsuarios">
+              <i class="fa-solid fa-download me-1"></i>Descargar Plantilla CSV
+            </button>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-bold">Subir Archivo CSV / TXT:</label>
+            <input type="file" class="form-control form-control-sm mb-2" id="fileCsvUsuarios" accept=".csv, .txt">
+            <label class="form-label small fw-bold">O Pegar Texto Directo:</label>
+            <textarea class="form-control font-monospace" id="textareaCargaMasiva" rows="4" placeholder="V-12345678, PEDRO PÉREZ&#10;V-87654321, MARIA GÓMEZ"></textarea>
+          </div>
+
+          <div id="previewCargaMasivaContainer"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-success" id="btnConfirmarCargaMasiva" disabled>Procesar Carga Masiva</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Unidad -->
+  <div class="modal fade" id="modalUnidad" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <form id="formUnidad">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalUnidadTitle">Nueva Unidad</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="unidadId">
+            <div class="mb-3">
+              <label class="form-label fw-bold">Código Corto (ej: CYT, BIENESTAR):</label>
+              <input type="text" class="form-control" id="unidadCodigo" required placeholder="CYT">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Nombre Completo de la Unidad:</label>
+              <input type="text" class="form-control" id="unidadNombre" required placeholder="Unidad de Ciencia y Tecnología">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Logo (Subir archivo o pegar URL):</label>
+              <div class="input-group mb-2">
+                <input type="file" class="form-control" id="fileUnidadLogo" accept="image/png,image/jpeg,image/svg+xml">
+              </div>
+              <input type="url" class="form-control form-control-sm" id="unidadLogoUrl" placeholder="URL del logo (o se genera al subir archivo)">
+              <div id="previewUnidadLogo" class="mt-2 text-center"></div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Guardar Unidad</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Firma -->
+  <div class="modal fade" id="modalFirma" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <form id="formFirma">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalFirmaTitle">Nueva Autoridad Firmante</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="firmaId">
+            <div class="mb-3">
+              <label class="form-label fw-bold">Nombre Completo Autoridad:</label>
+              <input type="text" class="form-control" id="firmaNombre" required placeholder="Msc. Carlos Rodríguez">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Cargo Institucional:</label>
+              <input type="text" class="form-control" id="firmaCargo" required placeholder="Rector UPTPC">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Firma Digital PNG (Subir o pegar URL):</label>
+              <div class="input-group mb-2">
+                <input type="file" class="form-control" id="fileFirmaImg" accept="image/png,image/jpeg">
+              </div>
+              <input type="url" class="form-control form-control-sm" id="firmaUrl" placeholder="URL de la firma (o se genera al subir)">
+              <div id="previewFirmaImg" class="mt-1 text-center"></div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Sello Institucional PNG (Subir o pegar URL):</label>
+              <div class="input-group mb-2">
+                <input type="file" class="form-control" id="fileSelloImg" accept="image/png,image/jpeg">
+              </div>
+              <input type="url" class="form-control form-control-sm" id="selloUrl" placeholder="URL del sello (o se genera al subir)">
+              <div id="previewSelloImg" class="mt-1 text-center"></div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Guardar Firmante</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Curso / Taller -->
+  <div class="modal fade" id="modalCurso" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <form id="formCurso">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalCursoTitle">Nuevo Curso / Taller</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="cursoId">
+            
+            <div class="row g-3 mb-3">
+              <div class="col-md-4">
+                <label class="form-label fw-bold">Código Relacionado:</label>
+                <input type="text" class="form-control" id="cursoCodigoRel" placeholder="TALLER-CYT-01">
+              </div>
+              <div class="col-md-8">
+                <label class="form-label fw-bold">Nombre del Curso / Taller:</label>
+                <input type="text" class="form-control" id="cursoNombre" required placeholder="Taller de Inteligencia Artificial y Web">
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-4">
+                <label class="form-label fw-bold">Tipo de Evento:</label>
+                <select class="form-select" id="cursoTipoId" required></select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-bold">Unidad Responsable:</label>
+                <select class="form-select" id="cursoUnidadId" required></select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-bold">Horas Académicas:</label>
+                <input type="number" class="form-control" id="cursoHoras" value="16" required>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold">Motivo del Certificado:</label>
+              <textarea class="form-control" id="cursoMotivo" rows="2" placeholder="Por su valiosa participación y aprovechamiento en el taller..."></textarea>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold"><i class="fa-solid fa-palette me-1 text-primary"></i> Seleccionar Diseño del Certificado:</label>
+              <select class="form-select" id="cursoDisenoId">
+                <option value="">-- Usar Diseño Predeterminado (Activo) --</option>
+              </select>
+              <div class="form-text">Asigne el modelo de diseño (Tiro o Tiro/Retiro) que se aplicará a los certificados de este evento.</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold">Ponencias / Contenido Académico:</label>
+              <textarea class="form-control" id="cursoPonencias" rows="2" placeholder="Módulo 1: Fundamentos | Módulo 2: Desarrollo"></textarea>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-3">
+                <label class="form-label fw-bold">Firmante 1 (Rector/a):</label>
+                <select class="form-select" id="cursoFirma1"></select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-bold">Firmante 2 (Secretario/a):</label>
+                <select class="form-select" id="cursoFirma2"></select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-bold">Firmante 3 (Profesor/a):</label>
+                <select class="form-select" id="cursoFirma3"></select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-bold">Prefijo Matrícula:</label>
+                <input type="text" class="form-control text-uppercase" id="cursoPrefijoMatricula" placeholder="EXTMKT" autocomplete="off">
+                <div class="form-text">Se completa solo: PREFIJO + mes + últimos 3 dígitos de la cédula (Ej: EXTMKT04678).</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Guardar Curso / Taller</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Emisión Masiva de Certificados -->
+  <div class="modal fade" id="modalCertificar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content">
+        <form id="formEmitirCertificados">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title"><i class="fa-solid fa-graduation-cap me-2"></i>Emisión de Certificados por Taller</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+
+          <div class="modal-body">
+            <div class="row g-3 mb-3">
+              <div class="col-md-8">
+                <label class="form-label fw-bold">Seleccionar Curso / Taller:</label>
+                <select class="form-select form-select-lg" id="emisionCursoId" required></select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-bold">Fecha de Emisión:</label>
+                <input type="date" class="form-control form-control-lg" id="emisionFecha" required>
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-5">
+                <label class="form-label fw-bold">Lugar de Emisión:</label>
+                <input type="text" class="form-control" id="emisionLugar" value="Puerto Cabello, Venezuela">
+              </div>
+              <div class="col-md-7">
+                <div class="card bg-light border p-2">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <div class="form-check form-switch mb-0">
+                      <input class="form-check-input cursor-pointer" type="checkbox" id="checkHabilitarTomoFolio">
+                      <label class="form-check-label fw-bold small cursor-pointer text-dark" for="checkHabilitarTomoFolio">
+                        <i class="fa-solid fa-book me-1"></i> Asignar Registro de Tomo y Folio
+                      </label>
+                    </div>
+                    <small class="text-muted fw-bold" id="textTomoFolioState">Desactivado (Sin Tomo/Folio)</small>
+                  </div>
+                  <div class="row g-2 mt-1" id="containerInputsTomoFolio" style="display: none;">
+                    <div class="col-md-4">
+                      <label class="form-label small fw-bold text-dark mb-1">Tomo / Libro:</label>
+                      <input type="text" class="form-control form-control-sm" id="emisionTomo" placeholder="Tomo (ej: 005)">
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small fw-bold text-dark mb-1">Folio Inicial:</label>
+                      <input type="number" class="form-control form-control-sm" id="emisionFolioInicial" placeholder="Folio Inicial (ej: 101)">
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small fw-bold text-dark mb-1">Certificados x Folio:</label>
+                      <input type="number" class="form-control form-control-sm" id="emisionLimitePorFolio" placeholder="Cant. (ej: 15)" value="15" min="1">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <hr class="my-3">
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <div>
+                <h6 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-users me-2"></i>Seleccionar Participantes para Certificar:</h6>
+                <small id="infoDuplicadosCount" class="text-muted"></small>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-sm btn-outline-primary fw-bold" id="btnAbrirCargaRapidaEmision" title="Pegar o subir lista masiva (CSV / Texto)">
+                  <i class="fa-solid fa-file-csv me-1"></i> Carga Rápida / Pegar Lista
+                </button>
+                <span class="badge bg-primary fs-6" id="badgeUsuariosSeleccionadosCount">0 seleccionados</span>
+                <div class="form-check mb-0">
+                  <input class="form-check-input" type="checkbox" id="checkSelectAllUsuariosEmision">
+                  <label class="form-check-label fw-bold small" for="checkSelectAllUsuariosEmision">Seleccionar Elegibles</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-2">
+              <input type="text" class="form-control form-control-sm" id="inputSearchUsuariosEmision" placeholder="Filtrar participantes por cédula o nombre...">
+            </div>
+
+            <div class="border rounded p-2 mb-3 bg-white" id="listaUsuariosEmisionContainer" style="max-height: 220px; overflow-y: auto;"></div>
+
+            <!-- Participantes ya certificados en este taller -->
+            <div class="mt-3 pt-3 border-top">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-bold mb-0 text-primary">
+                  <i class="fa-solid fa-graduation-cap me-2"></i>Participantes ya Certificados en este Taller:
+                </h6>
+                <span class="badge bg-secondary" id="badgeParticipantesCertificadosCount">0 inscritos</span>
+              </div>
+              <div id="containerParticipantesCertificadosEnTaller" class="table-responsive border rounded bg-light p-2" style="max-height: 180px; overflow-y: auto;">
+                <p class="text-center text-muted small py-2 mb-0">Seleccione un taller arriba para consultar participantes certificados.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-success btn-lg">
+              <i class="fa-solid fa-certificate me-2"></i> Emitir Certificados (Códigos AAA1234AAA)
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Carga Rápida de Participantes por Lista / CSV -->
+  <div class="modal fade" id="modalCargaRapidaEmision" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-dark text-white">
+          <h5 class="modal-title"><i class="fa-solid fa-file-csv text-warning me-2"></i>Carga Rápida de Participantes (CSV / Lista)</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-info py-2 small mb-3">
+            <i class="fa-solid fa-lightbulb me-1"></i> <strong>Instrucciones:</strong> Pegue su lista de participantes o suba un archivo CSV/TXT. Cada línea debe contener la <strong>Cédula</strong> y opcionalmente el <strong>Nombre Completo</strong> separados por coma (<code>,</code>) o punto y coma (<code>;</code>).<br>
+            <em>Ejemplo:</em><br>
+            <code>V-12345678, JOSE ALBERTO PÉREZ</code><br>
+            <code>V-87654321; MARÍA FERNANDA GÓMEZ</code>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-8">
+              <label class="form-label fw-bold">Pegar Lista de Participantes:</label>
+              <textarea class="form-control font-monospace small" id="textareaCargaRapidaTexto" rows="6" placeholder="V-12345678, JOSE PEREZ&#10;V-87654321, MARIA GOMEZ"></textarea>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-bold">O subir archivo CSV / TXT:</label>
+              <input type="file" class="form-control mb-3" id="fileCargaRapidaCsv" accept=".csv, .txt">
+              
+              <div class="d-grid">
+                <button type="button" class="btn btn-outline-secondary" id="btnLimpiarCargaRapida">
+                  <i class="fa-solid fa-eraser me-1"></i> Limpiar Lista
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Vista Previa / Resumen de análisis -->
+          <div class="card bg-light border p-2 mb-2">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="fw-bold small text-dark"><i class="fa-solid fa-list-check me-1"></i> Resumen de Análisis de Lista:</span>
+              <div id="badgeResumenCargaRapida">
+                <span class="badge bg-secondary">0 detectados</span>
+              </div>
+            </div>
+            <div class="table-responsive border rounded bg-white" style="max-height: 180px; overflow-y: auto;">
+              <table class="table table-sm table-hover align-middle mb-0 small">
+                <thead class="table-light">
+                  <tr>
+                    <th>#</th>
+                    <th>Cédula</th>
+                    <th>Nombre Detectado</th>
+                    <th>Estado / Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyPreviewCargaRapida">
+                  <tr>
+                    <td colspan="4" class="text-center text-muted py-3">Pegue texto arriba para analizar los datos.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary fw-bold" id="btnConfirmarCargaRapida">
+            <i class="fa-solid fa-check-double me-1"></i> Registrar Nuevos y Auto-Seleccionar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Ver Certificado -->
+  <div class="modal fade" id="modalVerCertificado" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="fa-solid fa-certificate text-primary me-2"></i>Vista de Certificado Renderizado</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center p-4">
+          <div id="verCertificadoContainer"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" id="btnImprimirModalCertificado"><i class="fa-solid fa-print me-1"></i> Imprimir</button>
+          <button type="button" class="btn btn-success" id="btnDescargarPNGModalCertificado"><i class="fa-solid fa-download me-1"></i> Descargar PNG</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Editar Certificación Emitida -->
+  <div class="modal fade" id="modalEditarCertificado" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content shadow-lg border-0">
+        <form id="formEditarCertificado">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title"><i class="fa-solid fa-pen-to-square me-2"></i>Editar Certificación Emitida</h5>
+            <button type="button" class="btn-close btn-close-white" id="btnCerrarModalEditarCertificado" aria-label="Close"></button>
+          </div>
+          <div class="modal-body p-4">
+            <input type="hidden" id="editarCertificadoId">
+            <input type="hidden" id="editarCertificadoReturnBulk">
+
+            <div class="card bg-light border p-3 mb-3">
+              <div class="row align-items-center">
+                <div class="col-md-8">
+                  <span class="text-muted small d-block">Participante:</span>
+                  <h5 class="fw-bold mb-0 text-dark" id="lblEditarCertificadoNombre">JUAN PÉREZ</h5>
+                  <small class="text-primary font-monospace fw-bold" id="lblEditarCertificadoCedula">V-12345678</small>
+                </div>
+                <div class="col-md-4 text-md-end mt-2 mt-md-0">
+                  <span class="text-muted small d-block">Código de Verificación:</span>
+                  <span class="badge bg-dark text-warning fs-6 font-monospace fw-bold" id="badgeEditarCertificadoCodigo">AAA1234AAA</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Tomo / Libro:</label>
+                <input type="text" class="form-control" id="editarCertificadoTomo" placeholder="Ej: 005 o 01">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Folio:</label>
+                <input type="text" class="form-control" id="editarCertificadoFolio" placeholder="Ej: 101">
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Fecha del Curso / Emisión:</label>
+                <input type="date" class="form-control" id="editarCertificadoFecha" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Lugar de Emisión:</label>
+                <input type="text" class="form-control" id="editarCertificadoLugar" placeholder="Puerto Cabello, Venezuela">
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold">Matrícula Específica (Opcional):</label>
+              <input type="text" class="form-control font-monospace" id="editarCertificadoMatricula" placeholder="Ej: IA-2026-001">
+            </div>
+          </div>
+          <div class="modal-footer bg-light">
+            <button type="button" class="btn btn-secondary" id="btnCancelarModalEditarCertificado">Cancelar</button>
+            <button type="submit" class="btn btn-primary fw-bold" id="btnSubmitEditarCertificado">
+              <i class="fa-solid fa-floppy-disk me-1"></i> Guardar Cambios
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Reporte de Inclusión en Tomo y Folio -->
+  <div class="modal fade" id="modalReporteInclusionTomoFolio" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content shadow-lg border-0">
+        <div class="modal-header bg-dark text-white">
+          <h5 class="modal-title"><i class="fa-solid fa-book-bookmark text-warning me-2"></i>Reporte de Inclusión en Registro de Tomo y Folio</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4" id="printableReporteInclusionArea">
+          <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+            <div>
+              <h5 class="fw-bold text-primary mb-0" id="reporteInclusionCursoNombre">NOMBRE DEL CURSO</h5>
+              <small class="text-muted" id="reporteInclusionFechaInfo">Fecha: - | Puerto Cabello, Venezuela</small>
+            </div>
+            <div class="text-end">
+              <span class="badge bg-primary fs-6 mb-1" id="reporteInclusionTotalCount">0 certificados</span><br>
+              <small class="text-dark fw-bold" id="reporteInclusionTomoFolioSummary">Tomo: - | Folios: -</small>
+            </div>
+          </div>
+
+          <div class="table-responsive border rounded bg-white">
+            <table class="table table-sm table-striped table-hover align-middle mb-0 small">
+              <thead class="table-light">
+                <tr>
+                  <th>#</th>
+                  <th>Cédula</th>
+                  <th>Nombre Completo del Participante</th>
+                  <th>Código Verificación</th>
+                  <th>Tomo</th>
+                  <th>Folio</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyReporteInclusionTomoFolio">
+                <tr><td colspan="6" class="text-center text-muted py-3">No hay datos de inclusión.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-outline-primary" id="btnImprimirReporteInclusion"><i class="fa-solid fa-print me-1"></i> Imprimir Reporte</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Modal Filtro para Generar Reporte de Tomo y Folio por Curso y Fecha -->
+  <div class="modal fade" id="modalFiltroReporteTomoFolio" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content shadow-lg border-0">
+        <div class="modal-header bg-dark text-white">
+          <h5 class="modal-title"><i class="fa-solid fa-book-bookmark text-warning me-2"></i>Reporte de Registro de Tomo y Folio</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <input type="hidden" id="filtroReporteCursoId">
+          <div class="card bg-light border p-3 mb-3">
+            <span class="text-muted small d-block">Taller / Curso Seleccionado:</span>
+            <h6 class="fw-bold mb-0 text-primary" id="lblFiltroReporteCursoNombre">NOMBRE DEL CURSO</h6>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Seleccione Fecha de Emisión del Reporte:</label>
+            <select class="form-select font-monospace" id="selectFechaFiltroReporte">
+              <option value="">Cargando fechas disponibles...</option>
+            </select>
+            <small class="text-muted mt-2 d-block"><i class="fa-solid fa-info-circle me-1"></i>Se muestran únicamente las fechas en que se emitieron certificados reales para este taller específico.</small>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary fw-bold" id="btnConfirmarGenerarReporteCurso">
+            <i class="fa-solid fa-file-invoice me-1"></i> Generar Reporte
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Confirmación Genérico Bootstrap 5 -->
+  <div class="modal fade" id="modalConfirmacionBootstrap" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content shadow-lg border-0">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title" id="lblModalConfirmacionTitulo"><i class="fa-solid fa-triangle-exclamation me-2"></i>Confirmar Acción</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4 text-center">
+          <div class="mb-3">
+            <i class="fa-solid fa-circle-question fa-3x text-warning"></i>
+          </div>
+          <h6 class="fw-bold text-dark mb-2" id="lblModalConfirmacionMensaje">¿Está seguro de realizar esta acción?</h6>
+          <p class="text-muted small mb-0" id="lblModalConfirmacionSubtexto"></p>
+        </div>
+        <div class="modal-footer bg-light justify-content-center">
+          <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal" id="btnModalConfirmacionCancelar">Cancelar</button>
+          <button type="button" class="btn btn-danger fw-bold px-4" id="btnModalConfirmacionAceptar">
+            <i class="fa-solid fa-check me-1"></i> Sí, Confirmar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Previsualizar Certificado (Diseñador) -->
+  <div class="modal fade" id="modalPrevisualizarCertificado" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Previsualización de Diseño con Datos de Ejemplo</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center p-4">
+          <div id="previewCertContainer"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Iniciar Sesión Administrador -->
+  <div class="modal fade" id="modalLoginAdmin" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content shadow-lg border-0">
+        <div class="modal-header bg-dark text-white text-center d-block position-relative">
+          <h4 class="modal-title fw-bold mb-1"><i class="fa-solid fa-lock text-warning me-2"></i>Acceso al Sistema</h4>
+          <small class="text-white-50">Ingrese sus credenciales de administración para acceder</small>
+        </div>
+        <div class="modal-body p-4">
+          <form id="formLoginAdmin">
+            <div class="mb-3">
+              <label class="form-label fw-bold"><i class="fa-solid fa-user me-1 text-primary"></i> Usuario:</label>
+              <input type="text" class="form-control form-control-lg" id="loginUsuario" required placeholder="Ej: USUARIO" autocomplete="username">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold"><i class="fa-solid fa-key me-1 text-primary"></i> Clave / Contraseña:</label>
+              <div class="input-group">
+                <input type="password" class="form-control form-control-lg" id="loginClave" required placeholder="Ej: ABC_123" autocomplete="current-password">
+                <button type="button" class="btn btn-outline-secondary btn-toggle-pwd" title="Mostrar/Ocultar"><i class="fa-solid fa-eye"></i></button>
+              </div>
+            </div>
+            <div id="statusLoginAdmin" class="mb-3"></div>
+            <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold shadow-sm" id="btnSubmitLogin">
+              <i class="fa-solid fa-right-to-bracket me-2"></i> Iniciar Sesión
+            </button>
+
+            <!-- Configuración Rápida de URL de API (Vercel) -->
+            <div class="mt-3 text-center border-top pt-2">
+              <a href="javascript:void(0)" onclick="const el = document.getElementById('divConfigurarApiModal'); el.style.display = (el.style.display === 'none' ? 'block' : 'none');" class="small text-muted text-decoration-none">
+                <i class="fa-solid fa-server me-1"></i> Configurar Servidor Backend <i class="fa-solid fa-angle-down ms-1"></i>
+              </a>
+              <div id="divConfigurarApiModal" class="mt-2 text-start p-2 bg-light rounded border" style="display: none;">
+                <label class="form-label small fw-bold mb-1">URL de API Node.js / Vercel:</label>
+                <div class="input-group input-group-sm mb-2">
+                  <input type="text" class="form-control font-monospace" id="inputApiUrlModal" placeholder="/api o https://...vercel.app/api">
+                  <button type="button" class="btn btn-primary" onclick="guardarApiUrlModal()">Guardar</button>
+                </div>
+                <div class="d-flex gap-1">
+                  <button type="button" class="btn btn-outline-secondary btn-sm flex-fill" style="font-size: 0.72rem;" onclick="document.getElementById('inputApiUrlModal').value='/api';">Usar /api</button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm flex-fill" style="font-size: 0.72rem;" onclick="document.getElementById('inputApiUrlModal').value=window.config.getVercelApiUrl();">Usar Vercel</button>
+                </div>
+                <small class="text-muted d-block mt-1" style="font-size: 0.7rem;">Si estás en <code>cyt.uptpc.edu.ve</code>, debe apuntar a la URL de Vercel.</small>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Cambiar Contraseña -->
+  <div class="modal fade" id="modalCambiarClave" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <form id="formCambiarClave">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title"><i class="fa-solid fa-key me-2"></i>Cambiar Contraseña</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3" id="groupClaveActual">
+              <label class="form-label fw-bold">Contraseña Actual:</label>
+              <div class="input-group">
+                <input type="password" class="form-control" id="claveActual" placeholder="Ingrese contraseña actual">
+                <button type="button" class="btn btn-outline-secondary btn-toggle-pwd" title="Mostrar/Ocultar"><i class="fa-solid fa-eye"></i></button>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Nueva Contraseña:</label>
+              <div class="input-group has-validation">
+                <input type="password" class="form-control" id="nuevaClave" required placeholder="Mínimo 6 caracteres (letras y números)">
+                <button type="button" class="btn btn-outline-secondary btn-toggle-pwd" title="Mostrar/Ocultar"><i class="fa-solid fa-eye"></i></button>
+                <div class="invalid-feedback" id="feedbackNuevaClave">La contraseña debe combinar letras y números y tener mínimo 6 caracteres.</div>
+              </div>
+              <small class="text-muted" id="msgRuleNuevaClave">Requisito: Alfanumérica (letras + números), mín 6 caracteres.</small>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Confirmar Nueva Contraseña:</label>
+              <div class="input-group has-validation">
+                <input type="password" class="form-control" id="confirmarNuevaClave" required placeholder="Repita la nueva contraseña">
+                <button type="button" class="btn btn-outline-secondary btn-toggle-pwd" title="Mostrar/Ocultar"><i class="fa-solid fa-eye"></i></button>
+                <div class="invalid-feedback" id="feedbackConfirmarNuevaClave">Las contraseñas no coinciden.</div>
+              </div>
+            </div>
+            <div id="statusCambiarClave"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary" id="btnSubmitCambiarClave">Guardar Nueva Contraseña</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Crear/Editar Admin User (Super Admin) -->
+  <div class="modal fade" id="modalAdminUser" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <form id="formAdminUser">
+          <div class="modal-header bg-dark text-white">
+            <h5 class="modal-title" id="modalAdminUserTitle"><i class="fa-solid fa-user-gear me-2"></i>Nuevo Administrador</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="adminUserId">
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Nombre de Usuario Admin:</label>
+                <input type="text" class="form-control" id="adminUsuarioName" required placeholder="Ej: COORDINACION_EXT">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Contraseña / Clave:</label>
+                <div class="input-group has-validation">
+                  <input type="password" class="form-control" id="adminUsuarioClave" placeholder="Escriba la clave del administrador">
+                  <button type="button" class="btn btn-outline-secondary btn-toggle-pwd" title="Mostrar/Ocultar"><i class="fa-solid fa-eye"></i></button>
+                  <div class="invalid-feedback" id="feedbackAdminUsuarioClave">Debe combinar letras y números (mínimo 6 caracteres).</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Tipo / Rol:</label>
+                <select class="form-select" id="adminUsuarioTipo" required>
+                  <option value="ADMINISTRACION">ADMINISTRACION (Exclusivo: Verificación y CRUD de Pagos)</option>
+                  <option value="AUDITOR">AUDITOR (Solo Lectura y Auditoría Integral)</option>
+                  <option value="ADMIN">ADMIN (Acceso Personalizado por Permisos)</option>
+                  <option value="SUPER_ADMIN">SUPER_ADMIN (Control Total del Sistema)</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Estatus de Cuenta:</label>
+                <select class="form-select" id="adminUsuarioStatus" required>
+                  <option value="ACTIVO">ACTIVO (Permitido Iniciar Sesión)</option>
+                  <option value="INACTIVO">INACTIVO (Acceso Bloqueado)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="card bg-light border p-3">
+              <h6 class="fw-bold text-dark mb-2"><i class="fa-solid fa-list-check me-2"></i>Permisos de Acceso a Secciones (Sólo aplica para ADMIN):</h6>
+              <div class="row g-2" id="checkboxesSeccionesPermisos">
+                <div class="col-md-6">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="secDashboard" id="permSecDashboard" checked>
+                    <label class="form-check-label" for="permSecDashboard">Dashboard / Estadísticas</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="secUsuarios" id="permSecUsuarios" checked>
+                    <label class="form-check-label" for="permSecUsuarios">Gestión de Usuarios / Participantes</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="secUnidades" id="permSecUnidades" checked>
+                    <label class="form-check-label" for="permSecUnidades">Unidades Organizativas</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="secFirmas" id="permSecFirmas" checked>
+                    <label class="form-check-label" for="permSecFirmas">Firmas y Sellos</label>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="secCursos" id="permSecCursos" checked>
+                    <label class="form-check-label" for="permSecCursos">Cursos / Talleres</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="secCertificados" id="permSecCertificados" checked>
+                    <label class="form-check-label" for="permSecCertificados">Emisión de Certificados</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="secDisenador" id="permSecDisenador" checked>
+                    <label class="form-check-label" for="permSecDisenador">Diseñador Canvas SVG</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="secConsultas" id="permSecConsultas" checked>
+                    <label class="form-check-label" for="permSecConsultas">Bitácora de Consultas</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Guardar Administrador</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Crear / Editar Oferta de Curso -->
+  <div class="modal fade" id="modalOfertaCurso" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <form id="formOfertaCurso">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title fw-bold" id="lblModalOfertaTitulo">
+              <i class="fa-solid fa-plus-circle me-2"></i>Nuevo Taller / Curso Ofertado
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body p-4">
+            <input type="hidden" id="inputOfertaId">
+            <input type="hidden" id="inputOfertaFlayerUrl">
+
+            <div class="mb-3">
+              <label for="inputOfertaTaller" class="form-label fw-bold">Nombre del Taller / Curso <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-control-lg" id="inputOfertaTaller" placeholder="Ej: TALLER DE DESARROLLO WEB FULL STACK" required>
+            </div>
+
+            <div class="mb-3">
+              <label for="inputOfertaDescripcion" class="form-label fw-bold">Descripción del Contenido / Programa</label>
+              <textarea class="form-control" id="inputOfertaDescripcion" rows="3" placeholder="Resumen del taller, módulos, contenido y objetivos..."></textarea>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label for="inputOfertaValorEstudiante" class="form-label fw-bold text-success">
+                  <i class="fa-solid fa-graduation-cap me-1"></i>Valor Estudiante UPTPC ($ USD) <span class="text-danger">*</span>
+                </label>
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input type="number" step="0.01" min="0" class="form-control" id="inputOfertaValorEstudiante" placeholder="10.00" required>
+                </div>
+                <small class="text-muted">Precio preferencial para estudiantes activos de la universidad</small>
+              </div>
+
+              <div class="col-md-6">
+                <label for="inputOfertaValorForaneo" class="form-label fw-bold text-info">
+                  <i class="fa-solid fa-user me-1"></i>Valor Foráneo / Público ($ USD) <span class="text-danger">*</span>
+                </label>
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input type="number" step="0.01" min="0" class="form-control" id="inputOfertaValorForaneo" placeholder="25.00" required>
+                </div>
+                <small class="text-muted">Precio regular para profesionales y público externo</small>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="inputOfertaFlayerFile" class="form-label fw-bold">
+                <i class="fa-solid fa-image me-1"></i>Flayer / Portada Promocional (Google Drive)
+              </label>
+              <input type="file" class="form-control" id="inputOfertaFlayerFile" accept="image/*">
+              <small class="text-muted">Subirá automáticamente la imagen a la carpeta de Google Drive configurada (ID: 110EX5edxA-UP1_Q3JpfLZ3qAN7Y92J9J)</small>
+            </div>
+
+            <div class="text-center mt-2">
+              <img id="imgOfertaFlayerPreview" src="" alt="Vista previa de Flayer" class="img-thumbnail" style="max-height: 200px; display: none;">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary fw-bold px-4">
+              <i class="fa-solid fa-floppy-disk me-1"></i> Guardar Taller Ofertado
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Registrar / Editar Pago Manual (Administración) -->
+  <div class="modal fade" id="modalPagoManual" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title fw-bold" id="lblModalPagoTitulo">
+            <i class="fa-solid fa-file-invoice-dollar me-2"></i>Registrar Pago Declarado
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <form id="formPagoManual">
+          <div class="modal-body">
+            <input type="hidden" id="inputPagoId">
+            <input type="hidden" id="inputPagoCaptureUrl">
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Usuario / Participante: <span class="text-danger">*</span></label>
+                <select class="form-select" id="inputPagoUsuarioId" required>
+                  <option value="">-- Seleccionar Participante --</option>
+                </select>
+                <small class="text-muted">Si no aparece, regístrelo previamente en la sección de Usuarios.</small>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Curso / Taller Ofertado: <span class="text-danger">*</span></label>
+                <select class="form-select" id="inputPagoCursoOfertadoId" required>
+                  <option value="">-- Seleccionar Taller --</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-4">
+                <label class="form-label fw-bold">Banco de Origen:</label>
+                <select class="form-select" id="inputPagoBancoOrigen">
+                  <option value="Banco de Venezuela (0102)">Banco de Venezuela (0102)</option>
+                  <option value="Banesco (0134)">Banesco (0134)</option>
+                  <option value="Banco Mercantil (0105)">Banco Mercantil (0105)</option>
+                  <option value="BBVA Provincial (0108)">BBVA Provincial (0108)</option>
+                  <option value="Banco Nacional de Crédito BNC (0191)">Banco Nacional de Crédito BNC (0191)</option>
+                  <option value="Bancamiga (0172)">Bancamiga (0172)</option>
+                  <option value="Pago Móvil Interbancario">Pago Móvil Interbancario</option>
+                  <option value="Efectivo / Taquilla">Efectivo / Taquilla</option>
+                  <option value="Otro">Otro Banco</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-bold">Monto en Bolívares (Bs.): <span class="text-danger">*</span></label>
+                <input type="number" step="0.01" class="form-control" id="inputPagoMonto" placeholder="Ej: 350.50" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-bold">N° de Referencia: <span class="text-danger">*</span></label>
+                <input type="text" class="form-control font-monospace" id="inputPagoReferencia" placeholder="Ej: 00984572" required>
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Fecha del Pago:</label>
+                <input type="date" class="form-control" id="inputPagoFecha">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Estatus Inicial del Pago:</label>
+                <select class="form-select" id="inputPagoStatus">
+                  <option value="true">APROBADO (Pago Confirmado y Validado)</option>
+                  <option value="false" selected>PENDIENTE (En Proceso de Verificación)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold">
+                <i class="fa-solid fa-cloud-arrow-up me-1"></i>Comprobante / Capture de Pago (Cloudflare R2: /img/pagos):
+              </label>
+              <input type="file" class="form-control" id="inputPagoCaptureFile" accept="image/*">
+              <small class="text-muted">Las imágenes se optimizan y organizan de forma automática en Cloudflare R2 (/img/pagos).</small>
+              <div class="mt-2 text-center" id="containerPreviewCapture" style="display: none;">
+                <img id="imgPagoCapturePreview" src="" class="img-thumbnail" style="max-height: 180px; object-fit: contain;">
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-success fw-bold px-4" id="btnGuardarPagoManual">
+              <i class="fa-solid fa-floppy-disk me-1"></i> Guardar Declaración de Pago
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Visualizar Imagen Full -->
+  <div class="modal fade" id="modalVerImagenFull" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold" id="lblModalImagenFullTitulo">Vista Previa de Imagen</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center p-3">
+          <img id="imgModalFullPreview" src="" class="img-fluid rounded shadow-sm" style="max-height: 80vh;" alt="Vista previa full">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Nuevo Preset de Imagen o Logo (Cloudflare R2) -->
+  <div class="modal fade" id="modalNuevoPresetLogo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content shadow-lg border-0 rounded-4">
+        <form id="formNuevoPresetLogo" onsubmit="window.mantenimientoModule.guardarNuevoPreset(event)">
+          <div class="modal-header bg-success text-white">
+            <h5 class="modal-title fw-bold">
+              <i class="fa-solid fa-cloud-arrow-up me-2"></i>Subir Preset Oficial de Logo / Imagen
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="alert alert-info py-2 px-3 small mb-3">
+              <i class="fa-solid fa-shield-halved me-1"></i>Las imágenes se optimizan y suben automáticamente a <strong>Cloudflare R2</strong> en la carpeta <code>/img/logos/</code> para uso directo en el diseñador de certificados.
+            </div>
+
+            <div class="mb-3">
+              <label for="inputPresetNombre" class="form-label fw-bold small">Nombre del Logo o Preset: <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="inputPresetNombre" placeholder="Ej: Logo Ministerio de Educación Universitaria" required>
+            </div>
+
+            <div class="mb-3">
+              <label for="selectPresetCategoria" class="form-label fw-bold small">Categoría Institucional: <span class="text-danger">*</span></label>
+              <select class="form-select" id="selectPresetCategoria" required>
+                <option value="Ministerio">Ministerio / Ente Gubernamental</option>
+                <option value="Nacional">Nacional / Escudo de Armas</option>
+                <option value="Universidad">Universidad / Institucional UPTPC</option>
+                <option value="Unidad / Dirección">Unidad / Dirección Universitaria</option>
+                <option value="General">General / Gráfica Adicional</option>
+              </select>
+            </div>
+
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <label for="inputPresetAncho" class="form-label fw-bold small">Ancho Sugerido (px):</label>
+                <input type="number" class="form-control" id="inputPresetAncho" value="120" min="20" max="600">
+              </div>
+              <div class="col-6">
+                <label for="inputPresetAlto" class="form-label fw-bold small">Alto Sugerido (px):</label>
+                <input type="number" class="form-control" id="inputPresetAlto" value="120" min="20" max="600">
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="inputPresetArchivo" class="form-label fw-bold small">Archivo de Imagen (PNG, SVG, JPG, WEBP): <span class="text-danger">*</span></label>
+              <input type="file" class="form-control" id="inputPresetArchivo" accept="image/*" required onchange="window.mantenimientoModule.previsualizarArchivoPreset(this)">
+            </div>
+
+            <!-- Preview box -->
+            <div id="containerPreviewPresetNuevo" class="text-center p-3 bg-light rounded-3 border d-none">
+              <small class="text-muted d-block mb-2">Vista Previa:</small>
+              <img id="imgPreviewPresetNuevo" src="" alt="Preview" style="max-height: 120px; max-width: 100%; object-fit: contain;">
+            </div>
+          </div>
+          <div class="modal-footer bg-light">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-success fw-bold px-4 shadow-sm" id="btnSubmitNuevoPreset">
+              <i class="fa-solid fa-cloud-arrow-up me-2"></i>Subir a Cloudflare R2
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Galería de Presets Oficiales en Diseñador -->
+  <div class="modal fade" id="modalGaleriaPresetsDisenador" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content shadow-lg border-0 rounded-4">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title fw-bold">
+            <i class="fa-solid fa-images me-2"></i>Presets Oficiales de Imágenes y Logos (Cloudflare R2)
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <!-- Barra de Búsqueda y Filtro por Categoría -->
+          <div class="row g-3 align-items-center mb-3">
+            <div class="col-md-6">
+              <div class="input-group">
+                <span class="input-group-text bg-light text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
+                <input type="text" class="form-control bg-light" id="inputBuscarPresetModal" placeholder="Buscar logo por nombre..." oninput="window.disenadorModule.filtrarPresetsModal()">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="d-flex gap-1 flex-wrap justify-content-md-end" id="filtrosCategoriasPresetsModal">
+                <!-- Botones de filtro de categoría -->
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-3" id="contenedorGrillaPresetsModal">
+            <!-- Renderizado dinámico de tarjetas -->
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <small class="text-muted me-auto">
+            <i class="fa-solid fa-circle-info me-1"></i>Puedes subir y gestionar más logos oficiales desde <strong>Configuración Global</strong>.
+          </small>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Overlay Global con Porcentaje -->
+  <div id="globalLoadingOverlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15,23,42,0.8); backdrop-filter:blur(4px); z-index:99999; align-items:center; justify-content:center;">
+    <div class="card shadow-lg border-0 text-center p-4" style="max-width:420px; width:90%; border-radius:16px;">
+      <div class="spinner-border text-primary mx-auto mb-3" role="status" style="width:3.5rem; height:3.5rem;"></div>
+      <h5 class="fw-bold mb-2 text-dark" id="globalLoadingText">Cargando información...</h5>
+      <div class="progress mb-2" style="height: 24px; border-radius: 12px; background-color: #e9ecef;">
+        <div id="globalProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 0%; font-weight: bold; font-size: 13px;">0%</div>
+      </div>
+      <small class="text-muted" id="globalLoadingSubtext">Por favor espere un momento...</small>
+    </div>
+  </div>
+
+  <!-- Bootstrap 5 Bundle JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- Carga de Scripts del Sistema en orden de dependencia (Compatible 100% con protocolo file://) -->
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/cert-renderer.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/modules/dashboard.js"></script>
+  <script src="js/modules/ofertas.js"></script>
+  <script src="js/modules/usuarios.js"></script>
+  <script src="js/modules/unidades.js"></script>
+  <script src="js/modules/firmas.js"></script>
+  <script src="js/modules/cursos.js"></script>
+  <script src="js/modules/certificados.js"></script>
+  <script src="js/modules/disenador.js"></script>
+  <script src="js/modules/consultas.js"></script>
+  <script src="js/modules/mantenimiento.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/auth-admin.js"></script>
+</body>
+</html>
