@@ -26,6 +26,21 @@ async function getParsedBody(req) {
 }
 
 module.exports = async function handler(req, res) {
+  // Asegurar helpers res.status() y res.json() en cualquier entorno Node.js
+  if (typeof res.status !== 'function') {
+    res.status = (code) => {
+      res.statusCode = code;
+      return res;
+    };
+  }
+  if (typeof res.json !== 'function') {
+    res.json = (data) => {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.end(JSON.stringify(data));
+      return res;
+    };
+  }
+
   // CORS Headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');

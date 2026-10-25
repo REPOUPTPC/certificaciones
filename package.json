@@ -4,6 +4,7 @@
   "description": "Sistema de Gestión y Validador de Certificaciones UPTPC migrado a Node.js, Turso y Cloudflare R2",
   "main": "api/index.js",
   "scripts": {
+    "build": "echo 'Build completado exitosamente'",
     "dev": "node server/dev-server.js",
     "start": "node server/dev-server.js",
     "db:init": "node scripts/init-db.js",
