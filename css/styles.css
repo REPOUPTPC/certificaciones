@@ -269,3 +269,47 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+
+/* ═════════════════════════════════════════════════════════════════ */
+/* ESTILOS DE PERFILES DE GESTIÓN: AUDITOR Y ADMINISTRACIÓN */
+/* ═════════════════════════════════════════════════════════════════ */
+
+/* ── PERFIL AUDITOR (SOLO LECTURA Y FISCALIZACIÓN) ── */
+body.role-auditor .auditor-banner {
+  display: flex !important;
+}
+
+body.role-auditor .auditor-hide,
+body.role-auditor #btnNuevoUsuario,
+body.role-auditor #btnCargaMasivaUsuarios,
+body.role-auditor #btnNuevaUnidad,
+body.role-auditor #btnNuevoFirmante,
+body.role-auditor #btnNuevoCurso,
+body.role-auditor #btnEmisionMasivaCertificados,
+body.role-auditor #btnEmitirCertificadoModal,
+body.role-auditor #btnNuevaOfertaCurso,
+body.role-auditor #btnNuevoPagoManual,
+body.role-auditor #btnNuevoAdmin,
+body.role-auditor .btn-accion-editar,
+body.role-auditor .btn-accion-eliminar,
+body.role-auditor .btn-accion-anular,
+body.role-auditor .btn-accion-emitir,
+body.role-auditor th.th-acciones,
+body.role-auditor td.td-acciones {
+  display: none !important;
+}
+
+body.role-auditor input,
+body.role-auditor select,
+body.role-auditor textarea {
+  pointer-events: auto; /* Permitir usar inputs de búsqueda y filtros */
+}
+
+/* ── PERFIL ADMINISTRACION (EXCLUSIVO PAGOS) ── */
+body.role-administracion #tab-talleres-tab,
+body.role-administracion #btnNuevaOfertaCurso,
+body.role-administracion #navLinkDashboard,
+body.role-administracion .sidebar-header small {
+  /* Reglas específicas para el panel de administración de pagos */
+}
+

@@ -83,6 +83,12 @@
     body {
       background-color: #f8fafc;
       font-family: 'Roboto', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    main {
+      flex: 1 0 auto;
     }
     .header-store {
       background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
@@ -98,15 +104,43 @@
       border-radius: 16px;
       transition: all 0.3s ease;
       overflow: hidden;
+      position: relative;
     }
     .card-course:hover {
       transform: translateY(-5px);
       box-shadow: 0 15px 30px rgba(0,0,0,0.12) !important;
     }
+    .flayer-container {
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+    }
     .flayer-img {
       height: 220px;
       object-fit: cover;
       width: 100%;
+      display: block;
+      transition: transform 0.4s ease;
+    }
+    .card-course:hover .flayer-img {
+      transform: scale(1.04);
+    }
+    .flayer-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(15, 52, 96, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+    .flayer-container:hover .flayer-overlay {
+      opacity: 1;
     }
     .price-badge-student {
       background-color: #dcfce7;
@@ -117,6 +151,75 @@
       background-color: #e0f2fe;
       color: #075985;
       border-radius: 20px;
+    }
+    /* Botón de Favorito Flotante */
+    .btn-favorito-heart {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(4px);
+      border: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      z-index: 5;
+      color: #94a3b8;
+      font-size: 1.25rem;
+    }
+    .btn-favorito-heart:hover {
+      transform: scale(1.15);
+      background: #ffffff;
+      color: #ef4444;
+      box-shadow: 0 6px 16px rgba(239, 68, 68, 0.35);
+    }
+    .btn-favorito-heart.is-favorito {
+      color: #ef4444;
+      background: #ffffff;
+      box-shadow: 0 6px 16px rgba(239, 68, 68, 0.35);
+      animation: heartBeat 0.4s ease-in-out;
+    }
+    @keyframes heartBeat {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.35); }
+      100% { transform: scale(1); }
+    }
+    .nav-pills-store .nav-link {
+      font-weight: 600;
+      border-radius: 30px;
+      padding: 8px 20px;
+      color: #475569;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      transition: all 0.2s ease;
+    }
+    .nav-pills-store .nav-link.active {
+      background: #0f3460;
+      color: #fff;
+      border-color: #0f3460;
+      box-shadow: 0 4px 12px rgba(15, 52, 96, 0.25);
+    }
+    .nav-pills-store .nav-link:hover:not(.active) {
+      background: #f1f5f9;
+      color: #0f3460;
+    }
+    .empty-favoritos-card {
+      background: #ffffff;
+      border-radius: 20px;
+      padding: 50px 20px;
+      border: 2px dashed #cbd5e1;
+      text-align: center;
+    }
+    /* Footer con separación limpia */
+    footer.footer-store {
+      margin-top: 80px !important;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
     }
   </style>
 </head>
@@ -132,12 +235,35 @@
           <small class="text-white-50">Unidad de Ciencia y Tecnología &bull; Oferta Académica</small>
         </div>
       </div>
-      <div class="d-flex align-items-center gap-2">
+      <div class="d-flex flex-wrap align-items-center gap-2">
         <span class="badge bg-light text-dark py-2 px-3 fw-bold border" id="badgeTasaDolarHeader">
           <i class="fa-solid fa-calculator text-primary me-1"></i> BCV: Cargando...
         </span>
+
+        <!-- Botón rápido Favoritos -->
+        <button class="btn btn-outline-light btn-sm fw-bold position-relative" onclick="activarTabFavoritos()" title="Ver talleres en favoritos">
+          <i class="fa-solid fa-heart text-danger me-1"></i> Favoritos
+          <span class="badge bg-danger rounded-pill ms-1" id="badgeFavoritosCountHeader">0</span>
+        </button>
+
+        <!-- Botón rápido Realizados -->
+        <button class="btn btn-outline-light btn-sm fw-bold position-relative" onclick="activarTabRealizados()" title="Ver mis talleres realizados y certificados">
+          <i class="fa-solid fa-graduation-cap text-success me-1"></i> Realizados
+          <span class="badge bg-success rounded-pill ms-1" id="badgeRealizadosCountHeader">0</span>
+        </button>
+
+        <!-- Contenedor dinámico de sesión de usuario (Identificarme / Registrarme o Perfil) -->
+        <div id="containerUserHeaderBadge" class="d-inline-flex align-items-center gap-2">
+          <button class="btn btn-outline-info btn-sm fw-bold" onclick="abrirModalIdentificarUsuario()">
+            <i class="fa-solid fa-id-card me-1"></i> Identificarme
+          </button>
+          <button class="btn btn-success btn-sm fw-bold text-white shadow-sm" onclick="abrirModalRegistroUsuario()">
+            <i class="fa-solid fa-user-plus me-1"></i> Registrarme
+          </button>
+        </div>
+
         <button class="btn btn-outline-light btn-sm font-weight-bold" onclick="abrirModalConsultaPagos()">
-          <i class="fa-solid fa-user-check me-1"></i> Mis Pagos / Estado
+          <i class="fa-solid fa-file-invoice-dollar me-1"></i> Mis Pagos
         </button>
         <a href="consulta.html" class="btn btn-warning btn-sm fw-bold">
           <i class="fa-solid fa-magnifying-glass me-1"></i> Validador Certificados
@@ -174,9 +300,48 @@
       </div>
     </div>
 
-    <!-- Catálogo de Cursos -->
+    <!-- Barra de Filtros, Favoritos y Búsqueda -->
+    <div class="card border-0 shadow-sm p-3 mb-4 rounded-4 bg-white">
+      <div class="row g-3 align-items-center justify-content-between">
+        <!-- Pestañas de Filtro: Todos vs Favoritos vs Realizados -->
+        <div class="col-12 col-md-auto">
+          <ul class="nav nav-pills nav-pills-store gap-2" id="pillsFiltroCursos">
+            <li class="nav-item">
+              <button class="nav-link active" id="tabTodosCursos" onclick="cambiarFiltroCatalogo('todos')">
+                <i class="fa-solid fa-layer-group me-1"></i> Todos los Talleres
+                <span class="badge bg-primary text-white rounded-pill ms-1" id="badgeCountTodos">0</span>
+              </button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link" id="tabFavoritosCursos" onclick="cambiarFiltroCatalogo('favoritos')">
+                <i class="fa-solid fa-heart text-danger me-1"></i> Mis Favoritos
+                <span class="badge bg-danger text-white rounded-pill ms-1" id="badgeCountFavoritos">0</span>
+              </button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link" id="tabRealizadosCursos" onclick="cambiarFiltroCatalogo('realizados')">
+                <i class="fa-solid fa-graduation-cap text-success me-1"></i> Realizados
+                <span class="badge bg-success text-white rounded-pill ms-1" id="badgeCountRealizados">0</span>
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Buscador en tiempo real -->
+        <div class="col-12 col-md-4">
+          <div class="input-group">
+            <span class="input-group-text bg-light border-end-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
+            <input type="text" class="form-control bg-light border-start-0" id="inputBuscarCurso" placeholder="Buscar taller o temática..." oninput="filtrarCursosEnTiempoReal()">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Título y Contador -->
     <div class="d-flex justify-content-between align-items-center mb-3">
-      <h4 class="fw-bold text-dark mb-0"><i class="fa-solid fa-store text-primary me-2"></i>Cursos y Talleres Disponibles</h4>
+      <h4 class="fw-bold text-dark mb-0" id="lblTituloSeccionCatalogo">
+        <i class="fa-solid fa-store text-primary me-2"></i>Cursos y Talleres Disponibles
+      </h4>
       <small class="text-muted" id="lblTotalCursosContador">Cargando catálogo...</small>
     </div>
 
@@ -187,6 +352,85 @@
       </div>
     </div>
   </main>
+
+  <!-- Modal Detalle del Taller / Curso (Flyer Click) -->
+  <div class="modal fade" id="modalDetalleCurso" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+        <div class="modal-header bg-dark text-white py-3">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-warning text-dark fw-bold"><i class="fa-solid fa-graduation-cap me-1"></i>Oferta Académica UPTPC</span>
+            <h5 class="modal-title fw-bold mb-0 text-white text-truncate" style="max-width: 480px;" id="modalDetalleTitulo">Detalles del Taller</h5>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="row g-4 align-items-stretch">
+            <!-- Columna Imagen Flyer -->
+            <div class="col-md-5">
+              <div class="position-relative rounded-3 overflow-hidden shadow-sm bg-light text-center border h-100 d-flex align-items-center justify-content-center" style="min-height: 280px; max-height: 420px;">
+                <img id="modalDetalleImg" src="" alt="Flayer del Taller" class="img-fluid w-100 h-100" style="object-fit: contain; max-height: 400px;">
+                <span class="position-absolute top-0 start-0 m-2 badge bg-primary bg-opacity-90 fw-bold shadow-sm">
+                  <i class="fa-solid fa-award me-1"></i>Acreditación Oficial
+                </span>
+              </div>
+            </div>
+            <!-- Columna Información y Costos -->
+            <div class="col-md-7 d-flex flex-column">
+              <h4 class="fw-bold text-primary mb-2" id="modalDetalleNombre">Nombre del Taller</h4>
+              <div class="mb-3">
+                <span class="badge bg-light text-secondary border me-1"><i class="fa-solid fa-building-columns me-1"></i>Extensión Universitaria</span>
+                <span class="badge bg-light text-secondary border"><i class="fa-solid fa-microchip me-1"></i>Unidad de Ciencia y Tecnología</span>
+              </div>
+
+              <div class="flex-grow-1 mb-3">
+                <h6 class="fw-bold text-dark small mb-1"><i class="fa-solid fa-align-left me-1 text-primary"></i>Descripción del Programa:</h6>
+                <div class="text-muted small p-3 bg-light rounded-3 border" id="modalDetalleDesc" style="max-height: 180px; overflow-y: auto; white-space: pre-line;">
+                  Descripción...
+                </div>
+              </div>
+
+              <!-- Inversión y Precios -->
+              <div class="card border-0 bg-light p-3 rounded-3 mb-3">
+                <h6 class="fw-bold text-dark small mb-2"><i class="fa-solid fa-tag me-1 text-success"></i>Inversión Oficial (Tasa BCV):</h6>
+                <div class="row g-2">
+                  <div class="col-6">
+                    <div class="bg-white p-2 rounded-2 border text-center shadow-sm">
+                      <span class="badge price-badge-student small fw-bold mb-1 d-inline-block">Estudiante UPTPC</span>
+                      <h5 class="fw-bold text-success mb-0" id="modalDetallePrecioEstBs">0.00 Bs.</h5>
+                      <small class="text-muted" id="modalDetallePrecioEstUsd">($0.00 USD)</small>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="bg-white p-2 rounded-2 border text-center shadow-sm">
+                      <span class="badge price-badge-public small fw-bold mb-1 d-inline-block">Público / Foráneo</span>
+                      <h5 class="fw-bold text-info mb-0" id="modalDetallePrecioForBs">0.00 Bs.</h5>
+                      <small class="text-muted" id="modalDetallePrecioForUsd">($0.00 USD)</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Botones de Acción -->
+              <div class="d-flex flex-wrap gap-2 pt-2 border-top">
+                <button type="button" class="btn btn-outline-danger btn-sm fw-bold px-3 d-flex align-items-center gap-1" id="btnModalDetalleFavorito" onclick="toggleFavoritoDesdeModalDetalle()">
+                  <i class="fa-regular fa-heart"></i>
+                  <span id="lblBtnModalDetalleFavorito">Guardar en Favoritos</span>
+                </button>
+                <button type="button" class="btn btn-primary btn-sm fw-bold flex-grow-1 shadow-sm py-2" id="btnModalDetalleInscribir" onclick="inscribirseDesdeModalDetalle()">
+                  <i class="fa-solid fa-cart-shopping me-1"></i>Inscribirse / Declarar Pago
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light py-2 px-4 d-flex justify-content-between">
+          <small class="text-muted"><i class="fa-solid fa-shield-halved me-1"></i>Pagos y certificaciones oficiales avaladas por UPTPC</small>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal Pago / Inscripción de Curso -->
   <div class="modal fade" id="modalPagoCurso" tabindex="-1" aria-hidden="true">
@@ -348,10 +592,105 @@
     </div>
   </div>
 
-  <!-- Footer -->
-  <footer class="bg-white border-top py-3 text-center text-muted small mt-5">
+  <!-- Modal Identificación de Usuario -->
+  <div class="modal fade" id="modalIdentificarUsuario" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg rounded-4">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title fw-bold">
+            <i class="fa-solid fa-id-card me-2"></i>Identificación de Usuario
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div id="bannerMensajeIdentificar" class="alert alert-info py-2 px-3 small mb-3">
+            <i class="fa-solid fa-circle-info me-1"></i>
+            <span id="textoMensajeIdentificar">Ingrese su número de cédula para vincular sus favoritos, consultar sus cursos realizados y agilizar sus inscripciones.</span>
+          </div>
+
+          <form id="formIdentificarUsuarioModal" onsubmit="procesarIdentificacionUsuario(event)">
+            <div class="mb-3">
+              <label for="inputIdentificarCedulaModal" class="form-label fw-bold">Cédula de Identidad: <span class="text-danger">*</span></label>
+              <div class="input-group input-group-lg">
+                <span class="input-group-text"><i class="fa-solid fa-id-card"></i></span>
+                <input type="text" class="form-control text-uppercase" id="inputIdentificarCedulaModal" placeholder="V-12345678" required>
+              </div>
+              <small class="text-muted">Ejemplo: V-12345678 o 12345678</small>
+            </div>
+
+            <div id="contenedorAlertaIdentificacion" class="mb-3" style="display: none;"></div>
+
+            <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold shadow-sm" id="btnProcesarIdentificacion">
+              <i class="fa-solid fa-arrow-right-to-bracket me-2"></i>Identificarme
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Registro Nuevo Usuario (Exacto como en consulta.html) -->
+  <div class="modal fade" id="modalRegistroUsuario" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg rounded-4">
+        <form id="formRegistroUsuarioModal" onsubmit="guardarNuevoUsuarioModal(event)">
+          <div class="modal-header bg-success text-white">
+            <h5 class="modal-title fw-bold">
+              <i class="fa-solid fa-user-plus me-2"></i>Registro de Nuevo Usuario
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="alert alert-info py-2 px-3 small mb-3">
+              <i class="fa-solid fa-shield-halved me-1"></i>Regístrese con sus datos básicos oficiales para participar en los cursos y talleres de la UPTPC.
+            </div>
+
+            <div class="mb-3">
+              <label for="inputRegCedulaModal" class="form-label fw-bold">Cédula de Identidad: <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-control-lg text-uppercase" id="inputRegCedulaModal" placeholder="V-12345678" required>
+              <small class="text-muted">Formato: V-12345678</small>
+            </div>
+            <div class="mb-3">
+              <label for="inputRegNombreModal" class="form-label fw-bold">Nombre Completo (Se guardará en MAYÚSCULAS): <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-control-lg text-uppercase" id="inputRegNombreModal" placeholder="JUAN ALBERTO PÉREZ" oninput="this.value = this.value.toUpperCase()" required>
+            </div>
+            <div class="mb-3">
+              <label for="inputRegCorreoModal" class="form-label fw-bold">Correo Electrónico: <span class="text-danger">*</span></label>
+              <input type="email" class="form-control" id="inputRegCorreoModal" placeholder="correo@ejemplo.com" required>
+            </div>
+            <div class="mb-3">
+              <label for="inputRegTelefonoModal" class="form-label fw-bold">Número de Teléfono: <span class="text-danger">*</span></label>
+              <input type="tel" class="form-control" id="inputRegTelefonoModal" placeholder="0412-1234567" required>
+            </div>
+          </div>
+          <div class="modal-footer bg-light">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-success fw-bold px-4 shadow-sm" id="btnGuardarRegistroModal">
+              <i class="fa-solid fa-check me-2"></i>Completar Registro
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container para Favoritos -->
+  <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100;">
+    <div id="toastFavoritoNotif" class="toast align-items-center text-white bg-dark border-0 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body d-flex align-items-center" id="toastFavoritoMsg">
+          <i class="fa-solid fa-heart text-danger fs-5 me-2"></i> Taller agregado a Favoritos
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer con separación limpia -->
+  <footer class="bg-white border-top py-4 text-center text-muted small footer-store mt-auto">
     <div class="container">
       <p class="mb-0">&copy; 2026 <strong>Unidad de Ciencia y Tecnología</strong> &bull; Universidad Politécnica Territorial de Puerto Cabello</p>
+      <span class="text-secondary small">Sistema de Gestión de Certificaciones y Tienda Académica UPTPC</span>
     </div>
   </footer>
 
@@ -364,9 +703,18 @@
     const CAPTURE_FOLDER_ID = '1HVwi38M9GGlofZ3rcsSRs5WpOEqD2Tgz';
     let tasaDolar = 36.5;
     let cursoSeleccionadoActual = null;
+    let cursoSeleccionadoDetalle = null;
     let usuarioIdentificadoActual = null;
+    let sesionUsuarioActual = null;
+    let cursoIdPendienteFavorito = null;
+    let listaCursosCache = [];
+    let listaCursosRealizadosCache = [];
+    let cargandoRealizados = false;
+    let filtroActivo = 'todos'; // 'todos' | 'favoritos' | 'realizados'
 
     document.addEventListener('DOMContentLoaded', async () => {
+      cargarSesionUsuarioGuardada();
+
       try {
         tasaDolar = await window.api.fetchTasaDolar();
       } catch (e) { console.warn(e); }
@@ -379,71 +727,867 @@
       await cargarListaBancos();
     });
 
-    async function cargarCatalogoCursos() {
-      const contenedor = document.getElementById('contenedorCursosOfertados');
-      const lblContador = document.getElementById('lblTotalCursosContador');
+    // ============================================================
+    // GESTIÓN DE SESIÓN E IDENTIFICACIÓN DE USUARIO (COMO EN CONSULTA.HTML)
+    // ============================================================
+    function cargarSesionUsuarioGuardada() {
+      try {
+        const stored = localStorage.getItem('uptpc_usuario_sesion');
+        if (stored) {
+          sesionUsuarioActual = JSON.parse(stored);
+          usuarioIdentificadoActual = sesionUsuarioActual;
+          cargarCursosRealizadosUsuario(sesionUsuarioActual.cedula);
+        }
+      } catch(e) {
+        sesionUsuarioActual = null;
+      }
+      actualizarBarraSesionHeader();
+    }
+
+    function actualizarBarraSesionHeader() {
+      const container = document.getElementById('containerUserHeaderBadge');
+      if (!container) return;
+
+      if (sesionUsuarioActual) {
+        container.innerHTML = `
+          <div class="badge bg-primary text-white py-2 px-3 d-inline-flex align-items-center gap-2 shadow-sm rounded-pill border border-light">
+            <i class="fa-solid fa-circle-user text-warning fs-6"></i>
+            <span class="fw-bold">${window.utils.escapeHtml(sesionUsuarioActual.nombre_completo)}</span>
+            <span class="badge bg-light text-primary fw-bold">${window.utils.escapeHtml(sesionUsuarioActual.cedula)}</span>
+            <button class="btn btn-sm btn-link text-white p-0 ms-1 text-decoration-none" onclick="cerrarSesionUsuario()" title="Cerrar identificación">
+              <i class="fa-solid fa-right-from-bracket"></i>
+            </button>
+          </div>
+        `;
+      } else {
+        container.innerHTML = `
+          <button class="btn btn-outline-info btn-sm fw-bold" onclick="abrirModalIdentificarUsuario()">
+            <i class="fa-solid fa-id-card me-1"></i> Identificarme
+          </button>
+          <button class="btn btn-success btn-sm fw-bold text-white shadow-sm" onclick="abrirModalRegistroUsuario()">
+            <i class="fa-solid fa-user-plus me-1"></i> Registrarme
+          </button>
+        `;
+      }
+    }
+
+    function abrirModalIdentificarUsuario(cedulaSugerida = '', mensajePersonalizado = '') {
+      const modalEl = document.getElementById('modalIdentificarUsuario');
+      const input = document.getElementById('inputIdentificarCedulaModal');
+      const alerta = document.getElementById('contenedorAlertaIdentificacion');
+      const textoMsg = document.getElementById('textoMensajeIdentificar');
+
+      if (textoMsg) {
+        if (mensajePersonalizado) {
+          textoMsg.innerHTML = mensajePersonalizado;
+        } else {
+          textoMsg.textContent = 'Ingrese su número de cédula para vincular sus favoritos, consultar sus cursos realizados y agilizar sus inscripciones.';
+        }
+      }
+
+      if (input) input.value = cedulaSugerida;
+      if (alerta) {
+        alerta.style.display = 'none';
+        alerta.innerHTML = '';
+      }
+      bootstrap.Modal.getOrCreateInstance(modalEl).show();
+      setTimeout(() => { if (input) input.focus(); }, 350);
+    }
+
+    async function procesarIdentificacionUsuario(e) {
+      e.preventDefault();
+      const rawCedula = document.getElementById('inputIdentificarCedulaModal').value.trim();
+      const alerta = document.getElementById('contenedorAlertaIdentificacion');
+      const btn = document.getElementById('btnProcesarIdentificacion');
+
+      if (!rawCedula) return;
+
+      const cedulaNorm = window.utils.normalizeCedula(rawCedula);
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Buscando usuario...';
 
       try {
-        const res = await window.api.getAll('curso_ofertado');
-        const cursos = (res && res.status === 'success' && Array.isArray(res.data)) ? res.data : [];
+        const resUsers = await window.api.getAll('usuarios');
+        const usuarios = (resUsers && resUsers.status === 'success' && Array.isArray(resUsers.data)) ? resUsers.data : [];
 
-        if (lblContador) lblContador.textContent = `${cursos.length} talleres activos`;
+        const targetNorm = cedulaNorm.replace(/[\s-]/g, '').toUpperCase();
+        const found = usuarios.find(u => {
+          const uNorm = window.utils.normalizeCedula(u.cedula).replace(/[\s-]/g, '').toUpperCase();
+          return uNorm === targetNorm || String(u.cedula).toUpperCase() === rawCedula.toUpperCase();
+        });
 
-        if (cursos.length === 0) {
+        if (found) {
+          // Usuario Encontrado
+          establecerSesionUsuario(found);
+          const modalEl = document.getElementById('modalIdentificarUsuario');
+          bootstrap.Modal.getInstance(modalEl).hide();
+
+          // Si había un curso pendiente por agregar a favoritos, procesarlo de inmediato
+          if (cursoIdPendienteFavorito) {
+            const pendId = cursoIdPendienteFavorito;
+            cursoIdPendienteFavorito = null;
+            const favs = getFavoritosList();
+            if (!favs.includes(pendId)) {
+              favs.push(pendId);
+              guardarFavoritosList(favs);
+              actualizarIconoFavoritoEnUI(pendId, true);
+            }
+            const cObj = listaCursosCache.find(c => String(c.id) === pendId);
+            const nCurso = cObj ? cObj.taller : 'Taller';
+            mostrarToastNotificacion(`🎉 ¡Bienvenido(a), <strong>${window.utils.escapeHtml(found.nombre_completo)}</strong>! Taller <strong>${window.utils.escapeHtml(nCurso)}</strong> guardado en tus Favoritos.`, 'success');
+          } else {
+            mostrarToastNotificacion(`🎉 ¡Bienvenido(a), <strong>${window.utils.escapeHtml(found.nombre_completo)}</strong>!`, 'success');
+          }
+        } else {
+          // Usuario NO encontrado
+          alerta.style.display = 'block';
+          alerta.innerHTML = `
+            <div class="alert alert-warning text-center border-0 shadow-sm p-3 mb-0">
+              <i class="fa-solid fa-user-xmark fa-2x mb-2 text-warning"></i>
+              <h6 class="fw-bold mb-1">Cédula no registrada en el sistema</h6>
+              <p class="small mb-3">La cédula <strong>${window.utils.escapeHtml(rawCedula)}</strong> no aparece registrada como usuario en el sistema UPTPC.</p>
+              <button type="button" class="btn btn-success btn-sm fw-bold px-3 shadow-sm" onclick="abrirModalRegistroDesdeIdentificacion('${window.utils.escapeHtml(cedulaNorm)}')">
+                <i class="fa-solid fa-user-plus me-1"></i> REGISTRARSE AHORA
+              </button>
+            </div>
+          `;
+        }
+      } catch(err) {
+        alerta.style.display = 'block';
+        alerta.innerHTML = `<div class="alert alert-danger py-2 small">Error de conexión al verificar cédula.</div>`;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket me-2"></i>Identificarme';
+      }
+    }
+
+    function abrirModalRegistroDesdeIdentificacion(cedula) {
+      const modalIdent = document.getElementById('modalIdentificarUsuario');
+      const instIdent = bootstrap.Modal.getInstance(modalIdent);
+      if (instIdent) instIdent.hide();
+
+      abrirModalRegistroUsuario(cedula);
+    }
+
+    function abrirModalRegistroUsuario(cedulaSugerida = '') {
+      const modalEl = document.getElementById('modalRegistroUsuario');
+      const inputCedula = document.getElementById('inputRegCedulaModal');
+      const inputNombre = document.getElementById('inputRegNombreModal');
+      const inputCorreo = document.getElementById('inputRegCorreoModal');
+      const inputTelefono = document.getElementById('inputRegTelefonoModal');
+
+      if (inputCedula) inputCedula.value = cedulaSugerida ? window.utils.normalizeCedula(cedulaSugerida) : '';
+      if (inputNombre) inputNombre.value = '';
+      if (inputCorreo) inputCorreo.value = '';
+      if (inputTelefono) inputTelefono.value = '';
+
+      bootstrap.Modal.getOrCreateInstance(modalEl).show();
+      setTimeout(() => {
+        if (cedulaSugerida && inputNombre) inputNombre.focus();
+        else if (inputCedula) inputCedula.focus();
+      }, 350);
+    }
+
+    async function guardarNuevoUsuarioModal(e) {
+      e.preventDefault();
+      const rawCedula = document.getElementById('inputRegCedulaModal').value.trim();
+      const rawNombre = document.getElementById('inputRegNombreModal').value.trim();
+      const correo = document.getElementById('inputRegCorreoModal').value.trim();
+      const telefono = document.getElementById('inputRegTelefonoModal').value.trim();
+      const btn = document.getElementById('btnGuardarRegistroModal');
+
+      if (!rawCedula || !rawNombre || !correo || !telefono) {
+        alert('Por favor complete todos los datos requeridos para registrarse.');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Guardando registro...';
+
+      const cedula = window.utils.normalizeCedula(rawCedula);
+      const nombre_completo = rawNombre.toUpperCase();
+      const id = window.utils.generateUUID();
+      const nuevoUsuario = { id, cedula, nombre_completo, correo, telefono, created_at: new Date().toISOString() };
+
+      try {
+        const res = await window.api.create('usuarios', nuevoUsuario);
+        if (res && res.status === 'success') {
+          const modalEl = document.getElementById('modalRegistroUsuario');
+          bootstrap.Modal.getInstance(modalEl).hide();
+
+          establecerSesionUsuario(nuevoUsuario);
+
+          if (cursoIdPendienteFavorito) {
+            const pendId = cursoIdPendienteFavorito;
+            cursoIdPendienteFavorito = null;
+            const favs = getFavoritosList();
+            if (!favs.includes(pendId)) {
+              favs.push(pendId);
+              guardarFavoritosList(favs);
+              actualizarIconoFavoritoEnUI(pendId, true);
+            }
+            const cObj = listaCursosCache.find(c => String(c.id) === pendId);
+            const nCurso = cObj ? cObj.taller : 'Taller';
+            mostrarToastNotificacion(`🎉 ¡Registro exitoso! Taller <strong>${window.utils.escapeHtml(nCurso)}</strong> guardado en tus Favoritos.`, 'success');
+          } else {
+            mostrarToastNotificacion(`🎉 ¡Registro exitoso! Bienvenido(a), <strong>${window.utils.escapeHtml(nombre_completo)}</strong>`, 'success');
+          }
+        } else {
+          alert('Error al registrar usuario: ' + ((res && res.message) || 'Intente nuevamente'));
+        }
+      } catch (err) {
+        console.error('Error creando usuario:', err);
+        alert('Error de conexión al intentar registrar usuario.');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-check me-2"></i>Completar Registro';
+      }
+    }
+
+    function establecerSesionUsuario(usuario) {
+      sesionUsuarioActual = usuario;
+      usuarioIdentificadoActual = usuario;
+      try {
+        localStorage.setItem('uptpc_usuario_sesion', JSON.stringify(usuario));
+      } catch(e) {}
+
+      // Migrar favoritos de visitante si existieran
+      migrarFavoritosGuestAUsuario(usuario.cedula);
+
+      actualizarBarraSesionHeader();
+      actualizarContadoresFavoritos();
+      cargarCursosRealizadosUsuario(usuario.cedula);
+      renderizarCatalogoFiltrado();
+    }
+
+    function cerrarSesionUsuario() {
+      localStorage.removeItem('uptpc_usuario_sesion');
+      sesionUsuarioActual = null;
+      usuarioIdentificadoActual = null;
+      listaCursosRealizadosCache = [];
+      actualizarBarraSesionHeader();
+      actualizarContadoresFavoritos();
+      actualizarContadoresRealizados();
+      renderizarCatalogoFiltrado();
+      mostrarToastNotificacion('Has cerrado tu sesión de usuario', 'secondary');
+    }
+
+    // ============================================================
+    // SISTEMA DE FAVORITOS (VINCULADO ESTRICTAMENTE A CÉDULA / USUARIO)
+    // ============================================================
+    function getStorageKeyFavoritos() {
+      if (sesionUsuarioActual && sesionUsuarioActual.cedula) {
+        const clean = window.utils.normalizeCedula(sesionUsuarioActual.cedula).replace(/[\s-]/g, '').toUpperCase();
+        return `uptpc_favoritos_cursos_${clean}`;
+      }
+      return 'uptpc_favoritos_cursos_guest';
+    }
+
+    function getFavoritosList() {
+      try {
+        const key = getStorageKeyFavoritos();
+        const stored = localStorage.getItem(key);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) return parsed.map(String);
+        }
+      } catch(e) {}
+      return [];
+    }
+
+    function guardarFavoritosList(lista) {
+      try {
+        const key = getStorageKeyFavoritos();
+        localStorage.setItem(key, JSON.stringify(lista));
+      } catch(e) {}
+      actualizarContadoresFavoritos();
+    }
+
+    function migrarFavoritosGuestAUsuario(cedula) {
+      try {
+        const guestStored = localStorage.getItem('uptpc_favoritos_cursos_guest');
+        if (!guestStored) return;
+        const guestList = JSON.parse(guestStored);
+        if (!Array.isArray(guestList) || guestList.length === 0) return;
+
+        const clean = window.utils.normalizeCedula(cedula).replace(/[\s-]/g, '').toUpperCase();
+        const userKey = `uptpc_favoritos_cursos_${clean}`;
+        const userStored = localStorage.getItem(userKey);
+        const userList = userStored ? JSON.parse(userStored) : [];
+
+        const unificados = Array.from(new Set([...userList.map(String), ...guestList.map(String)]));
+        localStorage.setItem(userKey, JSON.stringify(unificados));
+        localStorage.removeItem('uptpc_favoritos_cursos_guest');
+      } catch(e) {}
+    }
+
+    function toggleFavoritoCurso(cursoId, event) {
+      if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+      }
+
+      const idStr = String(cursoId);
+
+      // Si no hay usuario identificado, solicitar cédula inmediatamente
+      if (!sesionUsuarioActual) {
+        cursoIdPendienteFavorito = idStr;
+        const cursoObj = listaCursosCache.find(c => String(c.id) === idStr);
+        const nombreCurso = cursoObj ? cursoObj.taller : 'este taller';
+        abrirModalIdentificarUsuario('', `Para agregar <strong>"${window.utils.escapeHtml(nombreCurso)}"</strong> a tus Favoritos, por favor identifícate con tu número de cédula.`);
+        return;
+      }
+
+      const list = getFavoritosList();
+      const index = list.indexOf(idStr);
+      let esNuevoFavorito = false;
+
+      if (index === -1) {
+        list.push(idStr);
+        esNuevoFavorito = true;
+      } else {
+        list.splice(index, 1);
+        esNuevoFavorito = false;
+      }
+
+      guardarFavoritosList(list);
+
+      // Actualizar botón específico en UI
+      actualizarIconoFavoritoEnUI(idStr, esNuevoFavorito);
+
+      // Si estamos en la pestaña favoritos y se removió, refrescar vista
+      if (filtroActivo === 'favoritos') {
+        renderizarCatalogoFiltrado();
+      }
+
+      // Mostrar Toast interactivo
+      const cursoObj = listaCursosCache.find(c => String(c.id) === idStr);
+      const nombreCurso = cursoObj ? cursoObj.taller : 'Taller';
+      if (esNuevoFavorito) {
+        mostrarToastNotificacion(`❤️ ¡<strong>${window.utils.escapeHtml(nombreCurso)}</strong> agregado a tus Favoritos!`, 'success');
+      } else {
+        mostrarToastNotificacion(`🤍 <strong>${window.utils.escapeHtml(nombreCurso)}</strong> removido de Favoritos`, 'secondary');
+      }
+    }
+
+    function actualizarIconoFavoritoEnUI(idStr, esFav) {
+      const btn = document.querySelector(`.btn-favorito-heart[data-curso-id="${idStr}"]`);
+      if (btn) {
+        if (esFav) {
+          btn.classList.add('is-favorito');
+          btn.setAttribute('title', 'Quitar de Favoritos');
+          btn.innerHTML = '<i class="fa-solid fa-heart text-danger"></i>';
+        } else {
+          btn.classList.remove('is-favorito');
+          btn.setAttribute('title', 'Agregar a Favoritos');
+          btn.innerHTML = '<i class="fa-regular fa-heart"></i>';
+        }
+      }
+      actualizarBotonFavoritoModalDetalle();
+    }
+
+    function actualizarContadoresFavoritos() {
+      const favs = getFavoritosList();
+      const badgeHeader = document.getElementById('badgeFavoritosCountHeader');
+      const badgeTab = document.getElementById('badgeCountFavoritos');
+      const badgeTodos = document.getElementById('badgeCountTodos');
+
+      if (badgeHeader) badgeHeader.textContent = favs.length;
+      if (badgeTab) badgeTab.textContent = favs.length;
+      if (badgeTodos) badgeTodos.textContent = listaCursosCache.length;
+    }
+
+    // ============================================================
+    // SISTEMA DE CURSOS Y TALLERES REALIZADOS / CERTIFICADOS
+    // ============================================================
+    async function cargarCursosRealizadosUsuario(cedula) {
+      if (!cedula) {
+        listaCursosRealizadosCache = [];
+        actualizarContadoresRealizados();
+        return;
+      }
+
+      cargandoRealizados = true;
+      try {
+        const res = await window.api.searchCertificados(cedula);
+        if (res && res.status === 'success' && Array.isArray(res.data)) {
+          listaCursosRealizadosCache = res.data;
+        } else {
+          listaCursosRealizadosCache = [];
+        }
+      } catch (err) {
+        console.warn('Error consultando cursos certificados:', err);
+        listaCursosRealizadosCache = [];
+      } finally {
+        cargandoRealizados = false;
+        actualizarContadoresRealizados();
+        if (filtroActivo === 'realizados') {
+          renderizarCatalogoFiltrado();
+        }
+      }
+    }
+
+    function actualizarContadoresRealizados() {
+      const count = listaCursosRealizadosCache.length;
+      const badgeTab = document.getElementById('badgeCountRealizados');
+      const badgeHeader = document.getElementById('badgeRealizadosCountHeader');
+      if (badgeTab) badgeTab.textContent = count;
+      if (badgeHeader) badgeHeader.textContent = count;
+    }
+
+    function activarTabRealizados() {
+      cambiarFiltroCatalogo('realizados');
+      const el = document.getElementById('pillsFiltroCursos');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ============================================================
+    // CAMBIO DE PESTAÑAS Y FILTRADO DEL CATÁLOGO
+    // ============================================================
+    function cambiarFiltroCatalogo(tipo) {
+      filtroActivo = tipo;
+      const tabTodos = document.getElementById('tabTodosCursos');
+      const tabFavs = document.getElementById('tabFavoritosCursos');
+      const tabRealizados = document.getElementById('tabRealizadosCursos');
+      const lblTitulo = document.getElementById('lblTituloSeccionCatalogo');
+
+      // Remover active de todos
+      if (tabTodos) tabTodos.classList.remove('active');
+      if (tabFavs) tabFavs.classList.remove('active');
+      if (tabRealizados) tabRealizados.classList.remove('active');
+
+      if (tipo === 'favoritos') {
+        if (tabFavs) tabFavs.classList.add('active');
+        if (lblTitulo) lblTitulo.innerHTML = '<i class="fa-solid fa-heart text-danger me-2"></i>Mis Talleres Favoritos';
+        if (!sesionUsuarioActual) {
+          abrirModalIdentificarUsuario('', 'Para consultar tus talleres favoritos, por favor ingresa tu cédula de identidad.');
+        }
+      } else if (tipo === 'realizados') {
+        if (tabRealizados) tabRealizados.classList.add('active');
+        if (lblTitulo) lblTitulo.innerHTML = '<i class="fa-solid fa-graduation-cap text-success me-2"></i>Mis Cursos y Talleres Realizados';
+        if (!sesionUsuarioActual) {
+          abrirModalIdentificarUsuario('', 'Para consultar tus certificados y talleres realizados, por favor ingresa tu cédula de identidad.');
+        } else if (listaCursosRealizadosCache.length === 0 && !cargandoRealizados) {
+          cargarCursosRealizadosUsuario(sesionUsuarioActual.cedula);
+        }
+      } else {
+        if (tabTodos) tabTodos.classList.add('active');
+        if (lblTitulo) lblTitulo.innerHTML = '<i class="fa-solid fa-store text-primary me-2"></i>Cursos y Talleres Disponibles';
+      }
+
+      renderizarCatalogoFiltrado();
+    }
+
+    function activarTabFavoritos() {
+      cambiarFiltroCatalogo('favoritos');
+      const el = document.getElementById('pillsFiltroCursos');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function filtrarCursosEnTiempoReal() {
+      renderizarCatalogoFiltrado();
+    }
+
+    // ============================================================
+    // RENDERIZADO DEL CATÁLOGO / FAVORITOS / REALIZADOS
+    // ============================================================
+    function renderizarCatalogoFiltrado() {
+      const contenedor = document.getElementById('contenedorCursosOfertados');
+      const lblContador = document.getElementById('lblTotalCursosContador');
+      const searchInput = document.getElementById('inputBuscarCurso');
+      const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+      const favs = getFavoritosList();
+
+      if (!contenedor) return;
+
+      // ──────────────────────────────────────────────
+      // CASO 1: SECCIÓN DE CURSOS REALIZADOS
+      // ──────────────────────────────────────────────
+      if (filtroActivo === 'realizados') {
+        if (!sesionUsuarioActual) {
+          if (lblContador) lblContador.textContent = 'Requiere identificación';
           contenedor.innerHTML = `
-            <div class="col-12 text-center py-5 text-muted">
-              <i class="fa-solid fa-folder-open fa-3x mb-3 text-secondary"></i>
-              <h5>No hay talleres ni cursos ofertados actualmente</h5>
-              <p>Por favor vuelve a consultar más tarde.</p>
+            <div class="col-12">
+              <div class="card border-0 shadow-sm p-5 text-center rounded-4 bg-white">
+                <div class="mb-3">
+                  <i class="fa-solid fa-graduation-cap fa-4x text-success"></i>
+                </div>
+                <h4 class="fw-bold text-dark mb-2">Consulta tus Talleres y Cursos Realizados</h4>
+                <p class="text-muted mx-auto mb-4" style="max-width: 540px;">
+                  Identifícate con tu número de cédula para consultar de forma inmediata todos los talleres que has completado, tus horas académicas y tus certificados oficiales validados en la UPTPC.
+                </p>
+                <div>
+                  <button class="btn btn-success btn-lg fw-bold px-4 rounded-pill shadow-sm" onclick="abrirModalIdentificarUsuario('', 'Ingresa tu cédula para consultar tus certificados y cursos realizados.')">
+                    <i class="fa-solid fa-id-card me-2"></i>Identificarme con mi Cédula
+                  </button>
+                </div>
+              </div>
             </div>
           `;
           return;
         }
 
-        let html = '';
-        cursos.forEach(c => {
-          const valEstBs = (parseFloat(c.valor_estudiante || 0) * tasaDolar).toLocaleString('es-VE', { minimumFractionDigits: 2 });
-          const valForBs = (parseFloat(c.valor_foraneo || 0) * tasaDolar).toLocaleString('es-VE', { minimumFractionDigits: 2 });
-          const flyerImg = c.flayer || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600&auto=format&fit=crop&q=80';
+        if (cargandoRealizados) {
+          if (lblContador) lblContador.textContent = 'Buscando registros...';
+          contenedor.innerHTML = `
+            <div class="col-12 text-center py-5">
+              <div class="spinner-border text-success" role="status"></div>
+              <p class="text-muted mt-2">Consultando tus certificados y talleres completados...</p>
+            </div>
+          `;
+          return;
+        }
 
-          html += `
+        let listaRealizados = listaCursosRealizadosCache;
+        if (query) {
+          listaRealizados = listaRealizados.filter(c => {
+            const nom = String(c.nombre_curso || '').toLowerCase();
+            const cod = String(c.codigo || '').toLowerCase();
+            const tip = String(c.tipo_curso || '').toLowerCase();
+            return nom.includes(query) || cod.includes(query) || tip.includes(query);
+          });
+        }
+
+        if (lblContador) {
+          lblContador.textContent = `${listaRealizados.length} curso(s) realizado(s)`;
+        }
+
+        if (listaRealizados.length === 0) {
+          if (query) {
+            contenedor.innerHTML = `
+              <div class="col-12 text-center py-5">
+                <i class="fa-solid fa-magnifying-glass fa-3x text-muted mb-3"></i>
+                <h5 class="fw-bold text-dark">No se encontraron cursos realizados con "${window.utils.escapeHtml(query)}"</h5>
+                <p class="text-muted">Prueba con otra palabra clave o limpia el buscador.</p>
+                <button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('inputBuscarCurso').value=''; filtrarCursosEnTiempoReal();">
+                  Limpiar búsqueda
+                </button>
+              </div>
+            `;
+          } else {
+            contenedor.innerHTML = `
+              <div class="col-12">
+                <div class="card border-0 shadow-sm p-5 text-center rounded-4 bg-white">
+                  <div class="mb-3">
+                    <i class="fa-solid fa-award fa-4x text-muted"></i>
+                  </div>
+                  <h4 class="fw-bold text-dark mb-2">No registras talleres certificados aún</h4>
+                  <p class="text-muted mx-auto mb-4" style="max-width: 540px;">
+                    Estimado(a) <strong>${window.utils.escapeHtml(sesionUsuarioActual.nombre_completo)}</strong>, actualmente no posees certificados emitidos en el sistema oficial. ¡Inscríbete en nuestros talleres abiertos para capacitarte y obtener tu acreditación universitaria!
+                  </p>
+                  <div>
+                    <button class="btn btn-primary px-4 py-2 fw-bold rounded-pill shadow-sm" onclick="cambiarFiltroCatalogo('todos')">
+                      <i class="fa-solid fa-store me-2"></i>Ver Talleres Disponibles
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `;
+          }
+          return;
+        }
+
+        let htmlRealizados = '';
+        listaRealizados.forEach(cert => {
+          htmlRealizados += `
             <div class="col-md-6 col-lg-4">
-              <div class="card card-course h-100 shadow-sm">
-                <img src="${window.utils.escapeHtml(flyerImg)}" class="flayer-img" alt="${window.utils.escapeHtml(c.taller)}">
-                <div class="card-body d-flex flex-column p-4">
-                  <h5 class="fw-bold text-dark mb-2">${window.utils.escapeHtml(c.taller)}</h5>
-                  <p class="text-muted small flex-grow-1 mb-3">${window.utils.escapeHtml(c.descripcion || 'Sin descripción detallada.')}</p>
+              <div class="card card-course h-100 shadow-sm border-0">
+                <div class="bg-success text-white py-3 px-4 d-flex justify-content-between align-items-center">
+                  <span class="badge bg-white text-success fw-bold">
+                    <i class="fa-solid fa-circle-check me-1"></i> Acreditado
+                  </span>
+                  <span class="badge bg-dark bg-opacity-25 text-white fw-bold">
+                    <i class="fa-regular fa-clock me-1"></i> ${cert.horas ? cert.horas + ' Horas' : 'Certificado'}
+                  </span>
+                </div>
 
-                  <div class="bg-light p-3 rounded-3 mb-3">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                      <span class="badge price-badge-student py-2 px-3 fw-bold"><i class="fa-solid fa-graduation-cap me-1"></i>Estudiante UPTPC:</span>
-                      <div class="text-end">
-                        <strong class="text-success fs-5">${valEstBs} Bs.</strong>
-                        <small class="text-muted d-block">($${parseFloat(c.valor_estudiante || 0).toFixed(2)} USD)</small>
-                      </div>
+                <div class="card-body d-flex flex-column p-4">
+                  <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="badge bg-light text-secondary border small">${window.utils.escapeHtml(cert.tipo_curso || 'Taller')}</span>
+                    <small class="text-muted"><i class="fa-regular fa-calendar me-1"></i>${window.utils.escapeHtml(cert.fecha_curso || 'N/A')}</small>
+                  </div>
+
+                  <h5 class="fw-bold text-dark mb-2">${window.utils.escapeHtml(cert.nombre_curso)}</h5>
+                  <p class="text-muted small flex-grow-1 mb-3">
+                    <i class="fa-solid fa-user me-1 text-primary"></i> ${window.utils.escapeHtml(cert.nombre_completo || sesionUsuarioActual.nombre_completo)}<br>
+                    <i class="fa-solid fa-id-card me-1 text-primary"></i> C.I.: ${window.utils.escapeHtml(cert.cedula || sesionUsuarioActual.cedula)}
+                  </p>
+
+                  <div class="bg-light p-3 rounded-3 mb-3 border">
+                    <div class="d-flex justify-content-between align-items-center small mb-1">
+                      <span class="text-muted">Código Verificador:</span>
+                      <strong class="text-primary font-monospace fs-6">${window.utils.escapeHtml(cert.codigo)}</strong>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center">
-                      <span class="badge price-badge-public py-2 px-3 fw-bold"><i class="fa-solid fa-user me-1"></i>Público / Foráneo:</span>
-                      <div class="text-end">
-                        <strong class="text-info fs-5">${valForBs} Bs.</strong>
-                        <small class="text-muted d-block">($${parseFloat(c.valor_foraneo || 0).toFixed(2)} USD)</small>
-                      </div>
+                    <div class="d-flex justify-content-between align-items-center small text-muted">
+                      <span>Tomo: <strong>${window.utils.escapeHtml(cert.tomo || '-')}</strong> | Folio: <strong>${window.utils.escapeHtml(cert.folio || '-')}</strong></span>
+                      <span>Matrícula: <strong>${window.utils.escapeHtml(cert.matricula || '-')}</strong></span>
                     </div>
                   </div>
 
-                  <button class="btn btn-primary w-100 fw-bold py-2 shadow-sm" onclick="abrirModalPagoCurso('${c.id}')">
-                    <i class="fa-solid fa-cart-shopping me-2"></i>INSCRIBIRSE / PAGAR CURSO
-                  </button>
+                  <div class="d-grid gap-2">
+                    <a href="consulta.html?ID=${window.utils.escapeHtml(cert.codigo)}" target="_blank" class="btn btn-success fw-bold py-2 shadow-sm">
+                      <i class="fa-solid fa-graduation-cap me-2"></i>Ver Certificado Oficial
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>
           `;
         });
 
-        contenedor.innerHTML = html;
+        contenedor.innerHTML = htmlRealizados;
+        return;
+      }
+
+      // ──────────────────────────────────────────────
+      // CASO 2: SECCIÓN DE FAVORITOS
+      // ──────────────────────────────────────────────
+      if (filtroActivo === 'favoritos' && !sesionUsuarioActual) {
+        if (lblContador) lblContador.textContent = 'Requiere identificación';
+        contenedor.innerHTML = `
+          <div class="col-12">
+            <div class="card border-0 shadow-sm p-5 text-center rounded-4 bg-white">
+              <div class="mb-3">
+                <i class="fa-regular fa-heart fa-4x text-danger animate__animated animate__pulse"></i>
+              </div>
+              <h4 class="fw-bold text-dark mb-2">Ingresa con tu Cédula para ver tus Favoritos</h4>
+              <p class="text-muted mx-auto mb-4" style="max-width: 520px;">
+                Tus talleres favoritos se guardan de forma segura vinculados a tu número de cédula para que puedas acceder a ellos en cualquier momento y completar tu inscripción.
+              </p>
+              <div>
+                <button class="btn btn-primary btn-lg fw-bold px-4 rounded-pill shadow-sm" onclick="abrirModalIdentificarUsuario('', 'Ingresa tu cédula para consultar tus talleres favoritos.')">
+                  <i class="fa-solid fa-id-card me-2"></i>Identificarme con mi Cédula
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      // Filtrar catálogo por lista
+      let lista = listaCursosCache;
+      if (filtroActivo === 'favoritos') {
+        lista = lista.filter(c => favs.includes(String(c.id)));
+      }
+
+      // Filtrar por término de búsqueda en tiempo real
+      if (query) {
+        lista = lista.filter(c => {
+          const t = String(c.taller || '').toLowerCase();
+          const d = String(c.descripcion || '').toLowerCase();
+          return t.includes(query) || d.includes(query);
+        });
+      }
+
+      if (lblContador) {
+        if (filtroActivo === 'favoritos') {
+          lblContador.textContent = `${lista.length} taller(es) favorito(s)`;
+        } else {
+          lblContador.textContent = `${lista.length} taller(es) disponible(s)`;
+        }
+      }
+
+      // Estado vacío para Favoritos
+      if (filtroActivo === 'favoritos' && lista.length === 0) {
+        if (query) {
+          contenedor.innerHTML = `
+            <div class="col-12 text-center py-5">
+              <i class="fa-solid fa-magnifying-glass fa-3x text-muted mb-3"></i>
+              <h5 class="fw-bold text-dark">No se encontraron favoritos con "${window.utils.escapeHtml(query)}"</h5>
+              <p class="text-muted">Intenta con otra palabra clave o limpia el buscador.</p>
+              <button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('inputBuscarCurso').value=''; filtrarCursosEnTiempoReal();">
+                Limpiar búsqueda
+              </button>
+            </div>
+          `;
+        } else {
+          contenedor.innerHTML = `
+            <div class="col-12">
+              <div class="empty-favoritos-card shadow-sm">
+                <div class="mb-3">
+                  <i class="fa-regular fa-heart fa-4x text-danger animate__animated animate__pulse"></i>
+                </div>
+                <h4 class="fw-bold text-dark mb-2">Aún no tienes talleres en tus Favoritos</h4>
+                <p class="text-muted mx-auto mb-4" style="max-width: 520px;">
+                  Explora nuestro catálogo académico y presiona el ícono del corazón <i class="fa-solid fa-heart text-danger"></i> en los talleres que te interesen para guardarlos aquí y tenerlos a la mano.
+                </p>
+                <button class="btn btn-primary px-4 py-2 fw-bold rounded-pill shadow-sm" onclick="cambiarFiltroCatalogo('todos')">
+                  <i class="fa-solid fa-store me-2"></i>Explorar Todos los Talleres
+                </button>
+              </div>
+            </div>
+          `;
+        }
+        return;
+      }
+
+      // Estado vacío para Catálogo general
+      if (lista.length === 0) {
+        contenedor.innerHTML = `
+          <div class="col-12 text-center py-5 text-muted">
+            <i class="fa-solid fa-folder-open fa-3x mb-3 text-secondary"></i>
+            <h5>No se encontraron talleres disponibles con ese criterio</h5>
+            <p>Intenta con otra búsqueda o vuelve a consultar más tarde.</p>
+          </div>
+        `;
+        return;
+      }
+
+      let html = '';
+      lista.forEach(c => {
+        const valEstBs = (parseFloat(c.valor_estudiante || 0) * tasaDolar).toLocaleString('es-VE', { minimumFractionDigits: 2 });
+        const valForBs = (parseFloat(c.valor_foraneo || 0) * tasaDolar).toLocaleString('es-VE', { minimumFractionDigits: 2 });
+        const flyerImg = c.flayer || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600&auto=format&fit=crop&q=80';
+        const esFav = favs.includes(String(c.id));
+
+        html += `
+          <div class="col-md-6 col-lg-4">
+            <div class="card card-course h-100 shadow-sm">
+              <div class="flayer-container" onclick="abrirModalDetalleCurso('${c.id}')" title="Click para ver información detallada">
+                <img src="${window.utils.escapeHtml(flyerImg)}" class="flayer-img" alt="${window.utils.escapeHtml(c.taller)}">
+                <div class="flayer-overlay">
+                  <span class="badge bg-dark bg-opacity-75 py-2 px-3 text-white rounded-pill shadow-sm">
+                    <i class="fa-solid fa-magnifying-glass-plus me-1"></i> Ver detalles
+                  </span>
+                </div>
+                <button class="btn-favorito-heart ${esFav ? 'is-favorito' : ''}" 
+                        data-curso-id="${c.id}"
+                        title="${esFav ? 'Quitar de Favoritos' : 'Agregar a Favoritos'}"
+                        onclick="toggleFavoritoCurso('${c.id}', event)">
+                  <i class="${esFav ? 'fa-solid fa-heart text-danger' : 'fa-regular fa-heart'}"></i>
+                </button>
+              </div>
+
+              <div class="card-body d-flex flex-column p-4">
+                <h5 class="fw-bold text-dark mb-2" style="cursor: pointer;" onclick="abrirModalDetalleCurso('${c.id}')" title="Click para ver detalles">${window.utils.escapeHtml(c.taller)}</h5>
+                <p class="text-muted small flex-grow-1 mb-3" style="cursor: pointer;" onclick="abrirModalDetalleCurso('${c.id}')">${window.utils.escapeHtml(c.descripcion || 'Sin descripción detallada.')}</p>
+
+                <div class="bg-light p-3 rounded-3 mb-3">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge price-badge-student py-2 px-3 fw-bold"><i class="fa-solid fa-graduation-cap me-1"></i>Estudiante UPTPC:</span>
+                    <div class="text-end">
+                      <strong class="text-success fs-5">${valEstBs} Bs.</strong>
+                      <small class="text-muted d-block">($${parseFloat(c.valor_estudiante || 0).toFixed(2)} USD)</small>
+                    </div>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center">
+                    <span class="badge price-badge-public py-2 px-3 fw-bold"><i class="fa-solid fa-user me-1"></i>Público / Foráneo:</span>
+                    <div class="text-end">
+                      <strong class="text-info fs-5">${valForBs} Bs.</strong>
+                      <small class="text-muted d-block">($${parseFloat(c.valor_foraneo || 0).toFixed(2)} USD)</small>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="d-grid gap-2">
+                  <button class="btn btn-primary w-100 fw-bold py-2 shadow-sm" onclick="abrirModalPagoCurso('${c.id}')">
+                    <i class="fa-solid fa-cart-shopping me-2"></i>INSCRIBIRSE / PAGAR CURSO
+                  </button>
+                  <button class="btn btn-outline-secondary btn-sm" onclick="abrirModalDetalleCurso('${c.id}')">
+                    <i class="fa-solid fa-circle-info me-1"></i>Ver Información Completa
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+      contenedor.innerHTML = html;
+    }
+
+    // ============================================================
+    // MODAL DE DETALLE DEL CURSO (AL HACER CLICK EN IMAGEN O TÍTULO)
+    // ============================================================
+    function abrirModalDetalleCurso(cursoId) {
+      const c = listaCursosCache.find(x => String(x.id) === String(cursoId));
+      if (!c) return;
+
+      cursoSeleccionadoDetalle = c;
+
+      const valEstBs = (parseFloat(c.valor_estudiante || 0) * tasaDolar).toLocaleString('es-VE', { minimumFractionDigits: 2 });
+      const valForBs = (parseFloat(c.valor_foraneo || 0) * tasaDolar).toLocaleString('es-VE', { minimumFractionDigits: 2 });
+      const flyerImg = c.flayer || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600&auto=format&fit=crop&q=80';
+
+      document.getElementById('modalDetalleTitulo').textContent = c.taller;
+      document.getElementById('modalDetalleNombre').textContent = c.taller;
+      document.getElementById('modalDetalleDesc').textContent = c.descripcion || 'Sin descripción detallada por el momento.';
+      document.getElementById('modalDetalleImg').src = flyerImg;
+      document.getElementById('modalDetallePrecioEstBs').textContent = `${valEstBs} Bs.`;
+      document.getElementById('modalDetallePrecioEstUsd').textContent = `($${parseFloat(c.valor_estudiante || 0).toFixed(2)} USD)`;
+      document.getElementById('modalDetallePrecioForBs').textContent = `${valForBs} Bs.`;
+      document.getElementById('modalDetallePrecioForUsd').textContent = `($${parseFloat(c.valor_foraneo || 0).toFixed(2)} USD)`;
+
+      actualizarBotonFavoritoModalDetalle();
+
+      const modalEl = document.getElementById('modalDetalleCurso');
+      bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+
+    function actualizarBotonFavoritoModalDetalle() {
+      if (!cursoSeleccionadoDetalle) return;
+      const btnFav = document.getElementById('btnModalDetalleFavorito');
+      const lblFav = document.getElementById('lblBtnModalDetalleFavorito');
+      if (!btnFav || !lblFav) return;
+
+      const favs = getFavoritosList();
+      const esFav = favs.includes(String(cursoSeleccionadoDetalle.id));
+
+      if (esFav) {
+        btnFav.className = 'btn btn-danger btn-sm fw-bold px-3 d-flex align-items-center gap-1 shadow-sm';
+        btnFav.innerHTML = '<i class="fa-solid fa-heart"></i> Quitar de Favoritos';
+      } else {
+        btnFav.className = 'btn btn-outline-danger btn-sm fw-bold px-3 d-flex align-items-center gap-1';
+        btnFav.innerHTML = '<i class="fa-regular fa-heart"></i> Guardar en Favoritos';
+      }
+    }
+
+    function toggleFavoritoDesdeModalDetalle() {
+      if (!cursoSeleccionadoDetalle) return;
+      toggleFavoritoCurso(cursoSeleccionadoDetalle.id);
+      actualizarBotonFavoritoModalDetalle();
+    }
+
+    function inscribirseDesdeModalDetalle() {
+      if (!cursoSeleccionadoDetalle) return;
+      const cursoId = cursoSeleccionadoDetalle.id;
+      const modalDetalleEl = document.getElementById('modalDetalleCurso');
+      const modalDetalleInst = bootstrap.Modal.getInstance(modalDetalleEl);
+      if (modalDetalleInst) modalDetalleInst.hide();
+
+      setTimeout(() => {
+        abrirModalPagoCurso(cursoId);
+      }, 350);
+    }
+
+    function mostrarToastNotificacion(htmlMsg, tipo = 'success') {
+      const toastEl = document.getElementById('toastFavoritoNotif');
+      const toastMsg = document.getElementById('toastFavoritoMsg');
+      if (!toastEl || !toastMsg) return;
+
+      toastMsg.innerHTML = htmlMsg;
+      const toast = bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 3000 });
+      toast.show();
+    }
+
+    // ============================================================
+    // CARGA DE DATOS PRINCIPALES
+    // ============================================================
+    async function cargarCatalogoCursos() {
+      const contenedor = document.getElementById('contenedorCursosOfertados');
+
+      try {
+        const res = await window.api.getAll('curso_ofertado');
+        listaCursosCache = (res && res.status === 'success' && Array.isArray(res.data)) ? res.data : [];
+
+        actualizarContadoresFavoritos();
+        renderizarCatalogoFiltrado();
       } catch (e) {
         console.error('Error cargando cursos en tienda:', e);
-        contenedor.innerHTML = '<div class="col-12 text-center text-danger py-4">Error al obtener los cursos ofertados.</div>';
+        if (contenedor) {
+          contenedor.innerHTML = '<div class="col-12 text-center text-danger py-4">Error al obtener los cursos ofertados.</div>';
+        }
       }
     }
 
@@ -470,6 +1614,9 @@
       } catch (e) {}
     }
 
+    // ============================================================
+    // FLUJO DE PAGO / INSCRIPCIÓN
+    // ============================================================
     async function abrirModalPagoCurso(cursoId) {
       const res = await window.api.getById('curso_ofertado', cursoId);
       if (!res || res.status !== 'success' || !res.data) {
@@ -478,14 +1625,18 @@
       }
 
       cursoSeleccionadoActual = res.data;
-      usuarioIdentificadoActual = null;
 
       document.getElementById('lblPagoNombreTaller').textContent = cursoSeleccionadoActual.taller;
       document.getElementById('lblPagoDescTaller').textContent = cursoSeleccionadoActual.descripcion || '';
       document.getElementById('inputPagoCursoId').value = cursoSeleccionadoActual.id;
       document.getElementById('inputPagoFecha').value = new Date().toISOString().split('T')[0];
 
-      resetearIdentificacionPago();
+      // Si el usuario ya está identificado previamente (sesionUsuarioActual), activar directamente el paso de pago
+      if (sesionUsuarioActual) {
+        activarFormularioPagoConUsuario(sesionUsuarioActual);
+      } else {
+        resetearIdentificacionPago();
+      }
 
       const modalEl = document.getElementById('modalPagoCurso');
       bootstrap.Modal.getOrCreateInstance(modalEl).show();
@@ -519,6 +1670,7 @@
         });
 
         if (found) {
+          establecerSesionUsuario(found);
           activarFormularioPagoConUsuario(found);
         } else {
           // Mostrar paso de registro rápido inline
@@ -551,6 +1703,7 @@
       try {
         const res = await window.api.create('usuarios', nuevoUsuario);
         if (res && res.status === 'success') {
+          establecerSesionUsuario(nuevoUsuario);
           alert('¡Registro exitoso! Procediendo a la declaración de pago.');
           activarFormularioPagoConUsuario(nuevoUsuario);
         } else {
@@ -616,8 +1769,8 @@
         const compressedBase64 = await window.utils.compressImage(file, 900, 900, 0.8);
         const filename = `capture_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9\._-]/g, '')}`;
 
-        // Subir capture a la carpeta Google Drive oficial de Captures (ID: 1HVwi38M9GGlofZ3rcsSRs5WpOEqD2Tgz)
-        const uploadRes = await window.api.uploadImage(compressedBase64, filename, CAPTURE_FOLDER_ID);
+        // Subir capture organizado a Cloudflare R2 (/img/pagos)
+        const uploadRes = await window.api.uploadImage(compressedBase64, filename, 'pagos');
         const captureUrl = (uploadRes && uploadRes.status === 'success') ? uploadRes.url : compressedBase64;
 
         const nuevoPago = {
@@ -649,6 +1802,11 @@
 
     function abrirModalConsultaPagos() {
       const modalEl = document.getElementById('modalConsultaPagos');
+      const input = document.getElementById('inputConsultaCedulaPagos');
+      if (sesionUsuarioActual && input) {
+        input.value = sesionUsuarioActual.cedula;
+        consultarPagosPorCedula();
+      }
       bootstrap.Modal.getOrCreateInstance(modalEl).show();
     }
 

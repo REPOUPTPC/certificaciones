@@ -130,6 +130,18 @@
 
       let html = '';
       lista.forEach((c, i) => {
+        const esAuditor = window.authAdmin && window.authAdmin.isAuditor();
+        const accionesHtml = esAuditor
+          ? `
+            <button class="btn btn-sm btn-outline-success me-1" onclick="window.certificadosModule.verCertificado('${c.codigo}')" title="Ver / Auditar Certificado"><i class="fa-solid fa-eye me-1"></i>Ver</button>
+            <span class="badge bg-light text-muted border"><i class="fa-solid fa-lock me-1"></i>Solo Lectura</span>
+          `
+          : `
+            <button class="btn btn-sm btn-outline-success me-1" onclick="window.certificadosModule.verCertificado('${c.codigo}')" title="Ver / Imprimir Certificado"><i class="fa-solid fa-eye"></i></button>
+            <button class="btn btn-sm btn-outline-warning me-1 btn-accion-editar" onclick="window.certificadosModule.abrirModalEditarCertificado('${c.id}')" title="Editar Certificado (Tomo, Folio, etc.)"><i class="fa-solid fa-pen-to-square"></i></button>
+            <button class="btn btn-sm btn-outline-danger btn-accion-eliminar btn-accion-anular" onclick="window.certificadosModule.eliminarCertificado('${c.id}')" title="Anular / Eliminar"><i class="fa-solid fa-trash"></i></button>
+          `;
+
         html += `
           <tr>
             <td>${i + 1}</td>
@@ -138,11 +150,7 @@
             <td class="small">${window.utils.escapeHtml(c.nombre_curso)}</td>
             <td><span class="badge bg-info text-dark">${window.utils.escapeHtml(c.unidad_codigo)}</span></td>
             <td class="small">${window.utils.formatDate(c.fecha_curso)}</td>
-            <td>
-              <button class="btn btn-sm btn-outline-success me-1" onclick="window.certificadosModule.verCertificado('${c.codigo}')" title="Ver / Imprimir Certificado"><i class="fa-solid fa-eye"></i></button>
-              <button class="btn btn-sm btn-outline-warning me-1" onclick="window.certificadosModule.abrirModalEditarCertificado('${c.id}')" title="Editar Certificado (Tomo, Folio, etc.)"><i class="fa-solid fa-pen-to-square"></i></button>
-              <button class="btn btn-sm btn-outline-danger" onclick="window.certificadosModule.eliminarCertificado('${c.id}')" title="Anular / Eliminar"><i class="fa-solid fa-trash"></i></button>
-            </td>
+            <td>${accionesHtml}</td>
           </tr>
         `;
       });
@@ -237,6 +245,10 @@
     },
 
     async abrirModalCertificar(cursoIdSeleccionado = null) {
+      if (window.authAdmin && window.authAdmin.isAuditor()) {
+        window.utils.showToast('Acceso restringido: Perfil AUDITOR es de solo lectura.', 'warning');
+        return;
+      }
       this.bindEvents(); // Garantiza la vinculación de eventos independientemente de la pestaña inicial
 
       const modalEl = document.getElementById('modalCertificar');
@@ -383,7 +395,27 @@
           <tbody>
       `;
 
+      const esAuditor = window.authAdmin && window.authAdmin.isAuditor();
+
       certsEnTaller.forEach((c, i) => {
+        const accionesEnTaller = esAuditor
+          ? `
+            <button type="button" class="btn btn-xs btn-outline-success py-0 px-2" onclick="window.certificadosModule.verCertificado('${c.codigo}')" title="Ver Certificado">
+              <i class="fa-solid fa-eye me-1"></i>Ver
+            </button>
+          `
+          : `
+            <button type="button" class="btn btn-xs btn-outline-success py-0 px-2 me-1" onclick="window.certificadosModule.verCertificado('${c.codigo}')" title="Ver Certificado">
+              <i class="fa-solid fa-eye me-1"></i>Ver
+            </button>
+            <button type="button" class="btn btn-xs btn-outline-warning py-0 px-2 me-1" onclick="window.certificadosModule.abrirModalEditarCertificado('${c.id}', true)" title="Editar Certificación">
+              <i class="fa-solid fa-pen-to-square me-1"></i>Editar
+            </button>
+            <button type="button" class="btn btn-xs btn-outline-danger py-0 px-2" onclick="window.certificadosModule.eliminarCertificadoCurso('${c.id}')" title="Eliminar / Anular Certificación de este Curso">
+              <i class="fa-solid fa-trash me-1"></i>Eliminar
+            </button>
+          `;
+
         html += `
           <tr>
             <td>${i + 1}</td>
@@ -391,17 +423,7 @@
             <td><span class="badge bg-secondary font-monospace">${window.utils.escapeHtml(c.cedula)}</span></td>
             <td><span class="badge bg-dark text-warning font-monospace fw-bold">${window.utils.escapeHtml(c.codigo)}</span></td>
             <td>${window.utils.formatDate(c.fecha_curso)}</td>
-            <td class="text-end">
-              <button type="button" class="btn btn-xs btn-outline-success py-0 px-2 me-1" onclick="window.certificadosModule.verCertificado('${c.codigo}')" title="Ver Certificado">
-                <i class="fa-solid fa-eye me-1"></i>Ver
-              </button>
-              <button type="button" class="btn btn-xs btn-outline-warning py-0 px-2 me-1" onclick="window.certificadosModule.abrirModalEditarCertificado('${c.id}', true)" title="Editar Certificación">
-                <i class="fa-solid fa-pen-to-square me-1"></i>Editar
-              </button>
-              <button type="button" class="btn btn-xs btn-outline-danger py-0 px-2" onclick="window.certificadosModule.eliminarCertificadoCurso('${c.id}')" title="Eliminar / Anular Certificación de este Curso">
-                <i class="fa-solid fa-trash me-1"></i>Eliminar
-              </button>
-            </td>
+            <td class="text-end">${accionesEnTaller}</td>
           </tr>
         `;
       });
@@ -411,6 +433,10 @@
     },
 
     async eliminarCertificadoCurso(id) {
+      if (window.authAdmin && window.authAdmin.isAuditor()) {
+        window.utils.showToast('Acceso restringido: Perfil AUDITOR es de solo lectura.', 'warning');
+        return;
+      }
       const cert = certificadosVistaData.find(c => String(c.id).trim() === String(id).trim());
       const certNombre = cert ? cert.nombre_completo : 'este participante';
       const certCodigo = cert ? cert.codigo : '';
@@ -508,6 +534,11 @@
 
     async ejecutarEmisionCertificados(e) {
       e.preventDefault();
+
+      if (window.authAdmin && window.authAdmin.isAuditor()) {
+        window.utils.showToast('Acceso restringido: Perfil AUDITOR es de solo lectura.', 'warning');
+        return;
+      }
 
       const curso_id = document.getElementById('emisionCursoId').value;
       const fecha_curso = document.getElementById('emisionFecha').value;
@@ -1025,6 +1056,10 @@
     },
 
     async eliminarCertificado(id) {
+      if (window.authAdmin && window.authAdmin.isAuditor()) {
+        window.utils.showToast('Acceso restringido: Perfil AUDITOR es de solo lectura.', 'warning');
+        return;
+      }
       const cert = certificadosVistaData.find(c => String(c.id).trim() === String(id).trim()) ||
                    (window.api._globalCache && window.api._globalCache.certificados ? window.api._globalCache.certificados.find(c => String(c.id).trim() === String(id).trim()) : null);
       const certNombre = cert ? (cert.nombre_completo || 'este participante') : 'este participante';
@@ -1070,6 +1105,10 @@
     },
 
     abrirModalEditarCertificado(id, returnToBulk = false) {
+      if (window.authAdmin && window.authAdmin.isAuditor()) {
+        window.utils.showToast('Acceso restringido: Perfil AUDITOR es de solo lectura.', 'warning');
+        return;
+      }
       const cert = certificadosVistaData.find(c => String(c.id).trim() === String(id).trim()) ||
                    (window.api._globalCache && window.api._globalCache.certificados ? window.api._globalCache.certificados.find(c => String(c.id).trim() === String(id).trim()) : null);
 
@@ -1120,6 +1159,11 @@
 
     async guardarEdicionCertificado(e) {
       e.preventDefault();
+
+      if (window.authAdmin && window.authAdmin.isAuditor()) {
+        window.utils.showToast('Acceso restringido: Perfil AUDITOR es de solo lectura.', 'warning');
+        return;
+      }
 
       const id = document.getElementById('editarCertificadoId').value;
       const returnToBulk = document.getElementById('editarCertificadoReturnBulk').value === 'true';

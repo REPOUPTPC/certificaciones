@@ -1,5 +1,35 @@
-google_sheet.gs
-
-# Ignorar archivos de sistema comunes
-.DS_Store
+# Dependencias
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Entorno y Secretos (NUNCA subir a GitHub)
+.env
+.env.local
+.env.*.local
+
+# Vercel
+.vercel/
+
+# Sistema operativo y editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Archivos temporales y backups
+*.tmp
+*.bak
+*.backup
+scratch/
+
+# Google Apps Script legado (opcional)
+google_sheet.gs
+appsscript.json

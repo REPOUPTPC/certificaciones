@@ -1,0 +1,29 @@
+{
+  "name": "sistema-certificaciones-uptpc",
+  "version": "2.0.0",
+  "description": "Sistema de Gestión y Validador de Certificaciones UPTPC migrado a Node.js, Turso y Cloudflare R2",
+  "main": "api/index.js",
+  "scripts": {
+    "dev": "node server/dev-server.js",
+    "start": "node server/dev-server.js",
+    "db:init": "node scripts/init-db.js",
+    "r2:sync": "node scripts/upload-local-images.js",
+    "test:conn": "node scripts/test-connections.js"
+  },
+  "keywords": [
+    "uptpc",
+    "certificaciones",
+    "turso",
+    "libsql",
+    "cloudflare-r2",
+    "vercel"
+  ],
+  "author": "Jose Herrera - UPTPC",
+  "license": "GPL-3.0",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.758.0",
+    "@libsql/client": "^0.14.0",
+    "dotenv": "^16.4.7",
+    "mime-types": "^2.1.35"
+  }
+}

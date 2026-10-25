@@ -82,13 +82,32 @@
       min-height: 100vh;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       margin: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    #search-section {
+      flex: 1 0 auto;
+      margin-bottom: 90px;
+      padding-bottom: 50px;
     }
     .search-container {
       background: rgba(255,255,255,0.97);
       border-radius: 20px;
       padding: 40px;
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-      margin-top: 60px;
+      margin-top: 30px;
+      margin-bottom: 60px;
+    }
+    #resultados {
+      margin-bottom: 30px;
+    }
+    #cert-section {
+      margin-bottom: 80px;
+      padding-bottom: 40px;
+    }
+    footer {
+      margin-top: auto;
+      box-shadow: 0 -4px 15px rgba(0,0,0,0.06);
     }
     .logo-uptpc {
       max-width: 200px;
@@ -145,7 +164,7 @@
       background: rgba(255,255,255,0.97);
       border-radius: 20px;
       padding: 20px;
-      margin: 30px auto;
+      margin: 30px auto 90px auto;
       max-width: 1200px;
       width: 95%;
       overflow: hidden;
@@ -252,7 +271,7 @@
 </header>
 
 <!-- ═══ BÚSQUEDA ═══ -->
-<div class="container mt-4" id="search-section">
+<div class="container mt-2 mb-5 pb-5" id="search-section">
   <div class="row justify-content-center">
     <div class="col-md-8">
       <div class="search-container text-center">
@@ -342,7 +361,7 @@
 </div>
 
 <!-- Footer institucional -->
-<footer class="bg-white border-top py-3 text-center text-muted small mt-auto">
+<footer class="bg-white border-top py-4 text-center text-muted small mt-auto" style="margin-top: 80px !important; box-shadow: 0 -4px 20px rgba(0,0,0,0.1);">
   <div class="container">
     <p class="mb-0">&copy; 2026 <a href="https://cyt.uptpc.edu.ve" target="_blank" rel="noopener noreferrer" class="text-decoration-none text-dark"><strong>Unidad de Ciencia y Tecnología</strong></a> &bull; <a href="https://www.uptpc.edu.ve" target="_blank" rel="noopener noreferrer" class="text-decoration-none text-muted">Universidad Politécnica Territorial de Puerto Cabello</a></p>
     <span class="text-secondary small">Sistema de Gestión y Consulta Integrado UPTPC</span>
@@ -362,7 +381,7 @@
 // ============================================================
 // CONSTANTES Y VARIABLES GLOBALES
 // ============================================================
-const API_URL = (window.config && window.config.getApiUrl) ? window.config.getApiUrl() : 'https://script.google.com/macros/s/AKfycbwZ7cn7EZvUiu1hWSNQp_HSTVYDBrYB9VqbnaW2eCUvdxRibStrWy31n_4mmEWoDNH2FQ/exec';
+const API_URL = (window.config && window.config.getApiUrl) ? window.config.getApiUrl() : '/api';
 
 let ultimoTerminoBusqueda = "";
 let disenoActivo = null;

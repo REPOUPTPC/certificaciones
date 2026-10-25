@@ -32,7 +32,7 @@
 
           try {
             const base64 = await window.utils.compressImage(file, 600, 600, 0.85);
-            const res = await window.api.uploadImage(base64, file.name);
+            const res = await window.api.uploadImage(base64, file.name, 'logos');
 
             if (res.status === 'success' && res.url) {
               document.getElementById('unidadLogoUrl').value = res.url;
@@ -78,11 +78,19 @@
         return;
       }
 
+      const esAuditor = window.authAdmin && window.authAdmin.isAuditor();
       let html = '';
       lista.forEach((u, i) => {
         const logoImg = u.logo_url 
           ? `<img src="${u.logo_url}" alt="Logo" style="height:35px; max-width:80px; object-fit:contain;">`
           : `<span class="text-muted small">Sin logo</span>`;
+
+        const accionesHtml = esAuditor 
+          ? '<span class="badge bg-light text-muted border"><i class="fa-solid fa-lock me-1"></i>Solo Lectura</span>'
+          : `
+            <button class="btn btn-sm btn-outline-primary me-1 btn-accion-editar" onclick="window.unidadesModule.abrirModalUnidad('${u.id}')"><i class="fa-solid fa-pen"></i></button>
+            <button class="btn btn-sm btn-outline-danger btn-accion-eliminar" onclick="window.unidadesModule.eliminarUnidad('${u.id}')"><i class="fa-solid fa-trash"></i></button>
+          `;
 
         html += `
           <tr>
@@ -90,10 +98,7 @@
             <td><span class="badge bg-primary">${window.utils.escapeHtml(u.codigo)}</span></td>
             <td class="fw-semibold">${window.utils.escapeHtml(u.nombre)}</td>
             <td>${logoImg}</td>
-            <td>
-              <button class="btn btn-sm btn-outline-primary me-1" onclick="window.unidadesModule.abrirModalUnidad('${u.id}')"><i class="fa-solid fa-pen"></i></button>
-              <button class="btn btn-sm btn-outline-danger" onclick="window.unidadesModule.eliminarUnidad('${u.id}')"><i class="fa-solid fa-trash"></i></button>
-            </td>
+            <td>${accionesHtml}</td>
           </tr>
         `;
       });
@@ -102,6 +107,10 @@
     },
 
     abrirModalUnidad(id = null) {
+      if (window.authAdmin && window.authAdmin.isAuditor()) {
+        window.utils.showToast('Acceso restringido: Perfil AUDITOR es de solo lectura.', 'warning');
+        return;
+      }
       const modalEl = document.getElementById('modalUnidad');
       if (!modalEl) return;
 
@@ -128,6 +137,10 @@
 
     async guardarUnidad(e) {
       e.preventDefault();
+      if (window.authAdmin && window.authAdmin.isAuditor()) {
+        window.utils.showToast('Acceso restringido: Perfil AUDITOR es de solo lectura.', 'warning');
+        return;
+      }
       const id = document.getElementById('unidadId').value;
       const codigo = document.getElementById('unidadCodigo').value.trim().toUpperCase();
       const nombre = document.getElementById('unidadNombre').value.trim();
@@ -170,6 +183,10 @@
     },
 
     async eliminarUnidad(id) {
+      if (window.authAdmin && window.authAdmin.isAuditor()) {
+        window.utils.showToast('Acceso restringido: Perfil AUDITOR es de solo lectura.', 'warning');
+        return;
+      }
       window.utils.showConfirm({
         title: 'Eliminar Unidad Académica',
         message: '¿Está seguro de eliminar esta unidad académica?',

@@ -301,20 +301,25 @@
     },
 
     setupPasswordToggles() {
-      document.querySelectorAll('.btn-toggle-pwd').forEach(btn => {
-        if (btn.dataset.pwdBound) return;
-        btn.dataset.pwdBound = 'true';
-        btn.addEventListener('click', () => {
-          const input = btn.closest('.input-group')?.querySelector('input');
-          if (!input) return;
-          const isPwd = input.type === 'password';
-          input.type = isPwd ? 'text' : 'password';
-          const icon = btn.querySelector('i');
-          if (icon) {
-            icon.className = isPwd ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
-          }
+      const bindAll = () => {
+        document.querySelectorAll('.btn-toggle-pwd').forEach(btn => {
+          if (btn.dataset.pwdBound) return;
+          btn.dataset.pwdBound = 'true';
+          btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const input = btn.closest('.input-group')?.querySelector('input');
+            if (!input) return;
+            const isPwd = input.type === 'password';
+            input.type = isPwd ? 'text' : 'password';
+            const icon = btn.querySelector('i');
+            if (icon) {
+              icon.className = isPwd ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+            }
+          });
         });
-      });
+      };
+      bindAll();
+      document.addEventListener('shown.bs.modal', bindAll);
     },
 
     showConfirm({ title = 'Confirmar Acción', message = '¿Desea continuar?', subtext = '', confirmText = 'Sí, Confirmar', confirmClass = 'btn-danger', onConfirm } = {}) {

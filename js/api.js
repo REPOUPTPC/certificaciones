@@ -91,7 +91,8 @@
         { id: 'b-6', banco: 'Bancamiga (0172)', created_at: new Date().toISOString() },
         { id: 'b-7', banco: 'Pago Móvil / Otras Entidades', created_at: new Date().toISOString() }
       ],
-      pagos: []
+      pagos: [],
+      presets_imagenes: []
     };
 
     const stored = localStorage.getItem(LOCAL_STORAGE_DB_KEY);
@@ -132,12 +133,10 @@
 
     async fetchRemoteDirect(action, params = {}) {
       const apiUrl = window.config.getApiUrl();
-      const adminKey = window.config.getAdminKey();
       if (!apiUrl) throw new Error('No API URL configured');
-      const queryParams = new URLSearchParams({ action, admin_key: adminKey, ...params });
+      const queryParams = new URLSearchParams({ action, ...params });
       const response = await fetch(`${apiUrl}?${queryParams.toString()}`, {
-        method: 'GET',
-        mode: 'cors'
+        method: 'GET'
       });
       if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
       return await response.json();
@@ -145,7 +144,7 @@
 
     ensureAllTables(cacheObj) {
       if (!cacheObj || typeof cacheObj !== 'object') return cacheObj;
-      const tables = ['unidades', 'firmas', 'tipo', 'usuarios', 'cursos', 'certificados', 'disenos', 'admin', 'consulta', 'certificados_eliminados', 'curso_ofertado', 'banco', 'pagos'];
+      const tables = ['unidades', 'firmas', 'tipo', 'usuarios', 'cursos', 'certificados', 'disenos', 'admin', 'consulta', 'certificados_eliminados', 'curso_ofertado', 'banco', 'pagos', 'configuracion'];
       tables.forEach(t => {
         if (!Array.isArray(cacheObj[t])) cacheObj[t] = [];
       });
@@ -463,7 +462,6 @@
 
     async _postInternal(action, payload = {}) {
       const apiUrl = window.config.getApiUrl();
-      const adminKey = window.config.getAdminKey();
       const targetTable = payload.tabla || payload.table;
       if (targetTable) {
         payload.tabla = targetTable;
@@ -472,36 +470,36 @@
 
       if (apiUrl && !this._forceMockMode) {
         try {
+          const session = (window.authAdmin && window.authAdmin.getSession) ? window.authAdmin.getSession() : null;
+          const userRole = session ? (session.tipo || '') : '';
+
           const response = await fetch(apiUrl, {
             method: 'POST',
-            mode: 'cors',
             headers: {
-              'Content-Type': 'text/plain;charset=utf-8'
+              'Content-Type': 'application/json;charset=utf-8',
+              'X-User-Role': userRole
             },
-            body: JSON.stringify({ action, admin_key: adminKey, ...payload })
+            body: JSON.stringify({ action, userRole, ...payload })
           });
           if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
           const json = await response.json();
 
-          if (json && json.status === 'error' && json.code === 403) {
-            window.utils.showToast('Acceso denegado (403): Clave de Administración incorrecta. Operación de modificación bloqueada por seguridad.', 'danger');
+          if (json && json.status === 'error') {
+            window.utils.showToast(json.message || 'Error en la operación del servidor', 'danger');
             this._isUsingMockData = false;
             return json;
           }
 
           if (json && json.status === 'success') {
-            // 1. Aplicar inmediatamente el cambio a la caché local en memoria
             this.applyMutationToCache(action, payload, json);
-
-            // 2. Re-sincronizar en segundo plano con Google Drive
-            this.preloadAllData(true).catch(e => console.warn('Refresco de cache post-edicion background:', e));
+            this.preloadAllData(true).catch(e => console.warn('Refresco de cache:', e));
           }
 
           this._isUsingMockData = false;
           return json;
         } catch (err) {
-          console.error('Error al enviar solicitud a Google Apps Script:', err);
-          window.utils.showToast(`Advertencia: No se pudo conectar con Google Sheets (${err.message}). Se guardó localmente.`, 'warning');
+          console.error('Error al enviar solicitud al backend:', err);
+          window.utils.showToast(`Error de conexión (${err.message}). Guardando en caché local temporal.`, 'warning');
           this._isUsingMockData = true;
           return this.mockPost(action, payload);
         }
@@ -519,7 +517,7 @@
     },
 
     async ping() { return this.get('ping'); },
-    async verifyAdmin() { return this.get('verifyAdmin'); },
+    async verifyAdmin(usuario, clave) { return this.post('verifyAdmin', { usuario, clave }); },
     async getAll(table) { return this.get('getAll', { tabla: table, table }); },
     async getById(table, id) { return this.get('getById', { tabla: table, table, id }); },
     async create(table, data) { return this.post('create', { tabla: table, table, data }); },
@@ -531,12 +529,18 @@
     async bulkCertificar(curso_id, usuarios, datos_generales) { return this.post('bulkCertificar', { curso_id, usuarios, datos_generales }); },
     async getDisenoActivo() { return this.get('getDisenoActivo'); },
     async saveDiseno(diseno_data) { return this.post('saveDiseno', { diseno_data }); },
-    async setDisenoActivo(id) { return this.post('setDisenoActivo', { id }); },
+    async setDisenoActivo(id, estado = true) { return this.post('setDisenoActivo', { id, estado }); },
     async getDashboardStats() { return this.get('getDashboardStats'); },
     async logConsulta(certificado_id, direccion_ip = '') { return this.post('logConsulta', { certificado_id, direccion_ip }); },
+    async backupDatabase() { return this.get('backup'); },
+    async getConfiguraciones() { return this.get('getConfiguraciones'); },
+    async updateConfiguracion(clave, valor) { return this.post('updateConfiguracion', { clave, valor }); },
+    async getPresetsLogos() { return this.getAll('presets_imagenes'); },
+    async createPresetLogo(data) { return this.create('presets_imagenes', data); },
+    async deletePresetLogo(id) { return this.delete('presets_imagenes', id); },
     
-    async uploadImage(base64Data, filename = 'imagen.png', folderId = '') {
-      return this.post('uploadImage', { base64Data, filename, folderId });
+    async uploadImage(base64Data, filename = 'imagen.png', folder = 'general') {
+      return this.post('uploadImage', { base64Data, filename, folder });
     },
 
     _cachedTasaDolar: null,

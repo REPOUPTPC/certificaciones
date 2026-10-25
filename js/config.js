@@ -1,36 +1,29 @@
 /**
  * ==============================================================================
  * SISTEMA DE GESTIÓN DE CERTIFICACIONES UPTPC - CONFIGURACIÓN (js/config.js)
+ * Arquitectura: Vercel (Node.js) + Turso (LibSQL) + Cloudflare R2 CDN
  * ==============================================================================
  */
 
 (function() {
-  const STORAGE_KEY_API_URL = 'uptpc_google_script_url';
-  const STORAGE_KEY_ADMIN_KEY = 'uptpc_admin_secret_key';
-  const DEFAULT_GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwZ7cn7EZvUiu1hWSNQp_HSTVYDBrYB9VqbnaW2eCUvdxRibStrWy31n_4mmEWoDNH2FQ/exec';
-  const DEFAULT_ADMIN_KEY = 'UPTPC_CYT_SECURE_KEY_2026';
-  const PUBLIC_VERIFICATION_BASE_URL = 'https://cyt.uptpc.edu.ve/certificaciones/consulta.html';
+  const STORAGE_KEY_API_URL = 'uptpc_api_url_v2';
+  const DEFAULT_API_URL = '/api';
+  const R2_PUBLIC_BASE = 'https://pub-b61fc0d596e8472a9cda031c9e80faeb.r2.dev';
 
-  const DEFAULT_UPTPC_LOGO_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='46' fill='%230f3460' stroke='%23f39c12' stroke-width='4'/><text x='50' y='57' font-family='Arial,sans-serif' font-size='20' font-weight='bold' fill='%23ffffff' text-anchor='middle'>UPTPC</text></svg>";
+  const DEFAULT_UPTPC_LOGO = `${R2_PUBLIC_BASE}/img/logos/LOGO_UPTPC.png`;
 
   window.config = {
     getApiUrl() {
-      return DEFAULT_GOOGLE_SCRIPT_URL;
+      const stored = localStorage.getItem(STORAGE_KEY_API_URL);
+      if (stored && stored.trim()) return stored.trim();
+      return DEFAULT_API_URL;
     },
 
     setApiUrl(url) {
-      // URL is fixed by policy, keep constant
-    },
-
-    getAdminKey() {
-      return localStorage.getItem(STORAGE_KEY_ADMIN_KEY) || DEFAULT_ADMIN_KEY;
-    },
-
-    setAdminKey(key) {
-      if (key) {
-        localStorage.setItem(STORAGE_KEY_ADMIN_KEY, key.trim());
+      if (url && url.trim() && url.trim() !== DEFAULT_API_URL) {
+        localStorage.setItem(STORAGE_KEY_API_URL, url.trim());
       } else {
-        localStorage.removeItem(STORAGE_KEY_ADMIN_KEY);
+        localStorage.removeItem(STORAGE_KEY_API_URL);
       }
     },
 
@@ -39,11 +32,29 @@
     },
 
     getVerificationUrl() {
-      return PUBLIC_VERIFICATION_BASE_URL;
+      if (typeof window !== 'undefined' && window.location && window.location.origin) {
+        return `${window.location.origin}/consulta.html`;
+      }
+      return '/consulta.html';
+    },
+
+    getR2BaseUrl() {
+      return R2_PUBLIC_BASE;
+    },
+
+    getDefaultLogoUrl() {
+      return DEFAULT_UPTPC_LOGO;
     },
 
     getDefaultLogoSvg() {
-      return DEFAULT_UPTPC_LOGO_SVG;
-    }
+      return DEFAULT_UPTPC_LOGO;
+    },
+
+    // Métodos de compatibilidad con versiones previas
+    getAdminKey() {
+      return '';
+    },
+
+    setAdminKey() {}
   };
 })();

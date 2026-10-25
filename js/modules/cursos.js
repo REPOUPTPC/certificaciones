@@ -99,6 +99,30 @@
         const tipoNom = tiposMap[rawTipo] || rawTipo || 'Taller';
         const totalEmitidos = countMap[cid] || 0;
 
+        const esAuditor = window.authAdmin && window.authAdmin.isAuditor();
+
+        const badgeEmitidosHtml = esAuditor
+          ? `<span class="badge ${totalEmitidos > 0 ? 'bg-primary' : 'bg-secondary'} rounded-pill px-2 py-1 fs-6">
+              <i class="fa-solid fa-graduation-cap me-1"></i> ${totalEmitidos}
+             </span>`
+          : `<span class="badge ${totalEmitidos > 0 ? 'bg-primary' : 'bg-secondary'} rounded-pill cursor-pointer px-2 py-1 fs-6"
+                   onclick="window.certificadosModule.abrirModalCertificar('${c.id}')"
+                   title="Ver participantes y emitir certificados">
+              <i class="fa-solid fa-graduation-cap me-1"></i> ${totalEmitidos}
+             </span>`;
+
+        const accionesHtml = esAuditor
+          ? `
+            <button class="btn btn-sm btn-outline-warning me-1" onclick="window.cursosModule.abrirModalFiltroReporteTomoFolio('${c.id}')" title="Generar Reporte de Registro de Tomo y Folio por Fecha"><i class="fa-solid fa-book-bookmark me-1"></i>Reporte</button>
+            <span class="badge bg-light text-muted border"><i class="fa-solid fa-lock me-1"></i>Solo Lectura</span>
+          `
+          : `
+            <button class="btn btn-sm btn-outline-success me-1 btn-accion-emitir" onclick="window.certificadosModule.abrirModalCertificar('${c.id}')" title="Emitir Certificados / Ver Participantes"><i class="fa-solid fa-graduation-cap"></i></button>
+            <button class="btn btn-sm btn-outline-warning me-1" onclick="window.cursosModule.abrirModalFiltroReporteTomoFolio('${c.id}')" title="Generar Reporte de Registro de Tomo y Folio por Fecha"><i class="fa-solid fa-book-bookmark"></i></button>
+            <button class="btn btn-sm btn-outline-primary me-1 btn-accion-editar" onclick="window.cursosModule.abrirModalCurso('${c.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
+            <button class="btn btn-sm btn-outline-danger btn-accion-eliminar" onclick="window.cursosModule.eliminarCurso('${c.id}')" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+          `;
+
         html += `
           <tr>
             <td>${i + 1}</td>
@@ -107,19 +131,8 @@
             <td><span class="badge bg-info text-dark">${window.utils.escapeHtml(tipoNom)}</span></td>
             <td class="small">${window.utils.escapeHtml(unidNom)}</td>
             <td>${c.horas || 0} hrs</td>
-            <td>
-              <span class="badge ${totalEmitidos > 0 ? 'bg-primary' : 'bg-secondary'} rounded-pill cursor-pointer px-2 py-1 fs-6"
-                    onclick="window.certificadosModule.abrirModalCertificar('${c.id}')"
-                    title="Ver participantes y emitir certificados">
-                <i class="fa-solid fa-graduation-cap me-1"></i> ${totalEmitidos}
-              </span>
-            </td>
-            <td>
-              <button class="btn btn-sm btn-outline-success me-1" onclick="window.certificadosModule.abrirModalCertificar('${c.id}')" title="Emitir Certificados / Ver Participantes"><i class="fa-solid fa-graduation-cap"></i></button>
-              <button class="btn btn-sm btn-outline-warning me-1" onclick="window.cursosModule.abrirModalFiltroReporteTomoFolio('${c.id}')" title="Generar Reporte de Registro de Tomo y Folio por Fecha"><i class="fa-solid fa-book-bookmark"></i></button>
-              <button class="btn btn-sm btn-outline-primary me-1" onclick="window.cursosModule.abrirModalCurso('${c.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
-              <button class="btn btn-sm btn-outline-danger" onclick="window.cursosModule.eliminarCurso('${c.id}')" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
-            </td>
+            <td>${badgeEmitidosHtml}</td>
+            <td>${accionesHtml}</td>
           </tr>
         `;
       });
@@ -181,6 +194,10 @@
     },
 
     abrirModalCurso(id = null) {
+      if (window.authAdmin && window.authAdmin.isAuditor()) {
+        window.utils.showToast('Acceso restringido: Perfil AUDITOR es de solo lectura.', 'warning');
+        return;
+      }
       const modalEl = document.getElementById('modalCurso');
       if (!modalEl) return;
 
@@ -269,6 +286,10 @@
 
     async guardarCurso(e) {
       e.preventDefault();
+      if (window.authAdmin && window.authAdmin.isAuditor()) {
+        window.utils.showToast('Acceso restringido: Perfil AUDITOR es de solo lectura.', 'warning');
+        return;
+      }
       const id = document.getElementById('cursoId').value;
       const codigo_relacionado = document.getElementById('cursoCodigoRel')?.value.trim() || '';
       const nombre = document.getElementById('cursoNombre')?.value.trim() || '';
@@ -371,6 +392,10 @@
     },
 
     async eliminarCurso(id) {
+      if (window.authAdmin && window.authAdmin.isAuditor()) {
+        window.utils.showToast('Acceso restringido: Perfil AUDITOR es de solo lectura.', 'warning');
+        return;
+      }
       window.utils.showConfirm({
         title: 'Eliminar Taller / Curso',
         message: '¿Está seguro de eliminar este curso o taller?',

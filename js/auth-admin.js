@@ -7,10 +7,11 @@
 (function() {
   const STORAGE_KEY_SESSION = 'uptpc_admin_active_session';
   const MAP_LOGOS_UNIDADES = {
-    'CYT': 'https://lh3.googleusercontent.com/d/1oKZUgu4Q8waYsM7vHGVF2ODi2jmLK1tg',
-    'EXTENSION': 'https://lh3.googleusercontent.com/d/1xpan01071vA7EQ9bdy8113fKGlESQcLj',
-    'BIENESTAR': 'https://lh3.googleusercontent.com/d/1x_M9v0rRL3aioGM1neA6VSGVUBlN4UrT',
-    'MPPEU': 'https://lh3.googleusercontent.com/d/1GF-vtwLal4JLujzcY3LDZypVwIqdfTou'
+    'CYT': 'https://pub-b61fc0d596e8472a9cda031c9e80faeb.r2.dev/img/logos/logo_cyt.png',
+    'EXTENSION': 'https://pub-b61fc0d596e8472a9cda031c9e80faeb.r2.dev/img/logos/logo_extension.png',
+    'BIENESTAR': 'https://pub-b61fc0d596e8472a9cda031c9e80faeb.r2.dev/img/logos/logo_bienestar.png',
+    'MPPEU': 'https://pub-b61fc0d596e8472a9cda031c9e80faeb.r2.dev/img/logos/logo_mppeu.png',
+    'TALENTO': 'https://pub-b61fc0d596e8472a9cda031c9e80faeb.r2.dev/img/logos/logo_talento.png'
   };
 
   const DEFAULT_SUPER_ADMIN = {
@@ -101,10 +102,27 @@
       return Boolean(session && session.tipo === 'SUPER_ADMIN');
     },
 
+    isAuditor() {
+      const session = this.getSession();
+      return Boolean(session && session.tipo === 'AUDITOR');
+    },
+
+    isAdministracion() {
+      const session = this.getSession();
+      return Boolean(session && (session.tipo === 'ADMINISTRACION' || session.tipo === 'ADMIN_PAGOS'));
+    },
+
     hasSectionPermission(targetSecId) {
       const session = this.getSession();
       if (!session) return false;
       if (session.tipo === 'SUPER_ADMIN' || session.permisos === '*') return true;
+      if (session.tipo === 'ADMINISTRACION' || session.tipo === 'ADMIN_PAGOS') {
+        return targetSecId === 'secOfertas';
+      }
+      if (session.tipo === 'AUDITOR') {
+        const auditables = ['secDashboard', 'secUsuarios', 'secUnidades', 'secFirmas', 'secCursos', 'secCertificados', 'secConsultas'];
+        return auditables.includes(targetSecId);
+      }
 
       let perms = session.permisos;
       if (typeof perms === 'string') {
@@ -155,17 +173,42 @@
       const lblNombre = document.getElementById('lblUserNombre');
       const lblTipo = document.getElementById('lblUserTipo');
       const navAdminLink = document.getElementById('navLinkAdministradores');
+      const navMantenimiento = document.getElementById('navLinkMantenimiento');
+      const navConfiguracion = document.getElementById('navLinkConfiguracion');
+
+      // Clases de rol en el body para control de visualización CSS
+      document.body.classList.remove('role-super-admin', 'role-auditor', 'role-administracion', 'role-admin');
 
       if (session && badgeConnected && lblNombre && lblTipo) {
         badgeConnected.style.display = 'inline-flex';
         lblNombre.textContent = session.usuario;
-        lblTipo.textContent = session.tipo;
+
+        const tipoUpper = String(session.tipo || '').toUpperCase();
+        if (tipoUpper === 'SUPER_ADMIN') {
+          document.body.classList.add('role-super-admin');
+          lblTipo.innerHTML = '<span class="badge bg-danger"><i class="fa-solid fa-crown me-1"></i>SUPER_ADMIN</span>';
+        } else if (tipoUpper === 'ADMINISTRACION' || tipoUpper === 'ADMIN_PAGOS') {
+          document.body.classList.add('role-administracion');
+          lblTipo.innerHTML = '<span class="badge bg-success"><i class="fa-solid fa-cash-register me-1"></i>ADMINISTRACIÓN (Pagos)</span>';
+        } else if (tipoUpper === 'AUDITOR') {
+          document.body.classList.add('role-auditor');
+          lblTipo.innerHTML = '<span class="badge bg-info text-dark fw-bold"><i class="fa-solid fa-shield-halved me-1"></i>AUDITOR (Solo Lectura)</span>';
+        } else {
+          document.body.classList.add('role-admin');
+          lblTipo.innerHTML = '<span class="badge bg-primary">ADMIN</span>';
+        }
       } else if (badgeConnected) {
         badgeConnected.style.display = 'none';
       }
 
       if (navAdminLink) {
         navAdminLink.style.display = (session && session.tipo === 'SUPER_ADMIN') ? 'flex' : 'none';
+      }
+      if (navMantenimiento) {
+        navMantenimiento.style.display = (session && session.tipo === 'SUPER_ADMIN') ? 'flex' : 'none';
+      }
+      if (navConfiguracion) {
+        navConfiguracion.style.display = (session && session.tipo === 'SUPER_ADMIN') ? 'flex' : 'none';
       }
 
       this.aplicarPermisosSidebar(session);
@@ -174,9 +217,42 @@
     aplicarPermisosSidebar(session) {
       if (!session) return;
       const navLinks = document.querySelectorAll('.nav-link-tab');
+      const tipoUpper = String(session.tipo || '').toUpperCase();
+
       navLinks.forEach(link => {
         const target = link.getAttribute('data-target');
-        if (target === 'secAdministradores') {
+
+        // Caso Perfil ADMINISTRACION: Solo Verificación de Pagos (secOfertas)
+        if (tipoUpper === 'ADMINISTRACION' || tipoUpper === 'ADMIN_PAGOS') {
+          if (target === 'secOfertas') {
+            link.style.display = '';
+            const textEl = link.querySelector('.sidebar-text');
+            if (textEl) textEl.textContent = 'Verificación de Pagos';
+            const iconEl = link.querySelector('i');
+            if (iconEl) iconEl.className = 'fa-solid fa-receipt me-2';
+          } else {
+            link.style.display = 'none';
+          }
+          return;
+        }
+
+        // Restaurar texto normal de Ofertas Cursos si no es ADMINISTRACION
+        if (target === 'secOfertas') {
+          const textEl = link.querySelector('.sidebar-text');
+          if (textEl) textEl.textContent = 'Ofertas Cursos';
+          const iconEl = link.querySelector('i');
+          if (iconEl) iconEl.className = 'fa-solid fa-store me-2';
+        }
+
+        // Caso Perfil AUDITOR: Solo Lectura en Secciones Auditables
+        if (tipoUpper === 'AUDITOR') {
+          const auditables = ['secDashboard', 'secUsuarios', 'secUnidades', 'secFirmas', 'secCursos', 'secCertificados', 'secConsultas'];
+          link.style.display = auditables.includes(target) ? '' : 'none';
+          return;
+        }
+
+        // Caso SUPER_ADMIN o ADMIN con permisos específicos
+        if (target === 'secAdministradores' || target === 'secMantenimiento' || target === 'secConfiguracion') {
           link.style.display = session.tipo === 'SUPER_ADMIN' ? '' : 'none';
         } else if (session.tipo === 'SUPER_ADMIN' || session.permisos === '*') {
           link.style.display = '';
@@ -185,6 +261,17 @@
           link.style.display = permitido ? '' : 'none';
         }
       });
+
+      // Control adicional en secOfertas: Si es ADMINISTRACION, ocultar tab de talleres/tienda
+      const tabTalleresLi = document.getElementById('tab-talleres-tab')?.closest('.nav-item');
+      const btnNuevaOferta = document.getElementById('btnNuevaOfertaCurso');
+      if (tipoUpper === 'ADMINISTRACION' || tipoUpper === 'ADMIN_PAGOS') {
+        if (tabTalleresLi) tabTalleresLi.style.display = 'none';
+        if (btnNuevaOferta) btnNuevaOferta.style.display = 'none';
+      } else {
+        if (tabTalleresLi) tabTalleresLi.style.display = '';
+        if (btnNuevaOferta) btnNuevaOferta.style.display = '';
+      }
     },
 
     async registrarVisitaAdmin(sitioHash) {
@@ -387,25 +474,102 @@
       }
     },
 
+    async finalizarLoginExitoso(usuario) {
+      this.setSession(usuario);
+      this.actualizarUiSesion(usuario);
+      this.ocultarModalLogin();
+
+      if (window.utils && window.utils.showLoading) {
+        window.utils.showLoading(35, 'Cargando datos del sistema...', 'Conectando con base de datos Turso LibSQL');
+      }
+
+      // Precarga integral de datos desde Turso
+      if (window.api && window.api.preloadAllData) {
+        try {
+          await window.api.preloadAllData(true);
+        } catch (e) {
+          console.warn('Advertencia precargando datos post-login:', e);
+        }
+      }
+
+      // Tareas secundarias en segundo plano de forma no bloqueante
+      this.autocorregirLogosUnidades().catch(e => console.warn('Autocorregir logos background:', e));
+      this.registrarVisitaAdmin(window.location.hash || '#dashboard').catch(e => console.warn('Visita admin background:', e));
+
+      // Determinar sección de inicio según el perfil
+      const tipoUpper = String(usuario.tipo || '').toUpperCase();
+      let targetSec = 'secDashboard';
+
+      if (tipoUpper === 'ADMINISTRACION' || tipoUpper === 'ADMIN_PAGOS') {
+        targetSec = 'secOfertas';
+      } else if (tipoUpper === 'AUDITOR') {
+        targetSec = 'secDashboard';
+      } else {
+        const currentHash = window.location.hash || '#dashboard';
+        const mappedSec = window.hashMap ? window.hashMap[currentHash] : null;
+        if (mappedSec && this.hasSectionPermission(mappedSec)) {
+          targetSec = mappedSec;
+        } else {
+          targetSec = 'secDashboard';
+        }
+      }
+
+      if (window.navegarASeccion) {
+        await window.navegarASeccion(targetSec, true);
+      }
+
+      // Si es ADMINISTRACION, asegurar activación inmediata de la pestaña de Verificación de Pagos
+      if (tipoUpper === 'ADMINISTRACION' || tipoUpper === 'ADMIN_PAGOS') {
+        setTimeout(() => {
+          const tabPagosBtn = document.getElementById('tab-pagos-tab');
+          if (tabPagosBtn && typeof bootstrap !== 'undefined') {
+            bootstrap.Tab.getOrCreateInstance(tabPagosBtn).show();
+          }
+        }, 150);
+      }
+
+      if (window.utils && window.utils.hideLoading) {
+        window.utils.hideLoading();
+      }
+
+      if (window.utils && window.utils.showToast) {
+        window.utils.showToast(`¡Bienvenido al sistema, ${usuario.usuario}!`, 'success');
+      }
+    },
+
     async procesarLogin() {
       const userVal = document.getElementById('loginUsuario').value.trim();
       const passVal = document.getElementById('loginClave').value.trim();
-      const apiKeyVal = document.getElementById('loginAdminKey').value.trim();
       const statusDiv = document.getElementById('statusLoginAdmin');
 
-      statusDiv.innerHTML = '<div class="alert alert-info py-2 mb-0"><i class="fa-solid fa-spinner fa-spin me-2"></i>Verificando credenciales...</div>';
-
-      if (apiKeyVal) {
-        window.config.setAdminKey(apiKeyVal);
-      }
+      statusDiv.innerHTML = '<div class="alert alert-info py-2 mb-0"><i class="fa-solid fa-spinner fa-spin me-2"></i>Verificando credenciales con la base de datos...</div>';
 
       if (window.utils && window.utils.showLoading) {
-        window.utils.showLoading(20, 'Autenticando administrador...', 'Verificando datos con la base de datos');
+        window.utils.showLoading(30, 'Autenticando administrador...', 'Verificando datos con Turso LibSQL');
       }
 
       try {
+        // Intento 1: Verificación directa y segura en el backend
+        let authDirecta = null;
+        try {
+          authDirecta = await window.api.verifyAdmin(userVal, passVal);
+        } catch (eAuth) {
+          console.warn('Verificación directa backend falló, probando fallback:', eAuth);
+        }
+
+        if (authDirecta && authDirecta.status === 'success' && authDirecta.authenticated && authDirecta.user) {
+          await this.finalizarLoginExitoso(authDirecta.user);
+          return;
+        }
+
+        if (authDirecta && authDirecta.status === 'error' && authDirecta.message !== 'Usuario no registrado') {
+          if (window.utils && window.utils.hideLoading) window.utils.hideLoading();
+          statusDiv.innerHTML = `<div class="alert alert-danger py-2 mb-0"><i class="fa-solid fa-triangle-exclamation me-2"></i>${authDirecta.message || 'Usuario o contraseña incorrectos.'}</div>`;
+          return;
+        }
+
+        // Intento 2 (Fallback): Consulta a la tabla admin
         let adminUsers = [];
-        if (window.utils && window.utils.showLoading) window.utils.showLoading(45, 'Consultando usuarios admin...', 'Conectando servidor Google Apps Script');
         const res = await window.api.getAll('admin');
         if (res.status === 'success' && Array.isArray(res.data) && res.data.length > 0) {
           adminUsers = res.data;
@@ -413,31 +577,11 @@
 
         let usuarioEncontrado = adminUsers.find(u => String(u.usuario).trim().toUpperCase() === userVal.toUpperCase());
 
-        // Si la tabla admin no posee registros aún, validar contra SUPER_ADMIN por defecto.
-        // Se consulta primero el servidor en vivo para NO crear un duplicado con caché desactualizada.
         if (!usuarioEncontrado && userVal.toUpperCase() === DEFAULT_SUPER_ADMIN.usuario && passVal === DEFAULT_SUPER_ADMIN.clave) {
-          let fresco = null;
-          try {
-            const dataFresca = await window.api.preloadAllData(true);
-            fresco = (dataFresca.admin || []).find(u => String(u.usuario).trim().toUpperCase() === DEFAULT_SUPER_ADMIN.usuario);
-          } catch (e) {}
-          if (fresco) {
-            usuarioEncontrado = fresco;
-          } else {
-            usuarioEncontrado = { ...DEFAULT_SUPER_ADMIN };
-            await window.api.post('create', { tabla: 'admin', data: usuarioEncontrado });
-          }
+          usuarioEncontrado = { ...DEFAULT_SUPER_ADMIN };
         }
 
-        if (window.utils && window.utils.showLoading) window.utils.showLoading(80, 'Validando permisos de sesión...', 'Cargando configuraciones del sistema');
-
-        if (!usuarioEncontrado) {
-          if (window.utils && window.utils.hideLoading) window.utils.hideLoading();
-          statusDiv.innerHTML = '<div class="alert alert-danger py-2 mb-0"><i class="fa-solid fa-triangle-exclamation me-2"></i>Usuario o contraseña incorrectos.</div>';
-          return;
-        }
-
-        if (String(usuarioEncontrado.clave).trim() !== passVal) {
+        if (!usuarioEncontrado || String(usuarioEncontrado.clave).trim() !== passVal) {
           if (window.utils && window.utils.hideLoading) window.utils.hideLoading();
           statusDiv.innerHTML = '<div class="alert alert-danger py-2 mb-0"><i class="fa-solid fa-triangle-exclamation me-2"></i>Usuario o contraseña incorrectos.</div>';
           return;
@@ -449,33 +593,7 @@
           return;
         }
 
-        if (window.utils && window.utils.showLoading) window.utils.showLoading(100, '¡Acceso Concedido!', 'Bienvenido al sistema');
-
-        // Login exitoso
-        this.setSession(usuarioEncontrado);
-        this.actualizarUiSesion(usuarioEncontrado);
-        this.ocultarModalLogin();
-
-        // Iniciar precarga de todos los datos reales de Google Drive
-        if (window.api && window.api.preloadAllData) {
-          if (window.utils) window.utils.showToast('Precargando datos completos desde Google Drive para navegación fluida...', 'info');
-          await window.api.preloadAllData(true);
-        }
-
-        window.utils.showToast(`Bienvenido al sistema, ${usuarioEncontrado.usuario}`, 'success');
-
-        if (window.utils && window.utils.hideLoading) window.utils.hideLoading();
-
-        // Tareas secundarias en segundo plano de forma no bloqueante
-        this.autocorregirLogosUnidades().catch(e => console.warn('Autocorregir logos background:', e));
-        this.registrarVisitaAdmin(window.location.hash || '#dashboard').catch(e => console.warn('Visita admin background:', e));
-
-        // Refrescar datos reales de la sección activa (ej: Dashboard)
-        const currentHash = window.location.hash || '#dashboard';
-        if ((currentHash === '#dashboard' || currentHash === '') && window.dashboardModule) {
-          window.dashboardModule.init().catch(e => console.error('Error cargando dashboard post-login:', e));
-        }
-
+        await this.finalizarLoginExitoso(usuarioEncontrado);
       } catch (err) {
         if (window.utils && window.utils.hideLoading) window.utils.hideLoading();
         console.error('Error en proceso de login:', err);
@@ -581,12 +699,25 @@
 
         let html = '';
         lista.forEach((item, i) => {
-          const esSuper = item.tipo === 'SUPER_ADMIN';
-          const badgeTipo = esSuper ? '<span class="badge bg-danger">SUPER_ADMIN</span>' : '<span class="badge bg-info text-dark">ADMIN</span>';
+          const tipoNorm = String(item.tipo || '').toUpperCase();
+          const esSuper = tipoNorm === 'SUPER_ADMIN';
+          let badgeTipo = '<span class="badge bg-primary">ADMIN</span>';
+          if (esSuper) {
+            badgeTipo = '<span class="badge bg-danger"><i class="fa-solid fa-crown me-1"></i>SUPER_ADMIN</span>';
+          } else if (tipoNorm === 'ADMINISTRACION' || tipoNorm === 'ADMIN_PAGOS') {
+            badgeTipo = '<span class="badge bg-success"><i class="fa-solid fa-cash-register me-1"></i>ADMINISTRACION</span>';
+          } else if (tipoNorm === 'AUDITOR') {
+            badgeTipo = '<span class="badge bg-info text-dark"><i class="fa-solid fa-shield-halved me-1"></i>AUDITOR</span>';
+          }
+
           const badgeStatus = String(item.status).toUpperCase() === 'ACTIVO' ? '<span class="badge bg-success">ACTIVO</span>' : '<span class="badge bg-secondary">INACTIVO</span>';
 
           let permsTexto = 'Acceso Total (*)';
-          if (!esSuper && item.permisos && item.permisos !== '*') {
+          if (tipoNorm === 'ADMINISTRACION' || tipoNorm === 'ADMIN_PAGOS') {
+            permsTexto = 'Solo Verificación de Pagos';
+          } else if (tipoNorm === 'AUDITOR') {
+            permsTexto = 'Solo Lectura (Auditoría Integral)';
+          } else if (!esSuper && item.permisos && item.permisos !== '*') {
             try {
               const pArray = typeof item.permisos === 'string' ? JSON.parse(item.permisos) : item.permisos;
               permsTexto = `${pArray.length} sección(es)`;
@@ -787,7 +918,8 @@
       document.getElementById('adminUserId').value = adminData ? adminData.id : '';
       document.getElementById('adminUsuarioName').value = adminData ? adminData.usuario : '';
       document.getElementById('adminUsuarioClave').value = '';
-      document.getElementById('adminUsuarioTipo').value = adminData ? adminData.tipo : 'ADMIN';
+      const selectTipo = document.getElementById('adminUsuarioTipo');
+      if (selectTipo) selectTipo.value = adminData ? adminData.tipo : 'ADMINISTRACION';
       document.getElementById('adminUsuarioStatus').value = adminData ? adminData.status : 'ACTIVO';
 
       const inputClave = document.getElementById('adminUsuarioClave');
@@ -804,13 +936,46 @@
         }
       }
 
-      checkboxes.forEach(cb => {
-        if (!adminData || adminData.permisos === '*') {
-          cb.checked = true;
+      const sincronizarPermisosPorTipo = (tipoSel) => {
+        const t = String(tipoSel || '').toUpperCase();
+        if (t === 'SUPER_ADMIN') {
+          checkboxes.forEach(cb => { cb.checked = true; cb.disabled = false; });
+        } else if (t === 'ADMINISTRACION') {
+          checkboxes.forEach(cb => { cb.checked = (cb.value === 'secOfertas'); cb.disabled = false; });
+        } else if (t === 'AUDITOR') {
+          const auditables = ['secDashboard', 'secUsuarios', 'secUnidades', 'secFirmas', 'secCursos', 'secCertificados', 'secConsultas'];
+          checkboxes.forEach(cb => { cb.checked = auditables.includes(cb.value); cb.disabled = false; });
         } else {
-          cb.checked = permsArray.includes(cb.value);
+          // ADMIN genérico
+          checkboxes.forEach(cb => {
+            if (!adminData) {
+              cb.checked = false;
+            } else {
+              cb.checked = permsArray.includes(cb.value);
+            }
+            cb.disabled = false;
+          });
         }
-      });
+      };
+
+      if (adminData) {
+        checkboxes.forEach(cb => {
+          if (adminData.permisos === '*') {
+            cb.checked = true;
+          } else {
+            cb.checked = permsArray.includes(cb.value);
+          }
+        });
+      } else {
+        sincronizarPermisosPorTipo(selectTipo ? selectTipo.value : 'ADMINISTRACION');
+      }
+
+      if (selectTipo && !selectTipo.dataset.boundChange) {
+        selectTipo.dataset.boundChange = 'true';
+        selectTipo.addEventListener('change', () => {
+          sincronizarPermisosPorTipo(selectTipo.value);
+        });
+      }
 
       const title = document.getElementById('modalAdminUserTitle');
       if (title) title.innerHTML = adminData ? '<i class="fa-solid fa-user-pen me-2"></i>Editar Administrador' : '<i class="fa-solid fa-user-plus me-2"></i>Nuevo Administrador';
@@ -871,13 +1036,24 @@
       }
       if (!claveFinal) claveFinal = 'CYT_01012023';
 
+      let finalPermisos = '*';
+      if (tipo === 'SUPER_ADMIN') {
+        finalPermisos = '*';
+      } else if (tipo === 'ADMINISTRACION') {
+        finalPermisos = JSON.stringify(['secOfertas']);
+      } else if (tipo === 'AUDITOR') {
+        finalPermisos = JSON.stringify(['secDashboard', 'secUsuarios', 'secUnidades', 'secFirmas', 'secCursos', 'secCertificados', 'secConsultas']);
+      } else {
+        finalPermisos = JSON.stringify(checkedPerms);
+      }
+
       const dataPayload = {
         id: id || Date.now() + '_' + Math.floor(Math.random() * 1000),
         usuario: usuario,
         clave: claveFinal,
         tipo: tipo,
         status: status,
-        permisos: tipo === 'SUPER_ADMIN' ? '*' : JSON.stringify(checkedPerms),
+        permisos: finalPermisos,
         created_at: existente ? existente.created_at : new Date().toISOString()
       };
 

@@ -67,6 +67,7 @@
       this.bindEvents();
       await this.cargarListaDiseños();
       await this.cargarDiseñoActivo();
+      await this.cargarPresetsEnSelector();
     },
 
     getSideData() {
@@ -105,6 +106,9 @@
       document.getElementById('btnAgregarLinea')?.addEventListener('click', () => this.agregarElemento('linea'));
       document.getElementById('btnAgregarRect')?.addEventListener('click', () => this.agregarElemento('rectangulo'));
       document.getElementById('btnAgregarQR')?.addEventListener('click', () => this.agregarElemento('qr'));
+      document.getElementById('btnExplorarPresetsDisenador')?.addEventListener('click', () => this.abrirGaleriaPresetsModal());
+      document.getElementById('btnAbrirGaleriaPresetsModal')?.addEventListener('click', () => this.abrirGaleriaPresetsModal());
+      document.getElementById('propElemSelectPreset')?.addEventListener('change', (e) => this.aplicarPresetSeleccionado(e.target.value));
 
       // Eliminar y cambiar orden
       document.getElementById('btnEliminarElemento')?.addEventListener('click', () => this.eliminarElementoSeleccionado());
@@ -161,8 +165,8 @@
             return;
           }
 
-          window.utils.showToast('Subiendo imagen al servidor...', 'info');
-          const res = await window.api.uploadImage(compressed, file.name || 'imagen.png');
+          window.utils.showToast('Subiendo imagen a Cloudflare R2...', 'info');
+          const res = await window.api.uploadImage(compressed, file.name || 'imagen.png', 'fondos');
 
           if (res.status === 'success' && res.url) {
             elementoSeleccionado.texto_fijo = res.url;
@@ -170,7 +174,7 @@
               document.getElementById('propElemTextoFijo').value = res.url;
             }
             this.renderLienzo();
-            window.utils.showToast('Imagen subida a Google Drive y asignada al elemento', 'success');
+            window.utils.showToast('Imagen subida a Cloudflare R2 y asignada al elemento', 'success');
           } else {
             elementoSeleccionado.texto_fijo = compressed;
             if (document.getElementById('propElemTextoFijo')) {
@@ -702,6 +706,12 @@
         imageContainer.style.display = (elementoSeleccionado.tipo === 'imagen') ? 'block' : 'none';
       }
 
+      const presetSelect = document.getElementById('propElemSelectPreset');
+      if (presetSelect && elementoSeleccionado.tipo === 'imagen') {
+        const found = (this._presetsCache || []).find(p => p.url === elementoSeleccionado.texto_fijo);
+        presetSelect.value = found ? found.id : '';
+      }
+
       this.renderLienzo();
     },
 
@@ -1058,6 +1068,219 @@
 
       const bsModal = new bootstrap.Modal(modalEl);
       bsModal.show();
+    },
+
+    // ============================================================
+    // PRESETS OFICIALES DE IMÁGENES Y LOGOS (CLOUDFLARE R2)
+    // ============================================================
+    _presetsCache: [],
+    _categoriaFiltroModal: 'todos',
+
+    async cargarPresetsEnSelector() {
+      try {
+        const res = await window.api.getPresetsLogos();
+        const presets = (res && res.status === 'success' && Array.isArray(res.data)) ? res.data : [];
+        this._presetsCache = presets;
+
+        const select = document.getElementById('propElemSelectPreset');
+        if (select) {
+          let opts = '<option value="">-- Seleccionar Logo / Escudo Oficial --</option>';
+          const categorias = {};
+          presets.forEach(p => {
+            const cat = p.categoria || 'General';
+            if (!categorias[cat]) categorias[cat] = [];
+            categorias[cat].push(p);
+          });
+
+          for (const [cat, lista] of Object.entries(categorias)) {
+            opts += `<optgroup label="${window.utils.escapeHtml(cat)}">`;
+            lista.forEach(p => {
+              opts += `<option value="${p.id}">${window.utils.escapeHtml(p.nombre)}</option>`;
+            });
+            opts += `</optgroup>`;
+          }
+          select.innerHTML = opts;
+        }
+      } catch(err) {
+        console.warn('Error cargando presets de logos en diseñador:', err);
+      }
+    },
+
+    aplicarPresetSeleccionado(presetId) {
+      if (!presetId || !elementoSeleccionado) return;
+      const preset = (this._presetsCache || []).find(p => String(p.id) === String(presetId));
+      if (!preset) return;
+
+      elementoSeleccionado.texto_fijo = preset.url;
+      if (preset.ancho_sugerido && (!elementoSeleccionado.ancho || elementoSeleccionado.ancho < 30)) {
+        elementoSeleccionado.ancho = preset.ancho_sugerido;
+      }
+      if (preset.alto_sugerido && (!elementoSeleccionado.alto || elementoSeleccionado.alto < 30)) {
+        elementoSeleccionado.alto = preset.alto_sugerido;
+      }
+
+      const inputTextoFijo = document.getElementById('propElemTextoFijo');
+      if (inputTextoFijo) inputTextoFijo.value = preset.url;
+      const inputW = document.getElementById('propElemAncho');
+      if (inputW) inputW.value = elementoSeleccionado.ancho;
+      const inputH = document.getElementById('propElemAlto');
+      if (inputH) inputH.value = elementoSeleccionado.alto;
+
+      this.renderLienzo();
+      window.utils.showToast(`Logo oficial "${preset.nombre}" aplicado al elemento`, 'success');
+    },
+
+    async abrirGaleriaPresetsModal() {
+      if (!this._presetsCache || this._presetsCache.length === 0) {
+        await this.cargarPresetsEnSelector();
+      }
+      this._categoriaFiltroModal = 'todos';
+      this.renderizarModalPresets();
+      const modalEl = document.getElementById('modalGaleriaPresetsDisenador');
+      bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    },
+
+    filtrarPresetsModal(cat = null) {
+      if (cat !== null) this._categoriaFiltroModal = cat;
+      this.renderizarModalPresets();
+    },
+
+    renderizarModalPresets() {
+      const contenedor = document.getElementById('contenedorGrillaPresetsModal');
+      const filtrosContenedor = document.getElementById('filtrosCategoriasPresetsModal');
+      const searchInput = document.getElementById('inputBuscarPresetModal');
+      const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
+      if (!contenedor) return;
+
+      const presets = this._presetsCache || [];
+
+      // Extraer categorías únicas para botones de filtro
+      if (filtrosContenedor) {
+        const cats = ['todos', ...new Set(presets.map(p => p.categoria || 'General'))];
+        filtrosContenedor.innerHTML = cats.map(c => {
+          const isActive = this._categoriaFiltroModal === c;
+          const label = c === 'todos' ? 'Todos' : c;
+          return `<button type="button" class="btn btn-sm ${isActive ? 'btn-primary' : 'btn-outline-secondary'} py-1 px-2" onclick="window.disenadorModule.filtrarPresetsModal('${c}')">${window.utils.escapeHtml(label)}</button>`;
+        }).join('');
+      }
+
+      // Filtrar lista
+      let filtrados = presets;
+      if (this._categoriaFiltroModal !== 'todos') {
+        filtrados = filtrados.filter(p => (p.categoria || 'General') === this._categoriaFiltroModal);
+      }
+      if (query) {
+        filtrados = filtrados.filter(p => {
+          return String(p.nombre || '').toLowerCase().includes(query) ||
+                 String(p.descripcion || '').toLowerCase().includes(query) ||
+                 String(p.categoria || '').toLowerCase().includes(query);
+        });
+      }
+
+      if (filtrados.length === 0) {
+        contenedor.innerHTML = `
+          <div class="col-12 text-center py-5 text-muted">
+            <i class="fa-solid fa-folder-open fa-3x text-secondary mb-2"></i>
+            <h6>No se encontraron presets que coincidan</h6>
+          </div>
+        `;
+        return;
+      }
+
+      const hayElementoImagen = elementoSeleccionado && elementoSeleccionado.tipo === 'imagen';
+
+      let html = '';
+      filtrados.forEach(p => {
+        const nom = window.utils.escapeHtml(p.nombre);
+        const cat = window.utils.escapeHtml(p.categoria || 'Logo');
+        const url = window.utils.escapeHtml(p.url);
+        const dim = `${p.ancho_sugerido || 120} × ${p.alto_sugerido || 120} px`;
+
+        html += `
+          <div class="col-sm-6 col-md-4 col-lg-3">
+            <div class="card h-100 border shadow-sm rounded-3">
+              <div class="bg-light p-3 text-center border-bottom d-flex align-items-center justify-content-center" style="height: 130px;">
+                <img src="${url}" alt="${nom}" style="max-height: 100px; max-width: 100%; object-fit: contain;">
+              </div>
+              <div class="card-body p-3 d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-start mb-1">
+                  <h6 class="fw-bold text-dark mb-0 small text-truncate" title="${nom}">${nom}</h6>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 0.7rem;">${cat}</span>
+                  <small class="text-muted" style="font-size: 0.72rem;">${dim}</small>
+                </div>
+
+                <div class="mt-auto d-grid gap-1 pt-2 border-top">
+                  ${hayElementoImagen ? `
+                    <button type="button" class="btn btn-success btn-sm fw-bold" onclick="window.disenadorModule.aplicarPresetAElemento('${p.id}')">
+                      <i class="fa-solid fa-check me-1"></i> Asignar a Seleccionado
+                    </button>
+                  ` : ''}
+                  <button type="button" class="btn btn-primary btn-sm fw-bold" onclick="window.disenadorModule.insertarNuevoElementoPreset('${p.id}')">
+                    <i class="fa-solid fa-plus me-1"></i> Insertar en Certificado
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+      contenedor.innerHTML = html;
+    },
+
+    aplicarPresetAElemento(presetId) {
+      const preset = (this._presetsCache || []).find(p => String(p.id) === String(presetId));
+      if (!preset || !elementoSeleccionado) return;
+
+      elementoSeleccionado.texto_fijo = preset.url;
+      if (preset.ancho_sugerido) elementoSeleccionado.ancho = preset.ancho_sugerido;
+      if (preset.alto_sugerido) elementoSeleccionado.alto = preset.alto_sugerido;
+
+      const modalEl = document.getElementById('modalGaleriaPresetsDisenador');
+      bootstrap.Modal.getInstance(modalEl).hide();
+
+      this.actualizarInspectorPropiedades();
+      this.renderLienzo();
+      window.utils.showToast(`Logo oficial "${preset.nombre}" asignado`, 'success');
+    },
+
+    insertarNuevoElementoPreset(presetId) {
+      const preset = (this._presetsCache || []).find(p => String(p.id) === String(presetId));
+      if (!preset) return;
+
+      const side = this.getSideData();
+      const nuevoId = 'logo_' + Date.now().toString(36).slice(-4);
+      const w = preset.ancho_sugerido || 120;
+      const h = preset.alto_sugerido || 120;
+
+      const nuevoElem = {
+        id: nuevoId,
+        tipo: 'imagen',
+        x: Math.round(561 - w / 2),
+        y: 120,
+        ancho: w,
+        alto: h,
+        binding: null,
+        texto_fijo: preset.url,
+        estilo: {
+          preserveAspectRatio: 'xMidYMid meet',
+          opacity: 1
+        }
+      };
+
+      side.elementos.push(nuevoElem);
+
+      const modalEl = document.getElementById('modalGaleriaPresetsDisenador');
+      const inst = bootstrap.Modal.getInstance(modalEl);
+      if (inst) inst.hide();
+
+      this.seleccionarElemento(nuevoElem);
+      this.actualizarListaElementosUI();
+      this.renderLienzo();
+      window.utils.showToast(`Logo oficial "${preset.nombre}" insertado en el certificado`, 'success');
     }
   };
 

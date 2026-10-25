@@ -116,7 +116,9 @@
       '#certificados': 'secCertificados',
       '#disenador': 'secDisenador',
       '#consultas': 'secConsultas',
-      '#administradores': 'secAdministradores'
+      '#administradores': 'secAdministradores',
+      '#mantenimiento': 'secMantenimiento',
+      '#configuracion': 'secConfiguracion'
     };
 
     async function navegarASeccion(targetId, updateHash = true) {
@@ -193,6 +195,10 @@
           case 'secAdministradores':
             if (window.authAdmin) await window.authAdmin.cargarTablaAdministradores();
             break;
+          case 'secMantenimiento':
+          case 'secConfiguracion':
+            if (window.mantenimientoModule) await window.mantenimientoModule.init();
+            break;
         }
 
         if (window.utils && window.utils.showLoading && targetId !== 'secAdministradores') {
@@ -220,6 +226,9 @@
       if (targetId) navegarASeccion(targetId, false);
     });
 
+    window.navegarASeccion = navegarASeccion;
+    window.hashMap = hashMap;
+
     const initialHash = window.location.hash || '#dashboard';
     const initialTarget = hashMap[initialHash] || 'secDashboard';
     navegarASeccion(initialTarget);
@@ -228,45 +237,32 @@
   function initModalConfiguracion() {
     const btnAbrir = document.getElementById('btnAbrirConfiguracion');
     const modalEl = document.getElementById('modalConfiguracion');
-    const inputKey = document.getElementById('inputAdminSecretKey');
-    const btnGuardar = document.getElementById('btnGuardarConfiguracion');
     const btnProbar = document.getElementById('btnProbarConexionScript');
     const statusContainer = document.getElementById('statusConexionScript');
 
     if (btnAbrir) {
       btnAbrir.addEventListener('click', () => {
-        if (inputKey) inputKey.value = window.config.getAdminKey();
         if (statusContainer) statusContainer.innerHTML = '';
         bootstrap.Modal.getOrCreateInstance(modalEl).show();
-        if (window.utils && window.utils.setupPasswordToggles) window.utils.setupPasswordToggles();
       });
     }
 
     if (btnProbar) {
       btnProbar.addEventListener('click', async () => {
-        const key = inputKey ? inputKey.value.trim() : '';
-        statusContainer.innerHTML = '<div class="alert alert-info py-2 mb-0"><i class="fa-solid fa-spinner fa-spin me-2"></i>Probando conexión y autenticación...</div>';
+        statusContainer.innerHTML = '<div class="alert alert-info py-2 mb-0"><i class="fa-solid fa-spinner fa-spin me-2"></i>Probando latencia con Vercel y Turso DB...</div>';
         
-        window.config.setAdminKey(key);
+        const t0 = performance.now();
         try {
-          const res = await window.api.verifyAdmin();
+          const res = await window.api.ping();
+          const ms = Math.round(performance.now() - t0);
           if (res.status === 'success') {
-            statusContainer.innerHTML = `<div class="alert alert-success py-2 mb-0"><i class="fa-solid fa-circle-check me-2"></i>${window.utils.escapeHtml(res.message)}</div>`;
+            statusContainer.innerHTML = `<div class="alert alert-success py-2 mb-0 small"><i class="fa-solid fa-circle-check me-2"></i>${window.utils.escapeHtml(res.message)} (Latencia: <strong>${ms} ms</strong>)</div>`;
           } else {
-            statusContainer.innerHTML = `<div class="alert alert-danger py-2 mb-0"><i class="fa-solid fa-triangle-exclamation me-2"></i>${window.utils.escapeHtml(res.message || 'Clave de administración incorrecta')}</div>`;
+            statusContainer.innerHTML = `<div class="alert alert-danger py-2 mb-0 small"><i class="fa-solid fa-triangle-exclamation me-2"></i>${window.utils.escapeHtml(res.message || 'Error en respuesta de API')}</div>`;
           }
         } catch (e) {
-          statusContainer.innerHTML = `<div class="alert alert-danger py-2 mb-0"><i class="fa-solid fa-circle-xmark me-2"></i>No se pudo autenticar. Verifique la Clave Secreta (API KEY).</div>`;
+          statusContainer.innerHTML = `<div class="alert alert-danger py-2 mb-0 small"><i class="fa-solid fa-circle-xmark me-2"></i>Error al conectar con /api: ${e.message}</div>`;
         }
-      });
-    }
-
-    if (btnGuardar) {
-      btnGuardar.addEventListener('click', () => {
-        if (inputKey) window.config.setAdminKey(inputKey.value.trim());
-        window.utils.showToast('API KEY de Administración guardada exitosamente', 'success');
-        const inst = bootstrap.Modal.getInstance(modalEl);
-        if (inst) inst.hide();
       });
     }
   }
@@ -320,6 +316,10 @@
             break;
           case 'secAdministradores':
             if (window.authAdmin) await window.authAdmin.cargarTablaAdministradores();
+            break;
+          case 'secMantenimiento':
+          case 'secConfiguracion':
+            if (window.mantenimientoModule) await window.mantenimientoModule.init();
             break;
         }
 

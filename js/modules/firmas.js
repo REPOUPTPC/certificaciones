@@ -29,7 +29,7 @@
 
           try {
             const base64 = await window.utils.compressImage(file, 600, 600, 0.85);
-            const res = await window.api.uploadImage(base64, file.name);
+            const res = await window.api.uploadImage(base64, file.name, 'firmas_sellos');
 
             if (res.status === 'success' && res.url) {
               document.getElementById('firmaUrl').value = res.url;
@@ -58,7 +58,7 @@
 
           try {
             const base64 = await window.utils.compressImage(file, 600, 600, 0.85);
-            const res = await window.api.uploadImage(base64, file.name);
+            const res = await window.api.uploadImage(base64, file.name, 'firmas_sellos');
 
             if (res.status === 'success' && res.url) {
               document.getElementById('selloUrl').value = res.url;
@@ -97,10 +97,19 @@
         return;
       }
 
+      const esAuditor = window.authAdmin && window.authAdmin.isAuditor();
+
       let html = '';
       lista.forEach((f, i) => {
         const firmaImg = f.firma ? `<img src="${f.firma}" alt="Firma" style="height:35px; max-width:80px; object-fit:contain;">` : 'N/A';
         const selloImg = f.sello ? `<img src="${f.sello}" alt="Sello" style="height:35px; max-width:80px; object-fit:contain;">` : 'N/A';
+
+        const accionesHtml = esAuditor
+          ? '<span class="badge bg-light text-muted border"><i class="fa-solid fa-lock me-1"></i>Solo Lectura</span>'
+          : `
+            <button class="btn btn-sm btn-outline-primary me-1 btn-accion-editar" onclick="window.firmasModule.abrirModalFirma('${f.id}')"><i class="fa-solid fa-pen"></i></button>
+            <button class="btn btn-sm btn-outline-danger btn-accion-eliminar" onclick="window.firmasModule.eliminarFirma('${f.id}')"><i class="fa-solid fa-trash"></i></button>
+          `;
 
         html += `
           <tr>
@@ -108,10 +117,7 @@
             <td class="fw-semibold">${window.utils.escapeHtml(f.nombre)}</td>
             <td>${window.utils.escapeHtml(f.cargo)}</td>
             <td>${firmaImg} / ${selloImg}</td>
-            <td>
-              <button class="btn btn-sm btn-outline-primary me-1" onclick="window.firmasModule.abrirModalFirma('${f.id}')"><i class="fa-solid fa-pen"></i></button>
-              <button class="btn btn-sm btn-outline-danger" onclick="window.firmasModule.eliminarFirma('${f.id}')"><i class="fa-solid fa-trash"></i></button>
-            </td>
+            <td>${accionesHtml}</td>
           </tr>
         `;
       });
@@ -120,6 +126,10 @@
     },
 
     abrirModalFirma(id = null) {
+      if (window.authAdmin && window.authAdmin.isAuditor()) {
+        window.utils.showToast('Acceso restringido: Perfil AUDITOR es de solo lectura.', 'warning');
+        return;
+      }
       const modalEl = document.getElementById('modalFirma');
       if (!modalEl) return;
 
@@ -152,6 +162,10 @@
 
     async guardarFirma(e) {
       e.preventDefault();
+      if (window.authAdmin && window.authAdmin.isAuditor()) {
+        window.utils.showToast('Acceso restringido: Perfil AUDITOR es de solo lectura.', 'warning');
+        return;
+      }
       const id = document.getElementById('firmaId').value;
       const nombre = document.getElementById('firmaNombre').value.trim();
       const cargo = document.getElementById('firmaCargo').value.trim();
@@ -183,6 +197,10 @@
     },
 
     async eliminarFirma(id) {
+      if (window.authAdmin && window.authAdmin.isAuditor()) {
+        window.utils.showToast('Acceso restringido: Perfil AUDITOR es de solo lectura.', 'warning');
+        return;
+      }
       window.utils.showConfirm({
         title: 'Eliminar Firmante Autorizado',
         message: '¿Está seguro de eliminar este registro de firmante?',

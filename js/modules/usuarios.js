@@ -77,17 +77,22 @@
         return;
       }
 
+      const esAuditor = window.authAdmin && window.authAdmin.isAuditor();
       let html = '';
       lista.forEach((u, i) => {
+        const accionesHtml = esAuditor 
+          ? '<span class="badge bg-light text-muted border"><i class="fa-solid fa-lock me-1"></i>Solo Lectura</span>'
+          : `
+            <button class="btn btn-sm btn-outline-primary me-1 btn-accion-editar" onclick="window.usuariosModule.abrirModalUsuario('${u.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
+            <button class="btn btn-sm btn-outline-danger btn-accion-eliminar" onclick="window.usuariosModule.eliminarUsuario('${u.id}')" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+          `;
+
         html += `
           <tr>
             <td>${i + 1}</td>
             <td><span class="badge bg-dark font-monospace">${window.utils.escapeHtml(u.cedula)}</span></td>
             <td class="fw-semibold">${window.utils.escapeHtml(u.nombre_completo)}</td>
-            <td>
-              <button class="btn btn-sm btn-outline-primary me-1" onclick="window.usuariosModule.abrirModalUsuario('${u.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
-              <button class="btn btn-sm btn-outline-danger" onclick="window.usuariosModule.eliminarUsuario('${u.id}')" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
-            </td>
+            <td>${accionesHtml}</td>
           </tr>
         `;
       });
@@ -111,6 +116,10 @@
     },
 
     abrirModalUsuario(id = null) {
+      if (window.authAdmin && window.authAdmin.isAuditor()) {
+        window.utils.showToast('Acceso restringido: Perfil AUDITOR es de solo lectura.', 'warning');
+        return;
+      }
       const modalEl = document.getElementById('modalUsuario');
       if (!modalEl) return;
 
@@ -132,6 +141,10 @@
 
     async guardarUsuario(e) {
       e.preventDefault();
+      if (window.authAdmin && window.authAdmin.isAuditor()) {
+        window.utils.showToast('Acceso restringido: Perfil AUDITOR es de solo lectura.', 'warning');
+        return;
+      }
       const id = document.getElementById('usuarioId').value;
       const cedula = window.utils.normalizeCedula(document.getElementById('usuarioCedula').value);
       const nombre_completo = document.getElementById('usuarioNombre').value.trim();
@@ -184,6 +197,10 @@
     },
 
     async eliminarUsuario(id) {
+      if (window.authAdmin && window.authAdmin.isAuditor()) {
+        window.utils.showToast('Acceso restringido: Perfil AUDITOR es de solo lectura.', 'warning');
+        return;
+      }
       window.utils.showConfirm({
         title: 'Eliminar Usuario / Participante',
         message: '¿Está seguro de eliminar este usuario o participante del sistema?',
@@ -206,6 +223,10 @@
     },
 
     abrirModalCargaMasiva() {
+      if (window.authAdmin && window.authAdmin.isAuditor()) {
+        window.utils.showToast('Acceso restringido: Perfil AUDITOR es de solo lectura.', 'warning');
+        return;
+      }
       const modalEl = document.getElementById('modalCargaMasivaUsuarios');
       if (!modalEl) return;
 
