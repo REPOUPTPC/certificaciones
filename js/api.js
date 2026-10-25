@@ -837,6 +837,51 @@
           return { status: 'success' };
         }
 
+        case 'verifyAdmin': {
+          const userVal = String(payload.usuario || '').trim().toUpperCase();
+          const passVal = String(payload.clave || '').trim();
+          let adminUsers = db.admin || [];
+          if (adminUsers.length === 0) {
+            adminUsers = [
+              {
+                id: 'super-admin-01',
+                usuario: 'CIENCIA_TECNOLOGIA',
+                clave: 'CYT_01012023',
+                tipo: 'SUPER_ADMIN',
+                status: 'ACTIVO',
+                permisos: '*'
+              }
+            ];
+          }
+          const found = adminUsers.find(u => String(u.usuario || '').trim().toUpperCase() === userVal);
+          if (!found) {
+            return { status: 'error', message: 'Usuario no registrado' };
+          }
+          if (String(found.clave || '').trim() !== passVal) {
+            return { status: 'error', message: 'Contraseña incorrecta' };
+          }
+          if (String(found.status || '').toUpperCase() !== 'ACTIVO') {
+            return { status: 'error', message: 'Usuario inactivo' };
+          }
+          return { status: 'success', authenticated: true, user: found };
+        }
+
+        case 'updateConfiguracion': {
+          if (!db.configuracion) db.configuracion = [];
+          const idx = db.configuracion.findIndex(c => c.clave === payload.clave);
+          if (idx !== -1) {
+            db.configuracion[idx].valor = payload.valor;
+          } else {
+            db.configuracion.push({ clave: payload.clave, valor: payload.valor });
+          }
+          saveLocalDb(db);
+          return { status: 'success', message: 'Configuración actualizada localmente' };
+        }
+
+        case 'uploadImage': {
+          return { status: 'success', url: payload.base64Data, filename: payload.filename };
+        }
+
         default:
           return { status: 'error', message: `Acción local POST ${action} no soportada` };
       }

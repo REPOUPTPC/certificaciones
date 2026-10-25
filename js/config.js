@@ -8,6 +8,7 @@
 (function() {
   const STORAGE_KEY_API_URL = 'uptpc_api_url_v2';
   const DEFAULT_API_URL = '/api';
+  const VERCEL_API_URL = 'https://certificaciones-repouptpcs-projects.vercel.app/api';
   const R2_PUBLIC_BASE = 'https://pub-b61fc0d596e8472a9cda031c9e80faeb.r2.dev';
 
   const DEFAULT_UPTPC_LOGO = `${R2_PUBLIC_BASE}/img/logos/LOGO_UPTPC.png`;
@@ -16,7 +17,18 @@
     getApiUrl() {
       const stored = localStorage.getItem(STORAGE_KEY_API_URL);
       if (stored && stored.trim()) return stored.trim();
+
+      // Si se está ejecutando desde el servidor estático/Apache de la universidad (donde no corre Node.js),
+      // redirigir automáticamente las peticiones al backend en Vercel
+      if (typeof window !== 'undefined' && window.location && window.location.hostname === 'cyt.uptpc.edu.ve') {
+        return VERCEL_API_URL;
+      }
+
       return DEFAULT_API_URL;
+    },
+
+    getVercelApiUrl() {
+      return VERCEL_API_URL;
     },
 
     setApiUrl(url) {

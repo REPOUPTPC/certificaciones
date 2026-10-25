@@ -157,8 +157,23 @@
       const inputKey = document.getElementById('loginAdminKey');
       if (inputKey) inputKey.value = window.config.getAdminKey();
 
+      const inputApi = document.getElementById('inputApiUrlModal');
+      if (inputApi && window.config) {
+        inputApi.value = window.config.getApiUrl();
+      }
+
       const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
       bsModal.show();
+    },
+
+    guardarApiUrlModal() {
+      const inputApi = document.getElementById('inputApiUrlModal');
+      if (inputApi && window.config) {
+        const val = inputApi.value.trim();
+        window.config.setApiUrl(val);
+        alert('URL de API guardada: ' + (val || '/api') + '. La página se recargará para aplicar los cambios.');
+        window.location.reload();
+      }
     },
 
     ocultarModalLogin() {
@@ -1074,6 +1089,7 @@
   };
 
   window.authAdmin = authAdmin;
+  window.guardarApiUrlModal = () => authAdmin.guardarApiUrlModal();
 
   document.addEventListener('DOMContentLoaded', () => {
     authAdmin.init();
