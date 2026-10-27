@@ -1,0 +1,18 @@
+# robots.txt - Portal de Certificaciones y Extensión Universitaria UPTPC
+User-agent: *
+Allow: /
+Allow: /index.html
+Allow: /cursos.html
+Allow: /consulta.html
+Allow: /css/
+Allow: /js/
+Allow: /img/
+
+# Bloquear panel administrativo privado y endpoints internos
+Disallow: /gestion.html
+Disallow: /api/
+Disallow: /certificaciones/gestion.html
+Disallow: /certificaciones/api/
+
+# Mapa del sitio oficial para indexación en Google
+Sitemap: https://certificados.uptpc.edu.ve/sitemap.xml

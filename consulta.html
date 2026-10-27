@@ -17,9 +17,12 @@
   <meta name="keywords" content="Validador de Certificados, Consulta de Certificados, UPTPC, Extensión Universitaria, Unidad de Ciencia y Tecnología, SEREINF, Cursos, Talleres, Diplomados, Certificación Digital, Puerto Cabello, Carabobo, Venezuela" />
   <meta name="author" content="Universidad Politécnica Territorial de Puerto Cabello (UPTPC) - Unidad de Ciencia y Tecnología" />
   <meta name="publisher" content="Universidad Politécnica Territorial de Puerto Cabello" />
-  <meta name="robots" content="index, follow" />
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
   <meta name="language" content="Spanish" />
   <meta name="revisit-after" content="7 days" />
+
+  <!-- Canonical URL Oficial -->
+  <link rel="canonical" href="https://certificados.uptpc.edu.ve/consulta.html" />
 
   <!-- Geolocalización y Ubicación en Puerto Cabello -->
   <meta name="geo.region" content="VE-G" />
@@ -38,14 +41,20 @@
   <meta property="og:site_name" content="UPTPC - Extensión Universitaria y Unidad de Ciencia y Tecnología" />
   <meta property="og:title" content="Consulta y Validación de Certificados - UPTPC" />
   <meta property="og:description" content="Verifica de manera oficial la validez de certificados de cursos, talleres y diplomados dictados en la UPTPC, Puerto Cabello." />
-  <meta property="og:url" content="https://cyt.uptpc.edu.ve/certificaciones/consulta.html" />
-  <meta property="og:image" content="https://cyt.uptpc.edu.ve/certificaciones/img/CYT.png" />
+  <meta property="og:url" content="https://certificados.uptpc.edu.ve/consulta.html" />
+  <meta property="og:image" content="https://certificados.uptpc.edu.ve/img/CYT.png" />
+  <meta property="og:image:secure_url" content="https://certificados.uptpc.edu.ve/img/CYT.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Validador de Certificados UPTPC" />
 
   <!-- Twitter Cards -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Consulta y Validación de Certificados - UPTPC" />
   <meta name="twitter:description" content="Herramienta oficial de validación de certificados de la Unidad de Ciencia y Tecnología - UPTPC Puerto Cabello." />
-  <meta name="twitter:image" content="https://cyt.uptpc.edu.ve/certificaciones/img/CYT.png" />
+  <meta name="twitter:image" content="https://certificados.uptpc.edu.ve/img/CYT.png" />
+  <meta name="twitter:image:alt" content="Validador de Certificados UPTPC" />
 
   <!-- Color de tema móvil -->
   <meta name="theme-color" content="#0f3460" />
@@ -54,25 +63,54 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "WebPage",
-    "name": "Consulta y Validación de Certificados - UPTPC",
-    "description": "Sistema de verificación digital de certificados de Extensión Universitaria de la Universidad Politécnica Territorial de Puerto Cabello.",
-    "url": "https://cyt.uptpc.edu.ve/certificaciones/consulta.html",
-    "provider": {
-      "@type": "EducationalOrganization",
-      "name": "Universidad Politécnica Territorial de Puerto Cabello - Unidad de Ciencia y Tecnología",
-      "email": "sereinf@uptpc.edu.ve",
-      "address": {
-        "@type": "PostalAddress",
-        "addressLocality": "Puerto Cabello",
-        "addressRegion": "Estado Carabobo",
-        "addressCountry": "VE"
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": "https://certificados.uptpc.edu.ve/consulta.html#webpage",
+        "name": "Consulta y Validación de Certificados - UPTPC",
+        "description": "Sistema de verificación digital de certificados de Extensión Universitaria de la Universidad Politécnica Territorial de Puerto Cabello.",
+        "url": "https://certificados.uptpc.edu.ve/consulta.html",
+        "provider": {
+          "@type": "EducationalOrganization",
+          "name": "Universidad Politécnica Territorial de Puerto Cabello - Unidad de Ciencia y Tecnología",
+          "url": "https://certificados.uptpc.edu.ve/",
+          "email": "sereinf@uptpc.edu.ve",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Puerto Cabello",
+            "addressRegion": "Estado Carabobo",
+            "addressCountry": "VE"
+          }
+        },
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://certificados.uptpc.edu.ve/consulta.html?cedula={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "@id": "https://certificados.uptpc.edu.ve/consulta.html#breadcrumb",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Inicio",
+            "item": "https://certificados.uptpc.edu.ve/index.html"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Validador de Certificados",
+            "item": "https://certificados.uptpc.edu.ve/consulta.html"
+          }
+        ]
       }
-    }
+    ]
   }
   </script>
 
-  <link rel="icon" type="image/svg+xml" href="https://cyt.uptpc.edu.ve/certificaciones/img/favicon.svg">
+  <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
   <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
   <link crossorigin="anonymous" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg==" referrerpolicy="no-referrer" rel="stylesheet">
 

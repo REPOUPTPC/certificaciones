@@ -109,14 +109,21 @@
 
     isAdministracion() {
       const session = this.getSession();
-      return Boolean(session && (session.tipo === 'ADMINISTRACION' || session.tipo === 'ADMIN_PAGOS'));
+      if (!session) return false;
+      const t = String(session.tipo || '').toUpperCase();
+      return t === 'ADMINISTRADORA' || t === 'ADMINISTRACION' || t === 'ADMIN_PAGOS';
+    },
+
+    isAdministradora() {
+      return this.isAdministracion();
     },
 
     hasSectionPermission(targetSecId) {
       const session = this.getSession();
       if (!session) return false;
       if (session.tipo === 'SUPER_ADMIN' || session.permisos === '*') return true;
-      if (session.tipo === 'ADMINISTRACION' || session.tipo === 'ADMIN_PAGOS') {
+      const t = String(session.tipo || '').toUpperCase();
+      if (t === 'ADMINISTRADORA' || t === 'ADMINISTRACION' || t === 'ADMIN_PAGOS') {
         return targetSecId === 'secOfertas';
       }
       if (session.tipo === 'AUDITOR') {
@@ -145,7 +152,13 @@
       } else {
         this.actualizarUiSesion(session);
         await this.autocorregirLogosUnidades();
-        const initialHash = window.location.hash || '#dashboard';
+
+        // Si el usuario es ADMINISTRADORA / ADMINISTRACION, asegurar redirección inmediata a #ofertas
+        if (this.isAdministradora() && window.location.hash !== '#ofertas') {
+          window.location.hash = '#ofertas';
+        }
+
+        const initialHash = window.location.hash || (this.isAdministradora() ? '#ofertas' : '#dashboard');
         await this.registrarVisitaAdmin(initialHash);
       }
     },
@@ -202,9 +215,9 @@
         if (tipoUpper === 'SUPER_ADMIN') {
           document.body.classList.add('role-super-admin');
           lblTipo.innerHTML = '<span class="badge bg-danger"><i class="fa-solid fa-crown me-1"></i>SUPER_ADMIN</span>';
-        } else if (tipoUpper === 'ADMINISTRACION' || tipoUpper === 'ADMIN_PAGOS') {
+        } else if (tipoUpper === 'ADMINISTRADORA' || tipoUpper === 'ADMINISTRACION' || tipoUpper === 'ADMIN_PAGOS') {
           document.body.classList.add('role-administracion');
-          lblTipo.innerHTML = '<span class="badge bg-success"><i class="fa-solid fa-cash-register me-1"></i>ADMINISTRACIÓN (Pagos)</span>';
+          lblTipo.innerHTML = '<span class="badge bg-success"><i class="fa-solid fa-cash-register me-1"></i>ADMINISTRADORA (Pagos)</span>';
         } else if (tipoUpper === 'AUDITOR') {
           document.body.classList.add('role-auditor');
           lblTipo.innerHTML = '<span class="badge bg-info text-dark fw-bold"><i class="fa-solid fa-shield-halved me-1"></i>AUDITOR (Solo Lectura)</span>';
@@ -237,8 +250,8 @@
       navLinks.forEach(link => {
         const target = link.getAttribute('data-target');
 
-        // Caso Perfil ADMINISTRACION: Solo Verificación de Pagos (secOfertas)
-        if (tipoUpper === 'ADMINISTRACION' || tipoUpper === 'ADMIN_PAGOS') {
+        // Caso Perfil ADMINISTRADORA / ADMINISTRACION: Solo Verificación de Pagos (secOfertas)
+        if (tipoUpper === 'ADMINISTRADORA' || tipoUpper === 'ADMINISTRACION' || tipoUpper === 'ADMIN_PAGOS') {
           if (target === 'secOfertas') {
             link.style.display = '';
             const textEl = link.querySelector('.sidebar-text');
@@ -277,12 +290,19 @@
         }
       });
 
-      // Control adicional en secOfertas: Si es ADMINISTRACION, ocultar tab de talleres/tienda
+      // Control adicional en secOfertas: Si es ADMINISTRADORA / ADMINISTRACION, ocultar tab de talleres/tienda y activar tab pagos
       const tabTalleresLi = document.getElementById('tab-talleres-tab')?.closest('.nav-item');
       const btnNuevaOferta = document.getElementById('btnNuevaOfertaCurso');
-      if (tipoUpper === 'ADMINISTRACION' || tipoUpper === 'ADMIN_PAGOS') {
+      if (tipoUpper === 'ADMINISTRADORA' || tipoUpper === 'ADMINISTRACION' || tipoUpper === 'ADMIN_PAGOS') {
         if (tabTalleresLi) tabTalleresLi.style.display = 'none';
         if (btnNuevaOferta) btnNuevaOferta.style.display = 'none';
+        // Asegurar que tab-pagos esté activo
+        setTimeout(() => {
+          const tabPagosBtn = document.getElementById('tab-pagos-tab');
+          if (tabPagosBtn && typeof bootstrap !== 'undefined') {
+            bootstrap.Tab.getOrCreateInstance(tabPagosBtn).show();
+          }
+        }, 100);
       } else {
         if (tabTalleresLi) tabTalleresLi.style.display = '';
         if (btnNuevaOferta) btnNuevaOferta.style.display = '';
@@ -515,7 +535,7 @@
       const tipoUpper = String(usuario.tipo || '').toUpperCase();
       let targetSec = 'secDashboard';
 
-      if (tipoUpper === 'ADMINISTRACION' || tipoUpper === 'ADMIN_PAGOS') {
+      if (tipoUpper === 'ADMINISTRADORA' || tipoUpper === 'ADMINISTRACION' || tipoUpper === 'ADMIN_PAGOS') {
         targetSec = 'secOfertas';
       } else if (tipoUpper === 'AUDITOR') {
         targetSec = 'secDashboard';
@@ -533,8 +553,8 @@
         await window.navegarASeccion(targetSec, true);
       }
 
-      // Si es ADMINISTRACION, asegurar activación inmediata de la pestaña de Verificación de Pagos
-      if (tipoUpper === 'ADMINISTRACION' || tipoUpper === 'ADMIN_PAGOS') {
+      // Si es ADMINISTRADORA o ADMINISTRACION, asegurar activación inmediata de la pestaña de Verificación de Pagos
+      if (tipoUpper === 'ADMINISTRADORA' || tipoUpper === 'ADMINISTRACION' || tipoUpper === 'ADMIN_PAGOS') {
         setTimeout(() => {
           const tabPagosBtn = document.getElementById('tab-pagos-tab');
           if (tabPagosBtn && typeof bootstrap !== 'undefined') {
@@ -719,8 +739,8 @@
           let badgeTipo = '<span class="badge bg-primary">ADMIN</span>';
           if (esSuper) {
             badgeTipo = '<span class="badge bg-danger"><i class="fa-solid fa-crown me-1"></i>SUPER_ADMIN</span>';
-          } else if (tipoNorm === 'ADMINISTRACION' || tipoNorm === 'ADMIN_PAGOS') {
-            badgeTipo = '<span class="badge bg-success"><i class="fa-solid fa-cash-register me-1"></i>ADMINISTRACION</span>';
+          } else if (tipoNorm === 'ADMINISTRADORA' || tipoNorm === 'ADMINISTRACION' || tipoNorm === 'ADMIN_PAGOS') {
+            badgeTipo = '<span class="badge bg-success"><i class="fa-solid fa-cash-register me-1"></i>ADMINISTRADORA</span>';
           } else if (tipoNorm === 'AUDITOR') {
             badgeTipo = '<span class="badge bg-info text-dark"><i class="fa-solid fa-shield-halved me-1"></i>AUDITOR</span>';
           }
@@ -728,7 +748,7 @@
           const badgeStatus = String(item.status).toUpperCase() === 'ACTIVO' ? '<span class="badge bg-success">ACTIVO</span>' : '<span class="badge bg-secondary">INACTIVO</span>';
 
           let permsTexto = 'Acceso Total (*)';
-          if (tipoNorm === 'ADMINISTRACION' || tipoNorm === 'ADMIN_PAGOS') {
+          if (tipoNorm === 'ADMINISTRADORA' || tipoNorm === 'ADMINISTRACION' || tipoNorm === 'ADMIN_PAGOS') {
             permsTexto = 'Solo Verificación de Pagos';
           } else if (tipoNorm === 'AUDITOR') {
             permsTexto = 'Solo Lectura (Auditoría Integral)';
@@ -934,7 +954,7 @@
       document.getElementById('adminUsuarioName').value = adminData ? adminData.usuario : '';
       document.getElementById('adminUsuarioClave').value = '';
       const selectTipo = document.getElementById('adminUsuarioTipo');
-      if (selectTipo) selectTipo.value = adminData ? adminData.tipo : 'ADMINISTRACION';
+      if (selectTipo) selectTipo.value = adminData ? adminData.tipo : 'ADMINISTRADORA';
       document.getElementById('adminUsuarioStatus').value = adminData ? adminData.status : 'ACTIVO';
 
       const inputClave = document.getElementById('adminUsuarioClave');
@@ -955,7 +975,7 @@
         const t = String(tipoSel || '').toUpperCase();
         if (t === 'SUPER_ADMIN') {
           checkboxes.forEach(cb => { cb.checked = true; cb.disabled = false; });
-        } else if (t === 'ADMINISTRACION') {
+        } else if (t === 'ADMINISTRADORA' || t === 'ADMINISTRACION') {
           checkboxes.forEach(cb => { cb.checked = (cb.value === 'secOfertas'); cb.disabled = false; });
         } else if (t === 'AUDITOR') {
           const auditables = ['secDashboard', 'secUsuarios', 'secUnidades', 'secFirmas', 'secCursos', 'secCertificados', 'secConsultas'];
@@ -1054,7 +1074,7 @@
       let finalPermisos = '*';
       if (tipo === 'SUPER_ADMIN') {
         finalPermisos = '*';
-      } else if (tipo === 'ADMINISTRACION') {
+      } else if (tipo === 'ADMINISTRADORA' || tipo === 'ADMINISTRACION') {
         finalPermisos = JSON.stringify(['secOfertas']);
       } else if (tipo === 'AUDITOR') {
         finalPermisos = JSON.stringify(['secDashboard', 'secUsuarios', 'secUnidades', 'secFirmas', 'secCursos', 'secCertificados', 'secConsultas']);

@@ -128,7 +128,10 @@
           return;
         }
 
-        if (!window.authAdmin.hasSectionPermission(targetId)) {
+        // Si es perfil de ADMINISTRADORA / ADMINISTRACION, restringir exclusivamente a secOfertas (Verificación de Pagos)
+        if (window.authAdmin.isAdministradora && window.authAdmin.isAdministradora()) {
+          targetId = 'secOfertas';
+        } else if (!window.authAdmin.hasSectionPermission(targetId)) {
           if (window.utils) window.utils.showToast('Acceso restringido: No posee permisos para acceder a esta sección.', 'warning');
           targetId = 'secDashboard';
         }
@@ -170,6 +173,14 @@
             break;
           case 'secOfertas':
             if (window.ofertasModule) await window.ofertasModule.init();
+            if (window.authAdmin && window.authAdmin.isAdministradora && window.authAdmin.isAdministradora()) {
+              setTimeout(() => {
+                const tabPagosBtn = document.getElementById('tab-pagos-tab');
+                if (tabPagosBtn && typeof bootstrap !== 'undefined') {
+                  bootstrap.Tab.getOrCreateInstance(tabPagosBtn).show();
+                }
+              }, 100);
+            }
             break;
           case 'secUsuarios':
             if (window.usuariosModule) await window.usuariosModule.init();
@@ -229,8 +240,9 @@
     window.navegarASeccion = navegarASeccion;
     window.hashMap = hashMap;
 
-    const initialHash = window.location.hash || '#dashboard';
-    const initialTarget = hashMap[initialHash] || 'secDashboard';
+    const isValidadorPagos = window.authAdmin && window.authAdmin.isAdministradora && window.authAdmin.isAdministradora();
+    const initialHash = window.location.hash || (isValidadorPagos ? '#ofertas' : '#dashboard');
+    const initialTarget = isValidadorPagos ? 'secOfertas' : (hashMap[initialHash] || 'secDashboard');
     navegarASeccion(initialTarget);
   }
 
@@ -292,6 +304,14 @@
             break;
           case 'secOfertas':
             if (window.ofertasModule) await window.ofertasModule.init();
+            if (window.authAdmin && window.authAdmin.isAdministradora && window.authAdmin.isAdministradora()) {
+              setTimeout(() => {
+                const tabPagosBtn = document.getElementById('tab-pagos-tab');
+                if (tabPagosBtn && typeof bootstrap !== 'undefined') {
+                  bootstrap.Tab.getOrCreateInstance(tabPagosBtn).show();
+                }
+              }, 100);
+            }
             break;
           case 'secUsuarios':
             if (window.usuariosModule) await window.usuariosModule.init();

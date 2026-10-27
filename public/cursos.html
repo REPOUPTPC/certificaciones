@@ -13,13 +13,16 @@
   <!-- ========================================== -->
   <!-- META TAGS DE SEO & BUSCADORES -->
   <!-- ========================================== -->
-  <meta name="description" content="Catálogo y oferta educativa de Cursos, Talleres y Diplomados de Extensión Universitaria y la Unidad de Ciencia y Tecnología de la Universidad Politécnica Territorial de Puerto Cabello (UPTPC)." />
+  <meta name="description" id="metaDescription" content="Catálogo oficial y oferta académica de Cursos, Talleres y Diplomados de Extensión Universitaria y la Unidad de Ciencia y Tecnología - UPTPC Puerto Cabello. Certificación universitaria oficial." />
   <meta name="keywords" content="Cursos, Talleres, Diplomados, Oferta Académica, Extensión Universitaria, UPTPC, Universidad Politécnica Territorial de Puerto Cabello, Unidad de Ciencia y Tecnología, SEREINF, Inscripciones, Puerto Cabello, Carabobo, Venezuela" />
   <meta name="author" content="Universidad Politécnica Territorial de Puerto Cabello (UPTPC) - Unidad de Ciencia y Tecnología" />
   <meta name="publisher" content="Universidad Politécnica Territorial de Puerto Cabello" />
-  <meta name="robots" content="index, follow" />
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
   <meta name="language" content="Spanish" />
   <meta name="revisit-after" content="7 days" />
+
+  <!-- Canonical URL Oficial -->
+  <link rel="canonical" id="canonicalLink" href="https://certificados.uptpc.edu.ve/cursos.html" />
 
   <!-- Geolocalización y Ubicación en Puerto Cabello -->
   <meta name="geo.region" content="VE-G" />
@@ -36,39 +39,68 @@
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="es_VE" />
   <meta property="og:site_name" content="UPTPC - Extensión Universitaria y Unidad de Ciencia y Tecnología" />
-  <meta property="og:title" content="Cursos, Talleres y Diplomados - UPTPC Extensión Universitaria" />
-  <meta property="og:description" content="Inscríbete en nuestros cursos, talleres y diplomados ofrecidos por la Universidad Politécnica Territorial de Puerto Cabello." />
-  <meta property="og:url" content="https://cyt.uptpc.edu.ve/certificaciones/cursos.html" />
-  <meta property="og:image" content="https://cyt.uptpc.edu.ve/certificaciones/img/CYT.png" />
+  <meta property="og:title" id="ogTitle" content="Cursos, Talleres y Diplomados - UPTPC Extensión Universitaria" />
+  <meta property="og:description" id="ogDescription" content="Inscríbete en nuestros cursos, talleres y diplomados universitarios ofrecidos por la Universidad Politécnica Territorial de Puerto Cabello." />
+  <meta property="og:url" id="ogUrl" content="https://certificados.uptpc.edu.ve/cursos.html" />
+  <meta property="og:image" id="ogImage" content="https://certificados.uptpc.edu.ve/img/CYT.png" />
+  <meta property="og:image:secure_url" id="ogImageSecure" content="https://certificados.uptpc.edu.ve/img/CYT.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" id="ogImageAlt" content="Catálogo de Cursos y Talleres UPTPC" />
 
   <!-- Twitter Cards -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Cursos, Talleres y Diplomados - UPTPC Extensión Universitaria" />
-  <meta name="twitter:description" content="Formación continua y capacitación en Puerto Cabello con la Unidad de Ciencia y Tecnología - UPTPC." />
-  <meta name="twitter:image" content="https://cyt.uptpc.edu.ve/certificaciones/img/CYT.png" />
+  <meta name="twitter:title" id="twitterTitle" content="Cursos, Talleres y Diplomados - UPTPC Extensión Universitaria" />
+  <meta name="twitter:description" id="twitterDescription" content="Formación continua y capacitación en Puerto Cabello con la Unidad de Ciencia y Tecnología - UPTPC." />
+  <meta name="twitter:image" id="twitterImage" content="https://certificados.uptpc.edu.ve/img/CYT.png" />
+  <meta name="twitter:image:alt" id="twitterImageAlt" content="Catálogo de Cursos y Talleres UPTPC" />
 
   <!-- Color de tema móvil -->
   <meta name="theme-color" content="#0f3460" />
 
   <!-- Datos Estructurados JSON-LD (Schema.org) -->
-  <script type="application/ld+json">
+  <script type="application/ld+json" id="schemaJsonLd">
   {
     "@context": "https://schema.org",
-    "@type": "Course",
-    "name": "Oferta Formativa: Cursos, Talleres y Diplomados",
-    "description": "Programas de formación continua, capacitación profesional y actualización tecnológica en Puerto Cabello.",
-    "provider": {
-      "@type": "EducationalOrganization",
-      "name": "Universidad Politécnica Territorial de Puerto Cabello - Unidad de Ciencia y Tecnología",
-      "sameAs": "https://cyt.uptpc.edu.ve",
-      "email": "sereinf@uptpc.edu.ve",
-      "address": {
-        "@type": "PostalAddress",
-        "addressLocality": "Puerto Cabello",
-        "addressRegion": "Estado Carabobo",
-        "addressCountry": "VE"
+    "@graph": [
+      {
+        "@type": "Course",
+        "@id": "https://certificados.uptpc.edu.ve/cursos.html#courseCatalog",
+        "name": "Oferta Formativa: Cursos, Talleres y Diplomados",
+        "description": "Programas de formación continua, capacitación profesional y actualización tecnológica en Puerto Cabello.",
+        "provider": {
+          "@type": "EducationalOrganization",
+          "name": "Universidad Politécnica Territorial de Puerto Cabello - Unidad de Ciencia y Tecnología",
+          "url": "https://certificados.uptpc.edu.ve/",
+          "email": "sereinf@uptpc.edu.ve",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Puerto Cabello",
+            "addressRegion": "Estado Carabobo",
+            "addressCountry": "VE"
+          }
+        }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "@id": "https://certificados.uptpc.edu.ve/cursos.html#breadcrumb",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Inicio",
+            "item": "https://certificados.uptpc.edu.ve/index.html"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Cursos y Talleres",
+            "item": "https://certificados.uptpc.edu.ve/cursos.html"
+          }
+        ]
       }
-    }
+    ]
   }
   </script>
 
@@ -422,6 +454,13 @@
                   <i class="fa-regular fa-heart"></i>
                   <span id="lblBtnModalDetalleFavorito">Guardar en Favoritos</span>
                 </button>
+                <button type="button" class="btn btn-success btn-sm fw-bold px-3 d-flex align-items-center gap-1 shadow-sm" id="btnModalDetalleWhatsapp" onclick="compartirCursoActualWhatsApp()" title="Compartir este taller vía WhatsApp">
+                  <i class="fa-brands fa-whatsapp fs-5"></i>
+                  <span>Compartir por WhatsApp</span>
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm fw-bold px-2 d-flex align-items-center gap-1" onclick="copiarEnlaceCursoActual()" title="Copiar enlace directo del curso">
+                  <i class="fa-solid fa-link"></i>
+                </button>
                 <button type="button" class="btn btn-primary btn-sm fw-bold flex-grow-1 shadow-sm py-2" id="btnModalDetalleInscribir" onclick="inscribirseDesdeModalDetalle()">
                   <i class="fa-solid fa-cart-shopping me-1"></i>Inscribirse / Declarar Pago
                 </button>
@@ -573,6 +612,61 @@
     </div>
   </div>
 
+  <!-- Modal Actualizar Teléfono del Usuario (Obligatorio para Declaración de Pago) -->
+  <div class="modal fade" id="modalActualizarTelefono" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+        <div class="modal-header bg-warning text-dark py-3">
+          <div class="d-flex align-items-center gap-2">
+            <i class="fa-solid fa-phone-volume fs-4 text-dark"></i>
+            <h5 class="modal-title fw-bold mb-0">Actualización Requerida de Teléfono</h5>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="formActualizarTelefonoModal" onsubmit="guardarTelefonoUsuarioModal(event)">
+          <div class="modal-body p-4">
+            <div class="alert alert-warning border-0 small d-flex align-items-start gap-2 mb-3 shadow-sm rounded-3">
+              <i class="fa-solid fa-triangle-exclamation fs-5 mt-1 text-warning flex-shrink-0"></i>
+              <div>
+                <strong>Requerimiento Obligatorio:</strong> Para continuar con la declaración de su pago y la verificación de su inscripción, es indispensable que registre o actualice su número de teléfono celular o WhatsApp.
+              </div>
+            </div>
+
+            <div class="bg-light p-3 rounded-3 mb-3 border">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="text-muted small">Participante:</span>
+                <strong class="text-primary text-truncate ms-2" id="lblModalActTelNombre">Cargando...</strong>
+              </div>
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted small">Cédula:</span>
+                <strong class="font-monospace text-dark" id="lblModalActTelCedula">V-00000000</strong>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="inputActTelefonoModal" class="form-label fw-bold text-dark">
+                <i class="fa-solid fa-mobile-screen-button me-1 text-primary"></i>Número de Teléfono Celular / WhatsApp <span class="text-danger">*</span>
+              </label>
+              <div class="input-group input-group-lg">
+                <span class="input-group-text bg-white border-end-0"><i class="fa-brands fa-whatsapp text-success fs-5"></i></span>
+                <input type="tel" class="form-control border-start-0" id="inputActTelefonoModal" placeholder="Ej: 0412-1234567 o 0414-0000000" required autocomplete="tel">
+              </div>
+              <small class="text-muted d-block mt-2">
+                <i class="fa-solid fa-circle-info me-1 text-info"></i>Formatos sugeridos: 0412, 0414, 0424, 0416, 0426 o internacional (+58...).
+              </small>
+            </div>
+          </div>
+          <div class="modal-footer bg-light py-2 px-4">
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-success fw-bold px-4 shadow-sm" id="btnGuardarTelefonoModal">
+              <i class="fa-solid fa-check me-2"></i>Guardar Teléfono y Continuar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal Consulta de Pagos de Usuario -->
   <div class="modal fade" id="modalConsultaPagos" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -717,6 +811,8 @@
     let cargandoRealizados = false;
     let filtroActivo = 'todos'; // 'todos' | 'favoritos' | 'realizados'
 
+    let cambiandoAModalPago = false;
+
     document.addEventListener('DOMContentLoaded', async () => {
       cargarSesionUsuarioGuardada();
 
@@ -730,6 +826,20 @@
 
       await cargarCatalogoCursos();
       await cargarListaBancos();
+
+      // Verificar si hay llamada directa a curso por parámetro GET (?curso= o ?id=)
+      verificarCursoParamUrl();
+
+      // Limpiar parámetro GET de la URL al cerrar el modal de detalle
+      const modalDetalleEl = document.getElementById('modalDetalleCurso');
+      if (modalDetalleEl) {
+        modalDetalleEl.addEventListener('hidden.bs.modal', () => {
+          if (!cambiandoAModalPago) {
+            limpiarParametroGetUrl();
+            document.title = 'Cursos, Talleres y Diplomados - UPTPC Extensión Universitaria';
+          }
+        });
+      }
     });
 
     // ============================================================
@@ -1489,9 +1599,14 @@
                   <button class="btn btn-primary w-100 fw-bold py-2 shadow-sm" onclick="abrirModalPagoCurso('${c.id}')">
                     <i class="fa-solid fa-cart-shopping me-2"></i>INSCRIBIRSE / PAGAR CURSO
                   </button>
-                  <button class="btn btn-outline-secondary btn-sm" onclick="abrirModalDetalleCurso('${c.id}')">
-                    <i class="fa-solid fa-circle-info me-1"></i>Ver Información Completa
-                  </button>
+                  <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary btn-sm flex-grow-1" onclick="abrirModalDetalleCurso('${c.id}')">
+                      <i class="fa-solid fa-circle-info me-1"></i>Ver Detalles
+                    </button>
+                    <button class="btn btn-outline-success btn-sm fw-bold px-3" onclick="compartirCursoWhatsAppPorId('${c.id}', event)" title="Compartir vía WhatsApp">
+                      <i class="fa-brands fa-whatsapp fs-6 me-1"></i>WhatsApp
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1525,6 +1640,13 @@
       document.getElementById('modalDetallePrecioForUsd').textContent = `($${parseFloat(c.valor_foraneo || 0).toFixed(2)} USD)`;
 
       actualizarBotonFavoritoModalDetalle();
+      actualizarMetatagsCurso(c);
+
+      // Actualizar URL con el parámetro ?curso=id sin recargar
+      try {
+        const newUrl = `${window.location.origin}${window.location.pathname}?curso=${encodeURIComponent(c.id)}${window.location.hash}`;
+        window.history.replaceState({ cursoId: c.id }, c.taller, newUrl);
+      } catch (e) {}
 
       const modalEl = document.getElementById('modalDetalleCurso');
       bootstrap.Modal.getOrCreateInstance(modalEl).show();
@@ -1556,6 +1678,7 @@
 
     function inscribirseDesdeModalDetalle() {
       if (!cursoSeleccionadoDetalle) return;
+      cambiandoAModalPago = true;
       const cursoId = cursoSeleccionadoDetalle.id;
       const modalDetalleEl = document.getElementById('modalDetalleCurso');
       const modalDetalleInst = bootstrap.Modal.getInstance(modalDetalleEl);
@@ -1563,6 +1686,7 @@
 
       setTimeout(() => {
         abrirModalPagoCurso(cursoId);
+        cambiandoAModalPago = false;
       }, 350);
     }
 
@@ -1572,8 +1696,233 @@
       if (!toastEl || !toastMsg) return;
 
       toastMsg.innerHTML = htmlMsg;
-      const toast = bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 3000 });
+      const toast = bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 3500 });
       toast.show();
+    }
+
+    // ============================================================
+    // GESTIÓN DE ENLACES GET Y COMPARTIR CURSOS POR WHATSAPP
+    // ============================================================
+    function verificarCursoParamUrl() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const cursoParam = urlParams.get('curso') || urlParams.get('id') || urlParams.get('c') || urlParams.get('taller');
+
+      if (!cursoParam) return;
+
+      const cleanParam = decodeURIComponent(cursoParam).trim();
+      if (!cleanParam) {
+        limpiarParametroGetUrl();
+        return;
+      }
+
+      // Buscar por ID exacto primero
+      let encontrado = listaCursosCache.find(c => String(c.id).trim() === cleanParam);
+
+      // Si no fue encontrado por ID, buscar por coincidencia en nombre del taller
+      if (!encontrado) {
+        const normParam = cleanParam.toLowerCase().replace(/[-_]/g, ' ').trim();
+        encontrado = listaCursosCache.find(c => {
+          const normTaller = String(c.taller || '').toLowerCase().trim();
+          return normTaller === normParam || normTaller.includes(normParam);
+        });
+      }
+
+      if (encontrado) {
+        abrirModalDetalleCurso(encontrado.id);
+      } else {
+        // El curso no existe: mostrar la web cursos.html eliminando el GET
+        limpiarParametroGetUrl();
+        mostrarToastNotificacion('<i class="fa-solid fa-circle-exclamation me-1 text-warning"></i> El curso solicitado no se encuentra disponible en la oferta actual.', 'warning');
+      }
+    }
+
+    function limpiarParametroGetUrl() {
+      try {
+        const cleanUrl = window.location.origin + window.location.pathname + window.location.hash;
+        window.history.replaceState({}, document.title, cleanUrl);
+      } catch (e) {
+        console.warn('Error limpiando URL:', e);
+      }
+    }
+
+    function actualizarMetatagsCurso(curso) {
+      if (!curso) return;
+      document.title = `${curso.taller} - UPTPC Extensión Universitaria`;
+
+      const metaDesc = document.getElementById('metaDescription');
+      if (metaDesc) {
+        metaDesc.setAttribute('content', (curso.descripcion || curso.taller).substring(0, 160));
+      }
+
+      const ogTitle = document.getElementById('ogTitle');
+      if (ogTitle) ogTitle.setAttribute('content', `${curso.taller} - UPTPC`);
+
+      const ogDesc = document.getElementById('ogDescription');
+      if (ogDesc) ogDesc.setAttribute('content', (curso.descripcion || curso.taller).substring(0, 200));
+
+      const ogUrl = document.getElementById('ogUrl');
+      if (ogUrl) ogUrl.setAttribute('content', `https://certificados.uptpc.edu.ve/cursos.html?curso=${encodeURIComponent(curso.id)}`);
+
+      if (curso.flayer) {
+        const ogImg = document.getElementById('ogImage');
+        const ogImgSec = document.getElementById('ogImageSecure');
+        const twImg = document.getElementById('twitterImage');
+        if (ogImg) ogImg.setAttribute('content', curso.flayer);
+        if (ogImgSec) ogImgSec.setAttribute('content', curso.flayer);
+        if (twImg) twImg.setAttribute('content', curso.flayer);
+      }
+    }
+
+    function compartirCursoActualWhatsApp() {
+      if (!cursoSeleccionadoDetalle) return;
+      compartirCursoWhatsApp(cursoSeleccionadoDetalle);
+    }
+
+    function compartirCursoWhatsAppPorId(cursoId, event) {
+      if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+      }
+      const c = listaCursosCache.find(x => String(x.id) === String(cursoId));
+      if (c) compartirCursoWhatsApp(c);
+    }
+
+    function compartirCursoWhatsApp(curso) {
+      if (!curso) return;
+      const urlCurso = `https://certificados.uptpc.edu.ve/cursos.html?curso=${encodeURIComponent(curso.id)}`;
+      const valEstBs = (parseFloat(curso.valor_estudiante || 0) * tasaDolar).toLocaleString('es-VE', { minimumFractionDigits: 2 });
+      const valForBs = (parseFloat(curso.valor_foraneo || 0) * tasaDolar).toLocaleString('es-VE', { minimumFractionDigits: 2 });
+
+      const mensaje = `🎓 *OFERTA ACADÉMICA UPTPC*\n\n` +
+        `Te invito a participar en el siguiente taller:\n` +
+        `📌 *${curso.taller}*\n\n` +
+        `💰 *Inversión:* \n` +
+        `• Estudiante UPTPC: ${valEstBs} Bs. ($${parseFloat(curso.valor_estudiante || 0).toFixed(2)} USD)\n` +
+        `• Público / Foráneo: ${valForBs} Bs. ($${parseFloat(curso.valor_foraneo || 0).toFixed(2)} USD)\n\n` +
+        `🔗 *Ver detalles e inscribirse aquí:*\n${urlCurso}`;
+
+      const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(mensaje)}`;
+      window.open(waUrl, '_blank');
+    }
+
+    function copiarEnlaceCursoActual() {
+      if (!cursoSeleccionadoDetalle) return;
+      const urlCurso = `https://certificados.uptpc.edu.ve/cursos.html?curso=${encodeURIComponent(cursoSeleccionadoDetalle.id)}`;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(urlCurso).then(() => {
+          mostrarToastNotificacion('<i class="fa-solid fa-copy me-1"></i> ¡Enlace directo del taller copiado al portapapeles!', 'success');
+        }).catch(() => {
+          prompt('Copie el siguiente enlace del curso:', urlCurso);
+        });
+      } else {
+        prompt('Copie el siguiente enlace del curso:', urlCurso);
+      }
+    }
+
+    // ============================================================
+    // GESTIÓN DE ACTUALIZACIÓN DE TELÉFONO OBLIGATORIO
+    // ============================================================
+    function usuarioTieneTelefonoValido(user) {
+      if (!user) return false;
+      const tel = String(user.telefono || '').trim();
+      if (!tel || tel === '-' || tel.toLowerCase() === 'sin registrar' || tel.toLowerCase() === 'null' || tel.toLowerCase() === 'undefined') {
+        return false;
+      }
+      const digitos = tel.replace(/\D/g, '');
+      return digitos.length >= 7;
+    }
+
+    let usuarioPendienteActualizarTelefono = null;
+
+    function abrirModalActualizarTelefono(user = null) {
+      const u = user || usuarioIdentificadoActual || sesionUsuarioActual;
+      if (!u) {
+        alert('Debe identificarse primero con su cédula.');
+        return;
+      }
+
+      usuarioPendienteActualizarTelefono = u;
+
+      document.getElementById('lblModalActTelNombre').textContent = u.nombre_completo || 'Usuario';
+      document.getElementById('lblModalActTelCedula').textContent = `C.I.: ${u.cedula}`;
+      const inputTel = document.getElementById('inputActTelefonoModal');
+      if (inputTel) {
+        inputTel.value = (u.telefono && u.telefono.toLowerCase() !== 'sin registrar' && u.telefono !== '-') ? u.telefono : '';
+      }
+
+      // Ocultar modal de pago temporalmente si está abierto
+      const modalPagoEl = document.getElementById('modalPagoCurso');
+      const instPago = bootstrap.Modal.getInstance(modalPagoEl);
+      if (instPago) {
+        modalPagoEl.dataset.wasOpen = 'true';
+        instPago.hide();
+      }
+
+      const modalTelEl = document.getElementById('modalActualizarTelefono');
+      bootstrap.Modal.getOrCreateInstance(modalTelEl).show();
+      setTimeout(() => { if (inputTel) inputTel.focus(); }, 350);
+    }
+
+    async function guardarTelefonoUsuarioModal(e) {
+      e.preventDefault();
+      const input = document.getElementById('inputActTelefonoModal');
+      const btn = document.getElementById('btnGuardarTelefonoModal');
+      const rawTelefono = input ? input.value.trim() : '';
+
+      if (!rawTelefono) {
+        alert('Por favor ingrese su número de teléfono.');
+        return;
+      }
+
+      const digitos = rawTelefono.replace(/\D/g, '');
+      if (digitos.length < 7) {
+        alert('El número telefónico ingresado parece incompleto. Por favor verifique.');
+        return;
+      }
+
+      const u = usuarioPendienteActualizarTelefono || usuarioIdentificadoActual || sesionUsuarioActual;
+      if (!u || !u.id) {
+        alert('No se pudo identificar el usuario a actualizar.');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Actualizando teléfono...';
+
+      try {
+        const res = await window.api.update('usuarios', u.id, { telefono: rawTelefono });
+        if (res && res.status === 'success') {
+          // Actualizar en memoria
+          u.telefono = rawTelefono;
+          if (usuarioIdentificadoActual && String(usuarioIdentificadoActual.id) === String(u.id)) {
+            usuarioIdentificadoActual.telefono = rawTelefono;
+          }
+          if (sesionUsuarioActual && String(sesionUsuarioActual.id) === String(u.id)) {
+            sesionUsuarioActual.telefono = rawTelefono;
+            localStorage.setItem('uptpc_usuario_sesion', JSON.stringify(sesionUsuarioActual));
+          }
+
+          // Cerrar modal de teléfono
+          const modalTelEl = document.getElementById('modalActualizarTelefono');
+          const instTel = bootstrap.Modal.getInstance(modalTelEl);
+          if (instTel) instTel.hide();
+
+          mostrarToastNotificacion('📱 Número de teléfono actualizado exitosamente.', 'success');
+
+          // Reabrir modal de pago y activar formulario con datos actualizados
+          const modalPagoEl = document.getElementById('modalPagoCurso');
+          bootstrap.Modal.getOrCreateInstance(modalPagoEl).show();
+          activarFormularioPagoConUsuario(u);
+        } else {
+          alert('Error actualizando número de teléfono: ' + (res?.message || 'Intente nuevamente'));
+        }
+      } catch (err) {
+        console.error('Error actualizando teléfono:', err);
+        alert('Error de conexión al actualizar el teléfono.');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-check me-2"></i>Guardar Teléfono y Continuar';
+      }
     }
 
     // ============================================================
@@ -1636,8 +1985,12 @@
       document.getElementById('inputPagoCursoId').value = cursoSeleccionadoActual.id;
       document.getElementById('inputPagoFecha').value = new Date().toISOString().split('T')[0];
 
-      // Si el usuario ya está identificado previamente (sesionUsuarioActual), activar directamente el paso de pago
+      // Si el usuario ya está identificado previamente (sesionUsuarioActual)
       if (sesionUsuarioActual) {
+        if (!usuarioTieneTelefonoValido(sesionUsuarioActual)) {
+          abrirModalActualizarTelefono(sesionUsuarioActual);
+          return;
+        }
         activarFormularioPagoConUsuario(sesionUsuarioActual);
       } else {
         resetearIdentificacionPago();
@@ -1676,7 +2029,11 @@
 
         if (found) {
           establecerSesionUsuario(found);
-          activarFormularioPagoConUsuario(found);
+          if (!usuarioTieneTelefonoValido(found)) {
+            abrirModalActualizarTelefono(found);
+          } else {
+            activarFormularioPagoConUsuario(found);
+          }
         } else {
           // Mostrar paso de registro rápido inline
           document.getElementById('pasoIdentificacionUsuario').style.display = 'none';
@@ -1720,6 +2077,11 @@
     }
 
     function activarFormularioPagoConUsuario(user) {
+      if (!usuarioTieneTelefonoValido(user)) {
+        abrirModalActualizarTelefono(user);
+        return;
+      }
+
       usuarioIdentificadoActual = user;
       document.getElementById('pasoIdentificacionUsuario').style.display = 'none';
       document.getElementById('pasoRegistroInlineUsuario').style.display = 'none';
@@ -1727,7 +2089,12 @@
 
       document.getElementById('inputPagoUsuarioId').value = user.id;
       document.getElementById('lblPagoUsuarioIdentificado').textContent = user.nombre_completo;
-      document.getElementById('lblPagoUsuarioCedula').textContent = `C.I.: ${user.cedula} | Teléfono: ${user.telefono || 'Sin registrar'}`;
+      document.getElementById('lblPagoUsuarioCedula').innerHTML = `
+        C.I.: ${window.utils.escapeHtml(user.cedula)} | Teléfono: <strong class="text-dark">${window.utils.escapeHtml(user.telefono)}</strong>
+        <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 ms-2" onclick="abrirModalActualizarTelefono()" title="Actualizar o cambiar número telefónico">
+          <i class="fa-solid fa-pen-to-square me-1"></i>Cambiar
+        </button>
+      `;
 
       calcularMontoPagoSegunTipo();
     }
@@ -1752,6 +2119,12 @@
 
       if (!usuarioIdentificadoActual || !cursoSeleccionadoActual) {
         alert('Identificación incompleta.');
+        return;
+      }
+
+      if (!usuarioTieneTelefonoValido(usuarioIdentificadoActual)) {
+        alert('Para procesar su pago es obligatorio contar con su número de teléfono celular / WhatsApp.');
+        abrirModalActualizarTelefono(usuarioIdentificadoActual);
         return;
       }
 

@@ -28,6 +28,19 @@
 
     initEventListeners();
     await Promise.all([cargarTablaOfertas(), cargarTablaPagos()]);
+
+    // Si el usuario autenticado es ADMINISTRADORA o ADMINISTRACION, enfocar automáticamente la verificación de pagos
+    if (window.authAdmin && window.authAdmin.isAdministradora && window.authAdmin.isAdministradora()) {
+      const tabTalleresLi = document.getElementById('tab-talleres-tab')?.closest('.nav-item');
+      const btnNuevaOferta = document.getElementById('btnNuevaOfertaCurso');
+      if (tabTalleresLi) tabTalleresLi.style.display = 'none';
+      if (btnNuevaOferta) btnNuevaOferta.style.display = 'none';
+
+      const tabPagosBtn = document.getElementById('tab-pagos-tab');
+      if (tabPagosBtn && typeof bootstrap !== 'undefined') {
+        bootstrap.Tab.getOrCreateInstance(tabPagosBtn).show();
+      }
+    }
   }
 
   // ═════════════════════════════════════════════════════════════════
@@ -252,7 +265,7 @@
           <td class="align-middle">
             <strong class="text-primary">${window.utils.escapeHtml(usr.nombre_completo || 'Participante Desconocido')}</strong>
             <br><small class="text-muted"><i class="fa-solid fa-id-card me-1"></i>${window.utils.escapeHtml(usr.cedula || 'N/A')}</small>
-            ${usr.telefono ? `<br><small class="text-muted"><i class="fa-solid fa-phone me-1"></i>${window.utils.escapeHtml(usr.telefono)}</small>` : ''}
+            ${usr.telefono ? `<br><small><a href="https://wa.me/${usr.telefono.replace(/[^0-9]/g, '')}" target="_blank" class="text-success text-decoration-none fw-semibold" title="Contactar vía WhatsApp"><i class="fa-brands fa-whatsapp me-1"></i>${window.utils.escapeHtml(usr.telefono)}</a></small>` : '<br><small class="text-warning"><i class="fa-solid fa-phone-slash me-1"></i>Sin registrar</small>'}
           </td>
           <td class="align-middle font-weight-bold text-wrap small" style="max-width: 200px;">${window.utils.escapeHtml(ofr.taller || 'Taller No Especificado')}</td>
           <td class="align-middle small">${window.utils.escapeHtml(p.banco_origen || 'N/A')}</td>
