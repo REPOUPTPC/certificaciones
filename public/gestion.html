@@ -2524,12 +2524,25 @@ if (!empty($data['cursos'])) {
             <input type="hidden" id="inputPagoCaptureUrl">
 
             <div class="row g-3 mb-3">
-              <div class="col-md-6">
+              <div class="col-md-6" id="wrapperBuscadorUsuarioPago">
                 <label class="form-label fw-bold">Usuario / Participante: <span class="text-danger">*</span></label>
+                <div class="position-relative mb-1">
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light text-success"><i class="fa-solid fa-magnifying-glass"></i></span>
+                    <input type="text" class="form-control" id="inputBuscarUsuarioPagoManual" placeholder="Buscar por nombre, apellido o cédula..." autocomplete="off">
+                    <button class="btn btn-outline-secondary" type="button" id="btnLimpiarBusquedaUsuarioPago" title="Limpiar búsqueda" style="display: none;">
+                      <i class="fa-solid fa-xmark"></i>
+                    </button>
+                  </div>
+                  <div id="dropdownSugerenciasUsuarioPago" class="list-group shadow border position-absolute w-100 bg-white" style="z-index: 1060; max-height: 220px; overflow-y: auto; display: none; top: 100%; left: 0;"></div>
+                </div>
                 <select class="form-select" id="inputPagoUsuarioId" required>
                   <option value="">-- Seleccionar Participante --</option>
                 </select>
-                <small class="text-muted">Si no aparece, regístrelo previamente en la sección de Usuarios.</small>
+                <div class="d-flex justify-content-between align-items-center mt-1">
+                  <small class="text-muted">Si no aparece, regístrelo previamente en Usuarios.</small>
+                  <small class="text-success fw-semibold" id="lblContadorUsuariosPago"></small>
+                </div>
               </div>
               <div class="col-md-6">
                 <label class="form-label fw-bold">Curso / Taller Ofertado: <span class="text-danger">*</span></label>

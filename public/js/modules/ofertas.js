@@ -362,10 +362,135 @@
   }
 
   // ═════════════════════════════════════════════════════════════════
-  // MODAL CREAR / EDITAR PAGO MANUAL (CRUD)
+  // MODAL CREAR / EDITAR PAGO MANUAL (CRUD) Y BUSCADOR DE USUARIOS
   // ═════════════════════════════════════════════════════════════════
 
-  function abrirModalPago(pagoId = null) {
+  function normalizarTextoBusquedaUsuario(str) {
+    return String(str || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase()
+      .trim();
+  }
+
+  function obtenerUsuariosFiltradosPago(termino = '') {
+    const queryNorm = normalizarTextoBusquedaUsuario(termino);
+    if (!queryNorm) return cachedUsuarios;
+
+    const tokens = queryNorm.split(/\s+/).filter(Boolean);
+    return cachedUsuarios.filter(u => {
+      const cedulaNorm = normalizarTextoBusquedaUsuario(u.cedula);
+      const cedulaSinGuion = cedulaNorm.replace(/[^A-Z0-9]/g, '');
+      const soloDigitos = cedulaNorm.replace(/\D/g, '');
+      const nombreNorm = normalizarTextoBusquedaUsuario(u.nombre_completo);
+      const textoIndexado = `${cedulaNorm} ${cedulaSinGuion} ${soloDigitos} ${nombreNorm}`;
+
+      return tokens.every(token => {
+        const tokenLimpio = token.replace(/[.-]/g, '');
+        return textoIndexado.includes(token) || (tokenLimpio && textoIndexado.includes(tokenLimpio));
+      });
+    });
+  }
+
+  function filtrarUsuariosPagoManual(termino = '', mostrarDropdown = false) {
+    const selUsuario = document.getElementById('inputPagoUsuarioId');
+    const dropdown = document.getElementById('dropdownSugerenciasUsuarioPago');
+    const btnLimpiar = document.getElementById('btnLimpiarBusquedaUsuarioPago');
+    const lblContador = document.getElementById('lblContadorUsuariosPago');
+
+    const queryTrim = String(termino || '').trim();
+    if (btnLimpiar) {
+      btnLimpiar.style.display = queryTrim.length > 0 ? 'inline-block' : 'none';
+    }
+
+    const filtrados = obtenerUsuariosFiltradosPago(queryTrim);
+    const valorPrevio = selUsuario ? selUsuario.value : '';
+
+    if (selUsuario) {
+      if (filtrados.length === 0) {
+        selUsuario.innerHTML = `<option value="">-- Sin coincidencias para "${window.utils.escapeHtml(queryTrim)}" --</option>`;
+      } else {
+        const placeholderText = queryTrim.length > 0
+          ? `-- Resultados encontrados (${filtrados.length}) --`
+          : `-- Seleccionar Participante (${filtrados.length}) --`;
+
+        selUsuario.innerHTML = `<option value="">${placeholderText}</option>` +
+          filtrados.map(u => `<option value="${u.id}">${window.utils.escapeHtml(u.cedula)} - ${window.utils.escapeHtml(u.nombre_completo)}</option>`).join('');
+
+        if (filtrados.length === 1 && queryTrim.length > 0) {
+          selUsuario.value = String(filtrados[0].id);
+        } else if (valorPrevio && filtrados.some(u => String(u.id) === String(valorPrevio))) {
+          selUsuario.value = String(valorPrevio);
+        }
+      }
+    }
+
+    if (lblContador) {
+      if (queryTrim.length > 0) {
+        lblContador.innerHTML = `${filtrados.length} de ${cachedUsuarios.length} encontrados`;
+      } else {
+        lblContador.innerHTML = `${cachedUsuarios.length} participantes`;
+      }
+    }
+
+    if (dropdown) {
+      if (mostrarDropdown && queryTrim.length > 0) {
+        if (filtrados.length === 0) {
+          dropdown.innerHTML = `
+            <div class="list-group-item text-muted small text-center py-3">
+              <i class="fa-solid fa-magnifying-glass me-1"></i>No se encontraron participantes con "<strong>${window.utils.escapeHtml(queryTrim)}</strong>"
+            </div>
+          `;
+        } else {
+          dropdown.innerHTML = filtrados.slice(0, 40).map(u => `
+            <button type="button" class="list-group-item list-group-item-action py-2 px-3 d-flex justify-content-between align-items-center item-sugerencia-usuario-pago" data-user-id="${window.utils.escapeHtml(u.id)}">
+              <div class="text-truncate me-2">
+                <i class="fa-solid fa-user-check text-success me-2 small"></i>
+                <span class="fw-semibold text-dark small">${window.utils.escapeHtml(u.nombre_completo)}</span>
+              </div>
+              <span class="badge bg-light text-dark border font-monospace">${window.utils.escapeHtml(u.cedula)}</span>
+            </button>
+          `).join('');
+        }
+        dropdown.style.display = 'block';
+      } else {
+        dropdown.style.display = 'none';
+      }
+    }
+  }
+
+  function seleccionarUsuarioPagoManual(userId) {
+    const u = cachedUsuarios.find(x => String(x.id) === String(userId));
+    if (!u) return;
+
+    const selUsuario = document.getElementById('inputPagoUsuarioId');
+    const inputBuscar = document.getElementById('inputBuscarUsuarioPagoManual');
+    const dropdown = document.getElementById('dropdownSugerenciasUsuarioPago');
+    const btnLimpiar = document.getElementById('btnLimpiarBusquedaUsuarioPago');
+    const lblContador = document.getElementById('lblContadorUsuariosPago');
+
+    // Poblar lista completa garantizando que el usuario quede seleccionado en el desplegable
+    if (selUsuario) {
+      selUsuario.innerHTML = `<option value="">-- Seleccionar Participante (${cachedUsuarios.length}) --</option>` +
+        cachedUsuarios.map(usr => `<option value="${usr.id}">${window.utils.escapeHtml(usr.cedula)} - ${window.utils.escapeHtml(usr.nombre_completo)}</option>`).join('');
+      selUsuario.value = String(u.id);
+    }
+
+    if (inputBuscar) {
+      inputBuscar.value = `${u.cedula} - ${u.nombre_completo}`;
+    }
+    if (btnLimpiar) {
+      btnLimpiar.style.display = 'inline-block';
+    }
+    if (dropdown) {
+      dropdown.style.display = 'none';
+    }
+    if (lblContador) {
+      lblContador.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i>Participante seleccionado';
+    }
+  }
+
+  async function abrirModalPago(pagoId = null) {
     if (window.authAdmin && window.authAdmin.isAuditor()) {
       window.utils.showToast('Acceso restringido: Perfil AUDITOR es de solo lectura.', 'warning');
       return;
@@ -378,12 +503,24 @@
 
     form.reset();
 
-    // Poblar usuarios
-    const selUsuario = document.getElementById('inputPagoUsuarioId');
-    if (selUsuario) {
-      selUsuario.innerHTML = '<option value="">-- Seleccionar Participante --</option>' +
-        cachedUsuarios.map(u => `<option value="${u.id}">${window.utils.escapeHtml(u.cedula)} - ${window.utils.escapeHtml(u.nombre_completo)}</option>`).join('');
+    // Asegurar que la lista de usuarios esté cargada si aún estaba vacía
+    if (!Array.isArray(cachedUsuarios) || cachedUsuarios.length === 0) {
+      try {
+        const resU = await window.api.getAll('usuarios');
+        if (resU && resU.status === 'success' && Array.isArray(resU.data)) {
+          cachedUsuarios = resU.data;
+        }
+      } catch (e) {
+        console.warn('Error cargando usuarios para modal de pago:', e);
+      }
     }
+
+    // Reiniciar buscador y poblar usuarios
+    const inputBuscarUsuario = document.getElementById('inputBuscarUsuarioPagoManual');
+    if (inputBuscarUsuario) inputBuscarUsuario.value = '';
+    filtrarUsuariosPagoManual('', false);
+
+    const selUsuario = document.getElementById('inputPagoUsuarioId');
 
     // Poblar cursos ofertados
     const selCurso = document.getElementById('inputPagoCursoOfertadoId');
@@ -409,7 +546,11 @@
       if (titleEl) titleEl.innerHTML = '<i class="fa-solid fa-pen-to-square me-2"></i>Editar Declaración de Pago';
       document.getElementById('inputPagoId').value = p.id;
       document.getElementById('inputPagoCaptureUrl').value = p.capture || '';
-      if (selUsuario) selUsuario.value = p.id_usuario || '';
+      if (p.id_usuario) {
+        seleccionarUsuarioPagoManual(p.id_usuario);
+      } else if (selUsuario) {
+        selUsuario.value = '';
+      }
       if (selCurso) selCurso.value = p.id_curso_ofertado || '';
       document.getElementById('inputPagoBancoOrigen').value = p.banco_origen || 'Banco de Venezuela (0102)';
       document.getElementById('inputPagoMonto').value = p.monto || '';
@@ -643,6 +784,88 @@
     if (formPago && !formPago.dataset.bound) {
       formPago.dataset.bound = 'true';
       formPago.addEventListener('submit', guardarPagoManual);
+    }
+
+    // Buscador interactivo de Usuario / Participante en Modal Pago Manual
+    const inputBuscarUsuarioPago = document.getElementById('inputBuscarUsuarioPagoManual');
+    if (inputBuscarUsuarioPago && !inputBuscarUsuarioPago.dataset.bound) {
+      inputBuscarUsuarioPago.dataset.bound = 'true';
+      inputBuscarUsuarioPago.addEventListener('input', (e) => {
+        filtrarUsuariosPagoManual(e.target.value, true);
+      });
+      inputBuscarUsuarioPago.addEventListener('focus', (e) => {
+        if (e.target.value.trim().length > 0) {
+          filtrarUsuariosPagoManual(e.target.value, true);
+        }
+      });
+      inputBuscarUsuarioPago.addEventListener('keydown', (e) => {
+        const dropdown = document.getElementById('dropdownSugerenciasUsuarioPago');
+        if (e.key === 'Escape' && dropdown) {
+          dropdown.style.display = 'none';
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          const filtrados = obtenerUsuariosFiltradosPago(e.target.value);
+          if (filtrados.length > 0) {
+            seleccionarUsuarioPagoManual(filtrados[0].id);
+          }
+        }
+      });
+    }
+
+    const btnLimpiarUsuarioPago = document.getElementById('btnLimpiarBusquedaUsuarioPago');
+    if (btnLimpiarUsuarioPago && !btnLimpiarUsuarioPago.dataset.bound) {
+      btnLimpiarUsuarioPago.dataset.bound = 'true';
+      btnLimpiarUsuarioPago.addEventListener('click', () => {
+        const inp = document.getElementById('inputBuscarUsuarioPagoManual');
+        if (inp) {
+          inp.value = '';
+          inp.focus();
+        }
+        filtrarUsuariosPagoManual('', false);
+        const sel = document.getElementById('inputPagoUsuarioId');
+        if (sel) sel.value = '';
+      });
+    }
+
+    const dropdownSugerenciasPago = document.getElementById('dropdownSugerenciasUsuarioPago');
+    if (dropdownSugerenciasPago && !dropdownSugerenciasPago.dataset.bound) {
+      dropdownSugerenciasPago.dataset.bound = 'true';
+      dropdownSugerenciasPago.addEventListener('click', (e) => {
+        const btnItem = e.target.closest('.item-sugerencia-usuario-pago');
+        if (btnItem && btnItem.dataset.userId) {
+          seleccionarUsuarioPagoManual(btnItem.dataset.userId);
+        }
+      });
+    }
+
+    const selUsuarioPago = document.getElementById('inputPagoUsuarioId');
+    if (selUsuarioPago && !selUsuarioPago.dataset.bound) {
+      selUsuarioPago.dataset.bound = 'true';
+      selUsuarioPago.addEventListener('change', (e) => {
+        const dropdown = document.getElementById('dropdownSugerenciasUsuarioPago');
+        if (dropdown) dropdown.style.display = 'none';
+        const lblContador = document.getElementById('lblContadorUsuariosPago');
+        if (e.target.value) {
+          const usr = cachedUsuarios.find(x => String(x.id) === String(e.target.value));
+          const inp = document.getElementById('inputBuscarUsuarioPagoManual');
+          const btnLimpiar = document.getElementById('btnLimpiarBusquedaUsuarioPago');
+          if (usr && inp) inp.value = `${usr.cedula} - ${usr.nombre_completo}`;
+          if (btnLimpiar) btnLimpiar.style.display = 'inline-block';
+          if (lblContador) lblContador.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i>Participante seleccionado';
+        }
+      });
+    }
+
+    // Cerrar lista flotante de sugerencias al hacer clic fuera
+    if (!document.body.dataset.boundCerrarSugerenciasPago) {
+      document.body.dataset.boundCerrarSugerenciasPago = 'true';
+      document.addEventListener('click', (e) => {
+        const wrapper = document.getElementById('wrapperBuscadorUsuarioPago');
+        const dropdown = document.getElementById('dropdownSugerenciasUsuarioPago');
+        if (dropdown && wrapper && !wrapper.contains(e.target)) {
+          dropdown.style.display = 'none';
+        }
+      });
     }
 
     const fileInputCapture = document.getElementById('inputPagoCaptureFile');
