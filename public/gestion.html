@@ -448,6 +448,9 @@
                 <button class="btn btn-outline-secondary" id="btnRefrescarPagos" title="Refrescar pagos">
                   <i class="fa-solid fa-arrows-rotate me-1"></i> Actualizar
                 </button>
+                <button class="btn btn-primary fw-bold" id="btnCargaMasivaPagos" title="Subir pagos masivos desde archivo CSV o texto">
+                  <i class="fa-solid fa-file-csv me-1"></i> Subir Datos Masivos (CSV)
+                </button>
                 <button class="btn btn-success" id="btnNuevoPagoManual">
                   <i class="fa-solid fa-plus-circle me-1"></i> Registrar Pago Manual
                 </button>
@@ -1297,6 +1300,286 @@
           <div class="row g-3" id="contenedorPresetsConfiguracion">
             <div class="col-12 text-center py-4 text-muted">
               <div class="spinner-border text-primary spinner-border-sm me-2"></div> Cargando presets oficiales...
+            </div>
+          </div>
+        </div>
+
+        <!-- Bloque 4: Plataforma de Integración Externa & API KEY -->
+        <div class="card border p-4 mt-4 shadow-sm bg-white rounded-3">
+          <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 border-bottom pb-3">
+            <div>
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <h5 class="fw-bold mb-0 text-primary">
+                  <i class="fa-solid fa-key me-2 text-warning"></i>Plataforma de Integración Externa & API KEY
+                </h5>
+                <span class="badge bg-success" id="badgeEstadoApiKey">
+                  <i class="fa-solid fa-circle-check me-1"></i>ACTIVA
+                </span>
+              </div>
+              <small class="text-muted">
+                Credencial de autenticación segura para inyectar participantes y pagos desde sistemas externos, pasarelas de pago o bots. 
+                Los pagos inyectados mediante <strong>Cédula</strong> ingresarán en estado <strong>PENDIENTE</strong> para su respectiva validación y aprobación administrativa.
+              </small>
+            </div>
+            <div class="form-check form-switch fs-5 mb-0">
+              <input class="form-check-input" type="checkbox" id="switchApiKeyHabilitada" checked>
+              <label class="form-check-label fs-6 fw-bold" for="switchApiKeyHabilitada">
+                Habilitar API
+              </label>
+            </div>
+          </div>
+
+          <div class="row g-4">
+            <!-- Columna Izquierda: Credencial API KEY y Estadísticas -->
+            <div class="col-lg-6">
+              <div class="p-3 bg-light rounded-3 border h-100">
+                <label class="form-label fw-bold small text-dark d-flex justify-content-between">
+                  <span><i class="fa-solid fa-shield-halved me-1 text-primary"></i>API Key Secreta (Token de Acceso):</span>
+                  <span class="text-muted font-monospace small">Header: <code>x-api-key</code></span>
+                </label>
+                <div class="input-group mb-2">
+                  <input type="password" class="form-control font-monospace" id="inputApiKeyToken" readonly value="uptpc_live_••••••••••••••••••••••••••••••••">
+                  <button class="btn btn-outline-secondary" type="button" id="btnToggleVerApiKey" title="Mostrar u Ocultar API Key">
+                    <i class="fa-solid fa-eye" id="iconVerApiKey"></i>
+                  </button>
+                  <button class="btn btn-outline-primary" type="button" id="btnCopiarApiKey" title="Copiar API Key al portapapeles">
+                    <i class="fa-solid fa-copy me-1"></i>Copiar
+                  </button>
+                  <button class="btn btn-outline-danger" type="button" id="btnRegenerarApiKey" title="Regenerar nueva clave (invalida la anterior)">
+                    <i class="fa-solid fa-arrows-rotate me-1"></i>Regenerar
+                  </button>
+                </div>
+                <small class="text-muted d-block mb-3">
+                  <i class="fa-solid fa-triangle-exclamation text-warning me-1"></i>Mantenga esta clave en privado. Permite la inyección directa de pagos en la base de datos.
+                </small>
+
+                <div class="row g-2 pt-2 border-top">
+                  <div class="col-sm-6">
+                    <div class="bg-white p-2 rounded border text-center">
+                      <small class="text-muted d-block fw-semibold">Pagos Inyectados vía API</small>
+                      <span class="fs-5 fw-bold text-primary" id="lblApiKeyTotalInyectados">0</span>
+                    </div>
+                  </div>
+                  <div class="col-sm-6">
+                    <div class="bg-white p-2 rounded border text-center">
+                      <small class="text-muted d-block fw-semibold">Última Inyección Recibida</small>
+                      <span class="small fw-bold text-dark font-monospace d-block text-truncate" id="lblApiKeyUltimaPeticion">Sin registros</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Endpoint URL -->
+                <div class="mt-3">
+                  <label class="form-label fw-bold small text-dark">URL del Endpoint Oficial:</label>
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-dark text-white font-monospace">POST</span>
+                    <input type="text" class="form-control font-monospace small" id="inputEndpointApiUrl" readonly value="https://certificados.uptpc.edu.ve/api?action=inyectarPago">
+                    <button class="btn btn-outline-secondary" type="button" id="btnCopiarEndpointApi" title="Copiar URL">
+                      <i class="fa-solid fa-copy"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Columna Derecha: Documentación de Integración y Formato JSON -->
+            <div class="col-lg-6">
+              <div class="p-3 bg-light rounded-3 border h-100">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h6 class="fw-bold mb-0 text-dark">
+                    <i class="fa-solid fa-code me-1 text-primary"></i>Especificación de Carga (Payload JSON)
+                  </h6>
+                  <button class="btn btn-sm btn-outline-dark" type="button" id="btnCopiarCurlEjemplo">
+                    <i class="fa-solid fa-terminal me-1"></i>Copiar cURL
+                  </button>
+                </div>
+
+                <pre class="bg-dark text-light p-3 rounded font-monospace small mb-2" style="max-height: 190px; overflow-y: auto;"><code>{
+  <span class="text-warning">"cedula"</span>: <span class="text-info">"V-12345678"</span>,               <span class="text-muted">// Obligatorio</span>
+  <span class="text-warning">"nombre_completo"</span>: <span class="text-info">"PEDRO PÉREZ"</span>,       <span class="text-muted">// Opcional</span>
+  <span class="text-warning">"id_curso_ofertado"</span>: <span class="text-success">1</span>,                 <span class="text-muted">// Opcional</span>
+  <span class="text-warning">"monto"</span>: <span class="text-success">350.50</span>,                         <span class="text-muted">// Opcional (Bs.)</span>
+  <span class="text-warning">"numero_transferencia"</span>: <span class="text-info">"00984572"</span>,        <span class="text-muted">// Opcional</span>
+  <span class="text-warning">"banco_origen"</span>: <span class="text-info">"Pago Móvil"</span>             <span class="text-muted">// Opcional</span>
+}</code></pre>
+
+                <div class="alert alert-info py-2 px-3 mb-0 small">
+                  <i class="fa-solid fa-circle-info me-1"></i>
+                  <strong>Dato mínimo requerido:</strong> Con enviar únicamente <code>{"cedula": "V-12345678"}</code> el sistema registrará el pago pendiente. Si el participante no existía, se crea de forma automática.
+                </div>
+              </div>
+            </div>
+
+            <!-- Consola Interactiva de Pruebas en Vivo -->
+            <div class="col-12">
+              <div class="border rounded-3 p-3 bg-white">
+                <h6 class="fw-bold text-primary mb-3">
+                  <i class="fa-solid fa-vial-circle-check me-2"></i>Consola de Prueba de Inyección en Vivo
+                </h6>
+                <form id="formTestInyeccionApi">
+                  <div class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                      <label class="form-label small fw-bold">Cédula del Participante: <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control form-control-sm text-uppercase" id="inputTestCedula" placeholder="Ej: V-12345678" required>
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label small fw-bold">Nombre Completo (Opcional):</label>
+                      <input type="text" class="form-control form-control-sm" id="inputTestNombre" placeholder="Ej: JUAN PÉREZ">
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label small fw-bold">Taller / Curso Ofertado:</label>
+                      <select class="form-select form-select-sm" id="selectTestCursoOfertado">
+                        <option value="">-- Curso por Defecto --</option>
+                      </select>
+                    </div>
+                    <div class="col-md-3">
+                      <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold shadow-sm" id="btnEjecutarTestInyeccion">
+                        <i class="fa-solid fa-paper-plane me-1"></i> Probar Inyección
+                      </button>
+                    </div>
+                  </div>
+                </form>
+
+                <div id="contenedorResultadoTestApi" class="mt-3" style="display: none;">
+                  <!-- Respuesta interactiva de la prueba -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bloque 5: API del Sistema: Catálogo y Oferta de Cursos para Sitios Externos -->
+        <div class="card border p-4 mt-4 shadow-sm bg-white rounded-3">
+          <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 border-bottom pb-3">
+            <div>
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <h5 class="fw-bold mb-0 text-primary">
+                  <i class="fa-solid fa-network-wired me-2 text-info"></i>API del Sistema: Catálogo de Cursos Ofertados (Despliegue Externo)
+                </h5>
+                <span class="badge bg-info text-dark">
+                  <i class="fa-solid fa-globe me-1"></i>Para Sitios Externos
+                </span>
+              </div>
+              <small class="text-muted">
+                Dirección URL y especificación técnica para que sitios web externos, landing pages, WordPress o aplicaciones aliadas muestren automáticamente los cursos y talleres ofertados en tiempo real con sus precios (USD y Bolívares oficiales BCV), descripciones y portadas.
+              </small>
+            </div>
+            <button type="button" class="btn btn-outline-primary btn-sm fw-bold" id="btnAbrirJsonCursosNavegador" title="Ver respuesta JSON en vivo en el navegador">
+              <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Abrir JSON en Navegador
+            </button>
+          </div>
+
+          <!-- Dirección Oficial del Endpoint con Secreto -->
+          <div class="mb-4 p-3 bg-light rounded-3 border">
+            <label class="form-label fw-bold small text-dark d-flex justify-content-between align-items-center">
+              <span><i class="fa-solid fa-link me-1 text-primary"></i>Dirección URL del Feed de Cursos (con Secreto incluido):</span>
+              <span class="badge bg-secondary font-monospace">Método: GET</span>
+            </label>
+            <div class="input-group">
+              <span class="input-group-text bg-dark text-white font-monospace small">ENDPOINT</span>
+              <input type="text" class="form-control font-monospace small" id="inputUrlApiCursosExterna" readonly value="https://certificados.uptpc.edu.ve/api?action=getCursosOfertadosApi&api_key=uptpc_live_••••••••">
+              <button class="btn btn-primary" type="button" id="btnCopiarUrlApiCursos" title="Copiar dirección completa">
+                <i class="fa-solid fa-copy me-1"></i> Copiar Dirección API
+              </button>
+            </div>
+            <small class="text-muted mt-2 d-block">
+              <i class="fa-solid fa-circle-check text-success me-1"></i>Esta URL contiene su clave secreta autenticada para permitir peticiones <code>GET</code> directas desde cualquier servidor o navegador web externo mediante CORS.
+            </small>
+          </div>
+
+          <!-- Documentación de Integración y Ejemplos de Código -->
+          <div class="row g-4">
+            <div class="col-lg-7">
+              <h6 class="fw-bold text-dark mb-2">
+                <i class="fa-solid fa-code me-1 text-primary"></i>Ejemplos de Integración para otros Sitios Web:
+              </h6>
+
+              <!-- Pestañas de Lenguajes -->
+              <ul class="nav nav-pills mb-2" id="pillsApiCursosTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link active py-1 px-3 small fw-bold" id="tab-js-api-tab" data-bs-toggle="pill" data-bs-target="#tab-js-api" type="button" role="tab">
+                    <i class="fa-brands fa-js me-1 text-warning"></i>JavaScript (Web / React / Vue)
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link py-1 px-3 small fw-bold" id="tab-php-api-tab" data-bs-toggle="pill" data-bs-target="#tab-php-api" type="button" role="tab">
+                    <i class="fa-brands fa-php me-1 text-info"></i>PHP / WordPress
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link py-1 px-3 small fw-bold" id="tab-curl-api-tab" data-bs-toggle="pill" data-bs-target="#tab-curl-api" type="button" role="tab">
+                    <i class="fa-solid fa-terminal me-1"></i>cURL
+                  </button>
+                </li>
+              </ul>
+
+              <div class="tab-content border rounded p-3 bg-dark text-light font-monospace small" id="pillsApiCursosTabContent" style="min-height: 220px; max-height: 270px; overflow-y: auto;">
+                <!-- Tab JS -->
+                <div class="tab-pane fade show active" id="tab-js-api" role="tabpanel">
+                  <pre class="mb-0 text-light"><code id="codeSnippetJs">// Obtener cursos disponibles desde tu sitio web
+const API_URL = "<span class="text-warning snippet-url-cursos">https://certificados.uptpc.edu.ve/api?action=getCursosOfertadosApi&api_key=TU_SECRETO</span>";
+
+fetch(API_URL)
+  .then(res => res.json())
+  .then(data => {
+    console.log("Cursos disponibles:", data.cursos);
+    data.cursos.forEach(curso => {
+      // Renderiza tu tarjeta:
+      // curso.titulo -> Nombre del curso
+      // curso.descripcion -> Resumen del curso
+      // curso.flayer -> URL de la portada en CDN Cloudflare R2
+      // curso.precios.usd.estudiante -> Valor $ Estudiante
+      // curso.precios.bs.formato_estudiante -> Valor en Bs. a Tasa BCV
+    });
+  })
+  .catch(err => console.error("Error cargando cursos:", err));</code></pre>
+                </div>
+
+                <!-- Tab PHP -->
+                <div class="tab-pane fade" id="tab-php-api" role="tabpanel">
+                  <pre class="mb-0 text-light"><code id="codeSnippetPhp">&lt;?php
+// En tu sitio WordPress o PHP:
+$apiUrl = "<span class="text-warning snippet-url-cursos">https://certificados.uptpc.edu.ve/api?action=getCursosOfertadosApi&api_key=TU_SECRETO</span>";
+$response = file_get_contents($apiUrl);
+$data = json_decode($response, true);
+
+if (!empty($data['cursos'])) {
+    foreach ($data['cursos'] as $curso) {
+        echo '&lt;div class="curso-card"&gt;';
+        echo '&lt;img src="' . htmlspecialchars($curso['flayer']) . '" /&gt;';
+        echo '&lt;h3&gt;' . htmlspecialchars($curso['taller']) . '&lt;/h3&gt;';
+        echo '&lt;p&gt;' . htmlspecialchars($curso['descripcion']) . '&lt;/p&gt;';
+        echo '&lt;span&gt;Precio: ' . $curso['precios']['bs']['formato_estudiante'] . ' ($' . $curso['precios']['usd']['estudiante'] . ' USD)&lt;/span&gt;';
+        echo '&lt;/div&gt;';
+    }
+}
+?&gt;</code></pre>
+                </div>
+
+                <!-- Tab cURL -->
+                <div class="tab-pane fade" id="tab-curl-api" role="tabpanel">
+                  <pre class="mb-0 text-light"><code id="codeSnippetCurl">curl -X GET "<span class="text-warning snippet-url-cursos">https://certificados.uptpc.edu.ve/api?action=getCursosOfertadosApi&api_key=TU_SECRETO</span>"</code></pre>
+                </div>
+              </div>
+            </div>
+
+            <!-- Columna Derecha: Estructura de Respuesta JSON y Visualizador -->
+            <div class="col-lg-5">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-bold text-dark mb-0">
+                  <i class="fa-solid fa-file-code me-1 text-primary"></i>Respuesta del Catálogo (JSON)
+                </h6>
+                <button type="button" class="btn btn-sm btn-outline-primary fw-bold" id="btnPrevisualizarCatalogoApi">
+                  <i class="fa-solid fa-arrows-rotate me-1"></i> Previsualizar
+                </button>
+              </div>
+
+              <div id="contenedorPreviewCatalogoCursos" class="p-3 bg-dark text-light rounded border font-monospace small" style="min-height: 250px; max-height: 270px; overflow-y: auto;">
+                <div class="text-muted text-center py-4">
+                  <i class="fa-solid fa-code fa-2x mb-2 text-secondary d-block"></i>
+                  Haga clic en <strong>Previsualizar</strong> para inspeccionar la estructura del JSON devuelto en tiempo real.
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -2313,6 +2596,69 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Carga Masiva de Pagos Declarados (CSV / Texto) -->
+  <div class="modal fade" id="modalCargaMasivaPagos" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content shadow-lg border-0">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title fw-bold">
+            <i class="fa-solid fa-file-invoice-dollar me-2"></i>Carga Masiva de Pagos Declarados (CSV / Texto Copiado)
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body p-4">
+          <!-- Alerta Informativa -->
+          <div class="alert alert-warning py-2 px-3 mb-3 small d-flex align-items-center">
+            <i class="fa-solid fa-clock-rotate-left fa-xl me-3 text-warning"></i>
+            <div>
+              <strong>Proceso de Verificación Administrativa:</strong>
+              Todos los pagos cargados masivamente ingresarán al sistema en estado <strong>PENDIENTE</strong>, quedando a la espera de ser fiscalizados, validados y aprobados 1 a 1 por la Administración.
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">1. Subir Archivo CSV o TXT:</label>
+              <input type="file" class="form-control" id="fileCsvPagos" accept=".csv, .txt">
+              <small class="text-muted">Formatos admitidos: <code>.csv</code> o <code>.txt</code> delimitados por coma o punto y coma.</small>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold">2. Taller / Curso por Defecto (Fallback):</label>
+              <select class="form-select" id="selectCursoDefaultPagosMasivos">
+                <option value="">-- Asignar automáticamente --</option>
+              </select>
+              <small class="text-muted">Se aplicará a las filas que no especifiquen curso.</small>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+              <button type="button" class="btn btn-outline-primary w-100 btn-sm py-2" id="btnDescargarPlantillaCsvPagos">
+                <i class="fa-solid fa-download me-1"></i>Descargar Plantilla CSV
+              </button>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-bold">O Pegar Registros Directamente (Cédula, Taller, Referencia, Monto, Banco, Fecha):</label>
+            <textarea class="form-control font-monospace small" id="textareaCargaMasivaPagos" rows="3" placeholder="V-12345678, Taller de Inteligencia Artificial, 00984572, 350.50, Banco de Venezuela, 2026-10-25&#10;V-87654321, Desarrollo Web, 00451278, 500.00, Pago Móvil, 2026-10-25"></textarea>
+          </div>
+
+          <!-- Contenedor de Previsualización -->
+          <div id="previewCargaMasivaPagosContainer" class="border rounded p-3 bg-light">
+            <div class="text-center py-4 text-muted">
+              <i class="fa-solid fa-table-list fa-2x mb-2 text-secondary d-block"></i>
+              Suba un archivo CSV o pegue datos arriba para previsualizar los pagos antes de cargarlos al sistema.
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-success fw-bold px-4 shadow-sm" id="btnConfirmarCargaMasivaPagos" disabled>
+            <i class="fa-solid fa-cloud-arrow-up me-2"></i>Subir Pagos al Sistema (Quedan Pendientes)
+          </button>
+        </div>
       </div>
     </div>
   </div>

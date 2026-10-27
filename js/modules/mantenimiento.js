@@ -12,6 +12,7 @@
       this.initEventListeners();
       await this.cargarConfiguraciones();
       await this.cargarPresetsLogos();
+      await this.cargarInfoApiKey();
       await this.ejecutarDiagnosticoSilencioso();
     },
 
@@ -50,6 +51,150 @@
         formConfig.addEventListener('submit', async (e) => {
           e.preventDefault();
           await this.guardarConfiguraciones();
+        });
+      }
+
+      // 5. Controles de la Plataforma API KEY
+      const swApiKey = document.getElementById('switchApiKeyHabilitada');
+      if (swApiKey && !swApiKey.dataset.bound) {
+        swApiKey.dataset.bound = 'true';
+        swApiKey.addEventListener('change', async (e) => {
+          await this.toggleApiKey(e.target.checked);
+        });
+      }
+
+      const btnVerKey = document.getElementById('btnToggleVerApiKey');
+      if (btnVerKey && !btnVerKey.dataset.bound) {
+        btnVerKey.dataset.bound = 'true';
+        btnVerKey.addEventListener('click', () => {
+          const inp = document.getElementById('inputApiKeyToken');
+          const icon = document.getElementById('iconVerApiKey');
+          if (!inp) return;
+          if (inp.type === 'password') {
+            inp.type = 'text';
+            if (icon) { icon.classList.remove('fa-eye'); icon.classList.add('fa-eye-slash'); }
+          } else {
+            inp.type = 'password';
+            if (icon) { icon.classList.remove('fa-eye-slash'); icon.classList.add('fa-eye'); }
+          }
+        });
+      }
+
+      const btnCopyKey = document.getElementById('btnCopiarApiKey');
+      if (btnCopyKey && !btnCopyKey.dataset.bound) {
+        btnCopyKey.dataset.bound = 'true';
+        btnCopyKey.addEventListener('click', () => {
+          const inp = document.getElementById('inputApiKeyToken');
+          if (inp && inp.value) {
+            if (navigator.clipboard) {
+              navigator.clipboard.writeText(inp.value).then(() => {
+                window.utils.showToast('API Key copiada al portapapeles', 'success');
+              }).catch(() => {
+                prompt('Copie la API Key:', inp.value);
+              });
+            } else {
+              prompt('Copie la API Key:', inp.value);
+            }
+          }
+        });
+      }
+
+      const btnRegenKey = document.getElementById('btnRegenerarApiKey');
+      if (btnRegenKey && !btnRegenKey.dataset.bound) {
+        btnRegenKey.dataset.bound = 'true';
+        btnRegenKey.addEventListener('click', async () => {
+          window.utils.showConfirm({
+            title: 'Regenerar API Key',
+            message: '¿Está seguro de que desea generar una nueva API Key?',
+            subtext: 'La clave actual dejará de funcionar inmediatamente para cualquier sistema externo conectado.',
+            confirmText: 'Sí, Regenerar Clave',
+            confirmClass: 'btn-danger',
+            onConfirm: async () => {
+              await this.regenerarApiKey();
+            }
+          });
+        });
+      }
+
+      const btnCopyEndpoint = document.getElementById('btnCopiarEndpointApi');
+      if (btnCopyEndpoint && !btnCopyEndpoint.dataset.bound) {
+        btnCopyEndpoint.dataset.bound = 'true';
+        btnCopyEndpoint.addEventListener('click', () => {
+          const inp = document.getElementById('inputEndpointApiUrl');
+          if (inp && inp.value) {
+            if (navigator.clipboard) {
+              navigator.clipboard.writeText(inp.value).then(() => {
+                window.utils.showToast('URL del endpoint copiada', 'info');
+              });
+            } else {
+              prompt('Copie la URL:', inp.value);
+            }
+          }
+        });
+      }
+
+      const btnCopyCurl = document.getElementById('btnCopiarCurlEjemplo');
+      if (btnCopyCurl && !btnCopyCurl.dataset.bound) {
+        btnCopyCurl.dataset.bound = 'true';
+        btnCopyCurl.addEventListener('click', () => {
+          const key = document.getElementById('inputApiKeyToken')?.value || 'TU_API_KEY';
+          const url = document.getElementById('inputEndpointApiUrl')?.value || `${window.location.origin}/api?action=inyectarPago`;
+          const curlCmd = `curl -X POST "${url}" \\\n  -H "Content-Type: application/json" \\\n  -H "x-api-key: ${key}" \\\n  -d '{\n    "cedula": "V-12345678",\n    "nombre_completo": "PEDRO PÉREZ",\n    "monto": 350.50\n  }'`;
+          if (navigator.clipboard) {
+            navigator.clipboard.writeText(curlCmd).then(() => {
+              window.utils.showToast('Comando cURL copiado al portapapeles', 'info');
+            });
+          } else {
+            prompt('Copie el comando cURL:', curlCmd);
+          }
+        });
+      }
+
+      const formTestApi = document.getElementById('formTestInyeccionApi');
+      if (formTestApi && !formTestApi.dataset.bound) {
+        formTestApi.dataset.bound = 'true';
+        formTestApi.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          await this.ejecutarTestInyeccion();
+        });
+      }
+
+      // Controles de la API de Cursos Ofertados (Despliegue Externo)
+      const btnCopiarUrlCursos = document.getElementById('btnCopiarUrlApiCursos');
+      if (btnCopiarUrlCursos && !btnCopiarUrlCursos.dataset.bound) {
+        btnCopiarUrlCursos.dataset.bound = 'true';
+        btnCopiarUrlCursos.addEventListener('click', () => {
+          const inp = document.getElementById('inputUrlApiCursosExterna');
+          if (inp && inp.value) {
+            if (navigator.clipboard) {
+              navigator.clipboard.writeText(inp.value).then(() => {
+                window.utils.showToast('Dirección API de cursos copiada al portapapeles', 'success');
+              }).catch(() => {
+                prompt('Copie la URL:', inp.value);
+              });
+            } else {
+              prompt('Copie la URL:', inp.value);
+            }
+          }
+        });
+      }
+
+      const btnAbrirJson = document.getElementById('btnAbrirJsonCursosNavegador');
+      if (btnAbrirJson && !btnAbrirJson.dataset.bound) {
+        btnAbrirJson.dataset.bound = 'true';
+        btnAbrirJson.addEventListener('click', () => {
+          const inp = document.getElementById('inputUrlApiCursosExterna');
+          if (inp && inp.value) {
+            window.open(inp.value, '_blank');
+          }
+        });
+      }
+
+      const btnPreviewCatalogo = document.getElementById('btnPrevisualizarCatalogoApi');
+      if (btnPreviewCatalogo && !btnPreviewCatalogo.dataset.bound) {
+        btnPreviewCatalogo.dataset.bound = 'true';
+        btnPreviewCatalogo.addEventListener('click', async () => {
+          await this.previsualizarCatalogoCursosApi();
         });
       }
     },
@@ -435,6 +580,233 @@
         });
       } else {
         prompt('Copie la URL:', url);
+      }
+    },
+
+    // ============================================================
+    // GESTIÓN DE LA PLATAFORMA API KEY & INYECCIÓN EXTERNA
+    // ============================================================
+    async cargarInfoApiKey() {
+      try {
+        const res = await window.api.getApiKeyInfo();
+        if (res && res.status === 'success' && res.data) {
+          const { apiKey, habilitada, lastUsed, totalInyectados } = res.data;
+
+          const inpToken = document.getElementById('inputApiKeyToken');
+          if (inpToken) inpToken.value = apiKey || '';
+
+          const sw = document.getElementById('switchApiKeyHabilitada');
+          if (sw) sw.checked = Boolean(habilitada);
+
+          const badge = document.getElementById('badgeEstadoApiKey');
+          if (badge) {
+            if (habilitada) {
+              badge.className = 'badge bg-success';
+              badge.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i>ACTIVA';
+            } else {
+              badge.className = 'badge bg-danger';
+              badge.innerHTML = '<i class="fa-solid fa-circle-xmark me-1"></i>INACTIVA';
+            }
+          }
+
+          const lblTotal = document.getElementById('lblApiKeyTotalInyectados');
+          if (lblTotal) lblTotal.textContent = totalInyectados || 0;
+
+          const lblLast = document.getElementById('lblApiKeyUltimaPeticion');
+          if (lblLast) {
+            lblLast.textContent = lastUsed && lastUsed !== 'Sin registros recientes' ? window.utils.formatDate(lastUsed) : 'Sin registros recientes';
+          }
+
+          const inpUrl = document.getElementById('inputEndpointApiUrl');
+          if (inpUrl) {
+            inpUrl.value = `${window.location.origin}/api?action=inyectarPago`;
+          }
+
+          const inpUrlCursos = document.getElementById('inputUrlApiCursosExterna');
+          if (inpUrlCursos) {
+            inpUrlCursos.value = `${window.location.origin}/api?action=getCursosOfertadosApi&api_key=${apiKey || ''}`;
+          }
+
+          document.querySelectorAll('.snippet-url-cursos').forEach(el => {
+            el.textContent = `${window.location.origin}/api?action=getCursosOfertadosApi&api_key=${apiKey || 'TU_SECRETO'}`;
+          });
+
+          // Cargar cursos ofertados en el selector de prueba
+          const selTestCurso = document.getElementById('selectTestCursoOfertado');
+          if (selTestCurso && selTestCurso.options.length <= 1) {
+            const resCursos = await window.api.getAll('curso_ofertado');
+            if (resCursos && resCursos.status === 'success' && Array.isArray(resCursos.data)) {
+              selTestCurso.innerHTML = '<option value="">-- Curso por Defecto --</option>' +
+                resCursos.data.map(c => `<option value="${c.id}">${window.utils.escapeHtml(c.taller)} ($${parseFloat(c.valor_estudiante||0).toFixed(2)})</option>`).join('');
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Error al cargar información de API Key:', err);
+      }
+    },
+
+    async toggleApiKey(habilitada) {
+      try {
+        const res = await window.api.toggleApiKey(habilitada);
+        if (res && res.status === 'success') {
+          window.utils.showToast(res.message, 'info');
+          const badge = document.getElementById('badgeEstadoApiKey');
+          if (badge) {
+            if (habilitada) {
+              badge.className = 'badge bg-success';
+              badge.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i>ACTIVA';
+            } else {
+              badge.className = 'badge bg-danger';
+              badge.innerHTML = '<i class="fa-solid fa-circle-xmark me-1"></i>INACTIVA';
+            }
+          }
+        }
+      } catch (err) {
+        window.utils.showToast('Error al actualizar estado del API Key', 'danger');
+      }
+    },
+
+    async regenerarApiKey() {
+      try {
+        if (window.utils && window.utils.showLoading) {
+          window.utils.showLoading(40, 'Generando nueva API Key...', 'Actualizando parámetros de seguridad');
+        }
+        const res = await window.api.regenerateApiKey();
+        if (res && res.status === 'success') {
+          const inpToken = document.getElementById('inputApiKeyToken');
+          if (inpToken) inpToken.value = res.apiKey;
+
+          const inpUrlCursos = document.getElementById('inputUrlApiCursosExterna');
+          if (inpUrlCursos) {
+            inpUrlCursos.value = `${window.location.origin}/api?action=getCursosOfertadosApi&api_key=${res.apiKey}`;
+          }
+          document.querySelectorAll('.snippet-url-cursos').forEach(el => {
+            el.textContent = `${window.location.origin}/api?action=getCursosOfertadosApi&api_key=${res.apiKey}`;
+          });
+
+          window.utils.showToast('Nueva API Key generada y guardada exitosamente.', 'success');
+        } else {
+          window.utils.showToast('Error: ' + (res?.message || 'No se pudo generar'), 'danger');
+        }
+      } catch (err) {
+        console.error('Error al regenerar API Key:', err);
+        window.utils.showToast('Error de conexión al regenerar API Key', 'danger');
+      } finally {
+        if (window.utils && window.utils.hideLoading) window.utils.hideLoading();
+      }
+    },
+
+    async ejecutarTestInyeccion() {
+      const cedula = document.getElementById('inputTestCedula')?.value.trim();
+      const nombre = document.getElementById('inputTestNombre')?.value.trim();
+      const cursoId = document.getElementById('selectTestCursoOfertado')?.value;
+      const contenedor = document.getElementById('contenedorResultadoTestApi');
+      const btn = document.getElementById('btnEjecutarTestInyeccion');
+
+      if (!cedula) {
+        window.utils.showToast('Ingrese la cédula del participante para probar', 'warning');
+        return;
+      }
+
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Inyectando...';
+      }
+
+      try {
+        const payload = {
+          cedula,
+          nombre_completo: nombre,
+          id_curso_ofertado: cursoId || null,
+          banco_origen: 'Consola de Prueba Super Admin',
+          numero_transferencia: 'TEST-' + Date.now().toString().slice(-6)
+        };
+
+        const res = await window.api.inyectarPago(payload);
+
+        if (contenedor) {
+          contenedor.style.display = 'block';
+          if (res && res.status === 'success') {
+            contenedor.innerHTML = `
+              <div class="alert alert-success py-2 px-3 small mb-2 d-flex justify-content-between align-items-center">
+                <div>
+                  <i class="fa-solid fa-circle-check me-1"></i>
+                  <strong>¡Inyección Exitosa!</strong> El pago asociado a <code>${res.data?.cedula}</code> fue registrado con ID <code>${res.data?.id}</code> en estado <strong>PENDIENTE</strong>.
+                </div>
+                <a href="#ofertas" class="btn btn-sm btn-outline-success fw-bold" onclick="document.querySelector('[data-target=secOfertas]')?.click(); document.getElementById('tab-pagos-tab')?.click();">
+                  Ver en Pagos
+                </a>
+              </div>
+              <pre class="bg-dark text-success p-3 rounded font-monospace small mb-0" style="max-height: 180px; overflow-y: auto;"><code>${JSON.stringify(res, null, 2)}</code></pre>
+            `;
+            window.utils.showToast('Inyección simulada completada exitosamente', 'success');
+            await this.cargarInfoApiKey();
+          } else {
+            contenedor.innerHTML = `
+              <div class="alert alert-danger py-2 px-3 small mb-2">
+                <i class="fa-solid fa-circle-exclamation me-1"></i>
+                <strong>Error en la Inyección:</strong> ${res?.message || 'Error desconocido'}
+              </div>
+              <pre class="bg-dark text-danger p-3 rounded font-monospace small mb-0"><code>${JSON.stringify(res, null, 2)}</code></pre>
+            `;
+          }
+        }
+      } catch (err) {
+        if (contenedor) {
+          contenedor.style.display = 'block';
+          contenedor.innerHTML = `
+            <div class="alert alert-danger py-2 px-3 small mb-0">
+              <i class="fa-solid fa-triangle-exclamation me-1"></i> <strong>Excepción de red:</strong> ${err.message}
+            </div>
+          `;
+        }
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Probar Inyección';
+        }
+      }
+    },
+
+    async previsualizarCatalogoCursosApi() {
+      const contenedor = document.getElementById('contenedorPreviewCatalogoCursos');
+      const btn = document.getElementById('btnPrevisualizarCatalogoApi');
+      if (contenedor) {
+        contenedor.innerHTML = '<div class="text-info text-center py-4"><i class="fa-solid fa-spinner fa-spin me-2"></i>Consultando catálogo de cursos en vivo...</div>';
+      }
+      if (btn) btn.disabled = true;
+
+      try {
+        const apiKey = document.getElementById('inputApiKeyToken')?.value || '';
+        const res = await window.api.getCursosOfertadosApi(apiKey);
+        if (contenedor) {
+          if (res && res.status === 'success') {
+            contenedor.innerHTML = `
+              <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom border-secondary">
+                <span class="text-success small"><i class="fa-solid fa-circle-check me-1"></i>200 OK - Catálogo Generado</span>
+                <span class="badge bg-primary">${res.total_cursos} cursos ofertados</span>
+              </div>
+              <pre class="mb-0 text-info"><code>${window.utils.escapeHtml(JSON.stringify(res, null, 2))}</code></pre>
+            `;
+          } else {
+            contenedor.innerHTML = `
+              <div class="alert alert-danger py-2 mb-0 small">
+                <i class="fa-solid fa-triangle-exclamation me-1"></i> ${res?.message || 'Error al obtener catálogo'}
+              </div>
+            `;
+          }
+        }
+      } catch (err) {
+        if (contenedor) {
+          contenedor.innerHTML = `
+            <div class="alert alert-danger py-2 mb-0 small">
+              <i class="fa-solid fa-triangle-exclamation me-1"></i> Error de red: ${err.message}
+            </div>
+          `;
+        }
+      } finally {
+        if (btn) btn.disabled = false;
       }
     }
   };

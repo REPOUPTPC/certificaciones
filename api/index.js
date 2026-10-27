@@ -44,7 +44,7 @@ module.exports = async function handler(req, res) {
   // CORS Headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Api-Key, x-api-key');
 
   if (req.method === 'OPTIONS') {
     res.status(200).end();
@@ -109,6 +109,21 @@ module.exports = async function handler(req, res) {
           result = await services.getConfiguraciones();
           break;
 
+        case 'getApiKeyInfo':
+          result = await services.getApiKeyConfig();
+          break;
+
+        case 'getCursosOfertadosApi':
+        case 'listarCursosApi': {
+          const apiKeyHeader = req.headers['x-api-key'] || req.headers['x-apikey'] || 
+            (req.headers.authorization && req.headers.authorization.replace(/^Bearer\s+/i, '')) || 
+            query.api_key || query.secreto || query.secret || query.token;
+          const userRole = String(req.headers['x-user-role'] || '').toUpperCase();
+          const isInternalAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'ADMINISTRACION' || userRole === 'ADMINISTRADORA';
+          result = await services.getCursosOfertadosApi(apiKeyHeader, isInternalAdmin);
+          break;
+        }
+
         case 'verifyAdmin':
           result = await services.verifyAdmin(query.usuario, query.clave);
           break;
@@ -124,11 +139,12 @@ module.exports = async function handler(req, res) {
 
     if (req.method === 'POST') {
       const body = await getParsedBody(req);
-      const postAction = body.action || action;
+      const hasApiKeyHeader = Boolean(req.headers['x-api-key'] || req.headers['x-apikey']);
+      const postAction = body.action || action || (hasApiKeyHeader ? 'inyectarPago' : null);
       const userRole = String(req.headers['x-user-role'] || body._userRole || body.userRole || '').toUpperCase();
 
       // Validación estricta para perfil AUDITOR: no puede crear, modificar ni eliminar registros
-      const mutationActions = ['create', 'update', 'delete', 'bulkCreateUsuarios', 'bulkCertificar', 'saveDiseno', 'setDisenoActivo', 'updateConfiguracion'];
+      const mutationActions = ['create', 'update', 'delete', 'bulkCreateUsuarios', 'bulkCreatePagos', 'bulkCertificar', 'saveDiseno', 'setDisenoActivo', 'updateConfiguracion', 'regenerateApiKey', 'toggleApiKey'];
       if (userRole === 'AUDITOR' && mutationActions.includes(postAction)) {
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.status(403).json({
@@ -155,6 +171,10 @@ module.exports = async function handler(req, res) {
 
         case 'bulkCreateUsuarios':
           result = await services.bulkCreateUsuarios(body.usuarios || []);
+          break;
+
+        case 'bulkCreatePagos':
+          result = await services.bulkCreatePagos(body.pagos || []);
           break;
 
         case 'bulkCertificar':
@@ -184,6 +204,39 @@ module.exports = async function handler(req, res) {
         case 'updateConfiguracion':
           result = await services.updateConfiguracion(body.clave, body.valor);
           break;
+
+        case 'getApiKeyInfo':
+          result = await services.getApiKeyConfig();
+          break;
+
+        case 'getCursosOfertadosApi':
+        case 'listarCursosApi': {
+          const apiKeyHeader = req.headers['x-api-key'] || req.headers['x-apikey'] || 
+            (req.headers.authorization && req.headers.authorization.replace(/^Bearer\s+/i, '')) || 
+            query.api_key || query.secreto || query.secret || query.token;
+          const userRole = String(req.headers['x-user-role'] || '').toUpperCase();
+          const isInternalAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'ADMINISTRACION' || userRole === 'ADMINISTRADORA';
+          result = await services.getCursosOfertadosApi(apiKeyHeader, isInternalAdmin);
+          break;
+        }
+
+        case 'regenerateApiKey':
+          result = await services.regenerateApiKey();
+          break;
+
+        case 'toggleApiKey':
+          result = await services.toggleApiKey(body.habilitada);
+          break;
+
+        case 'inyectarPago':
+        case 'injectPago': {
+          const apiKeyHeader = req.headers['x-api-key'] || req.headers['x-apikey'] || 
+            (req.headers.authorization && req.headers.authorization.replace(/^Bearer\s+/i, '')) || 
+            body.apiKey || body.api_key || query.api_key;
+          const isInternalAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'ADMINISTRACION' || userRole === 'ADMINISTRADORA';
+          result = await services.inyectarPago(body.pago || body.data || body, apiKeyHeader, isInternalAdmin);
+          break;
+        }
 
         default:
           result = { status: 'error', message: `Acción POST no reconocida: ${postAction}` };

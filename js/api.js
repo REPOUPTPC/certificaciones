@@ -535,6 +535,15 @@
     async backupDatabase() { return this.get('backup'); },
     async getConfiguraciones() { return this.get('getConfiguraciones'); },
     async updateConfiguracion(clave, valor) { return this.post('updateConfiguracion', { clave, valor }); },
+    async getApiKeyInfo() { return this.get('getApiKeyInfo'); },
+    async regenerateApiKey() { return this.post('regenerateApiKey'); },
+    async toggleApiKey(habilitada) { return this.post('toggleApiKey', { habilitada }); },
+    async inyectarPago(pagoData) { return this.post('inyectarPago', pagoData); },
+    async bulkCreatePagos(pagos) { return this.post('bulkCreatePagos', { pagos }); },
+    async getCursosOfertadosApi(apiKey = null) {
+      const params = apiKey ? { api_key: apiKey } : {};
+      return this.get('getCursosOfertadosApi', params);
+    },
     async getPresetsLogos() { return this.getAll('presets_imagenes'); },
     async createPresetLogo(data) { return this.create('presets_imagenes', data); },
     async deletePresetLogo(id) { return this.delete('presets_imagenes', id); },

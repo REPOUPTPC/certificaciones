@@ -61,6 +61,18 @@ function generarMatricula(prefijo, fecha, cedula) {
   return pref + String(mes).padStart(2, '0') + digitos.slice(-3).padStart(3, '0');
 }
 
+function normalizeCedula(str) {
+  let clean = String(str || '').trim().toUpperCase().replace(/[\s.-]/g, '');
+  if (!clean) return '';
+  let prefix = 'V';
+  if (clean.startsWith('V') || clean.startsWith('E') || clean.startsWith('J') || clean.startsWith('G')) {
+    prefix = clean[0];
+    clean = clean.slice(1);
+  }
+  const digits = clean.replace(/\D/g, '');
+  return digits ? `${prefix}-${digits}` : '';
+}
+
 /**
  * Servicio unificado de datos
  */
@@ -572,12 +584,361 @@ const services = {
     return { status: 'success', data: res.rows };
   },
 
-  async updateConfiguracion(clave, valor) {
-    await db.execute({
-      sql: "UPDATE configuracion SET valor = ?, updated_at = datetime('now') WHERE UPPER(clave) = UPPER(?);",
-      args: [String(valor), String(clave)]
+  async updateConfiguracion(clave, valor, descripcion = '', categoria = 'SISTEMA') {
+    const claveUpper = String(clave).trim().toUpperCase();
+    const existing = await db.execute({
+      sql: "SELECT * FROM configuracion WHERE UPPER(clave) = ? LIMIT 1;",
+      args: [claveUpper]
     });
-    return { status: 'success', message: `Configuración ${clave} actualizada` };
+    if (existing.rows.length > 0) {
+      await db.execute({
+        sql: "UPDATE configuracion SET valor = ?, updated_at = datetime('now') WHERE UPPER(clave) = ?;",
+        args: [String(valor), claveUpper]
+      });
+    } else {
+      await db.execute({
+        sql: "INSERT INTO configuracion (id, clave, valor, descripcion, categoria, updated_at) VALUES (?, ?, ?, ?, ?, datetime('now'));",
+        args: [claveUpper.toLowerCase(), claveUpper, String(valor), descripcion || 'Configuración del sistema', categoria]
+      });
+    }
+    return { status: 'success', message: `Configuración ${claveUpper} actualizada` };
+  },
+
+  async getApiKeyConfig() {
+    const res = await db.execute("SELECT clave, valor FROM configuracion WHERE UPPER(clave) IN ('API_KEY_SECRET', 'API_KEY_HABILITADA', 'API_KEY_LAST_USED');");
+    const map = {};
+    res.rows.forEach(r => { map[String(r.clave).toUpperCase()] = r.valor; });
+
+    let secret = map['API_KEY_SECRET'];
+    if (!secret) {
+      secret = 'uptpc_live_' + crypto.randomBytes(24).toString('hex');
+      await this.updateConfiguracion('API_KEY_SECRET', secret, 'Clave secreta para inyección externa de pagos vía API', 'INTEGRACION');
+    }
+
+    let habilitada = map['API_KEY_HABILITADA'];
+    if (habilitada === undefined) {
+      habilitada = 'true';
+      await this.updateConfiguracion('API_KEY_HABILITADA', 'true', 'Habilitar o suspender acceso por API Key', 'INTEGRACION');
+    }
+
+    const lastUsed = map['API_KEY_LAST_USED'] || 'Sin registros recientes';
+
+    let totalInyectados = 0;
+    try {
+      const countRes = await db.execute("SELECT COUNT(*) as total FROM pagos WHERE numero_transferencia LIKE 'API-%' OR banco_origen LIKE '%API%';");
+      totalInyectados = countRes.rows[0]?.total || 0;
+    } catch (e) {}
+
+    return {
+      status: 'success',
+      data: {
+        apiKey: secret,
+        habilitada: String(habilitada).toLowerCase() !== 'false',
+        lastUsed,
+        totalInyectados
+      }
+    };
+  },
+
+  async regenerateApiKey() {
+    const newKey = 'uptpc_live_' + crypto.randomBytes(24).toString('hex');
+    await this.updateConfiguracion('API_KEY_SECRET', newKey, 'Clave secreta para inyección externa de pagos vía API', 'INTEGRACION');
+    return {
+      status: 'success',
+      message: 'Nueva API Key generada con éxito.',
+      apiKey: newKey
+    };
+  },
+
+  async toggleApiKey(habilitada) {
+    const val = String(habilitada).toLowerCase() === 'true' || habilitada === true ? 'true' : 'false';
+    await this.updateConfiguracion('API_KEY_HABILITADA', val, 'Habilitar o suspender acceso por API Key', 'INTEGRACION');
+    return {
+      status: 'success',
+      message: `API Key ${val === 'true' ? 'habilitada' : 'deshabilitada'} exitosamente.`,
+      habilitada: val === 'true'
+    };
+  },
+
+  async inyectarPago(pagoData = {}, providedApiKey = '', isInternalAdmin = false) {
+    if (!isInternalAdmin) {
+      const resConfig = await db.execute("SELECT clave, valor FROM configuracion WHERE UPPER(clave) IN ('API_KEY_SECRET', 'API_KEY_HABILITADA');");
+      const map = {};
+      resConfig.rows.forEach(r => { map[String(r.clave).toUpperCase()] = r.valor; });
+
+      const habilitada = map['API_KEY_HABILITADA'] !== 'false';
+      if (!habilitada) {
+        return { status: 'error', message: 'La plataforma de inyección vía API Key se encuentra temporalmente deshabilitada.' };
+      }
+
+      const activeSecret = map['API_KEY_SECRET'];
+      if (!activeSecret || !providedApiKey || String(providedApiKey).trim() !== String(activeSecret).trim()) {
+        return { status: 'error', message: 'API Key no autorizada o inválida.' };
+      }
+    }
+
+    const rawCedula = String(pagoData.cedula || pagoData.ci || pagoData.documento || '').trim();
+    const cedulaNorm = normalizeCedula(rawCedula);
+    if (!cedulaNorm) {
+      return { status: 'error', message: 'El campo "cedula" es obligatorio para la inyección de datos (ej: V-12345678).' };
+    }
+
+    // Buscar o registrar usuario automáticamente por cédula
+    const userRes = await db.execute({
+      sql: "SELECT * FROM usuarios WHERE UPPER(REPLACE(REPLACE(cedula, '-', ''), ' ', '')) = UPPER(REPLACE(?, '-', '')) LIMIT 1;",
+      args: [cedulaNorm]
+    });
+
+    let usuarioId = '';
+    let nombreUsuario = '';
+    if (userRes.rows.length > 0) {
+      usuarioId = userRes.rows[0].id;
+      nombreUsuario = userRes.rows[0].nombre_completo;
+    } else {
+      usuarioId = generateUUID();
+      nombreUsuario = String(pagoData.nombre_completo || pagoData.nombre || `PARTICIPANTE ${cedulaNorm}`).trim().toUpperCase();
+      const correo = String(pagoData.correo || pagoData.email || '').trim().toLowerCase();
+      const telefono = String(pagoData.telefono || pagoData.celular || '').trim();
+      const createdAt = new Date().toISOString();
+
+      await db.execute({
+        sql: "INSERT INTO usuarios (id, cedula, nombre_completo, correo, telefono, created_at) VALUES (?, ?, ?, ?, ?, ?);",
+        args: [usuarioId, cedulaNorm, nombreUsuario, correo, telefono, createdAt]
+      });
+    }
+
+    // Resolver curso_ofertado
+    let cursoId = pagoData.id_curso_ofertado || pagoData.curso_id || null;
+    if (!cursoId && pagoData.taller) {
+      const cRes = await db.execute({
+        sql: "SELECT id FROM curso_ofertado WHERE UPPER(taller) LIKE UPPER(?) LIMIT 1;",
+        args: [`%${pagoData.taller}%`]
+      });
+      if (cRes.rows.length > 0) cursoId = cRes.rows[0].id;
+    }
+    if (!cursoId) {
+      const primerCurso = await db.execute("SELECT id FROM curso_ofertado ORDER BY id DESC LIMIT 1;");
+      cursoId = primerCurso.rows[0]?.id || null;
+    }
+
+    const monto = parseFloat(pagoData.monto || pagoData.monto_bs || 0) || 0;
+    const numRef = String(pagoData.numero_transferencia || pagoData.referencia || pagoData.ref || `API-${Date.now().toString().slice(-8)}`).trim();
+    const banco = String(pagoData.banco_origen || pagoData.banco || 'Inyección API Externa').trim();
+    const fechaPago = String(pagoData.fecha_pago || pagoData.fecha || new Date().toISOString().split('T')[0]).trim();
+    const capture = String(pagoData.capture || pagoData.comprobante_url || '').trim();
+    const nuevoPagoId = generateUUID();
+    const now = new Date().toISOString();
+
+    // Guardar pago con status 'false' (PENDIENTE)
+    await db.execute({
+      sql: "INSERT INTO pagos (id, id_usuario, id_curso_ofertado, banco_origen, monto, numero_transferencia, fecha_pago, capture, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+      args: [nuevoPagoId, usuarioId, cursoId, banco, monto, numRef, fechaPago, capture, 'false', now]
+    });
+
+    // Registrar última fecha de uso del API
+    await this.updateConfiguracion('API_KEY_LAST_USED', now, 'Fecha y hora de la última petición recibida', 'INTEGRACION');
+
+    return {
+      status: 'success',
+      message: 'Pago inyectado exitosamente vía API. Queda a la espera de verificación administrativa.',
+      data: {
+        id: nuevoPagoId,
+        id_usuario: usuarioId,
+        cedula: cedulaNorm,
+        nombre_completo: nombreUsuario,
+        id_curso_ofertado: cursoId,
+        monto,
+        numero_transferencia: numRef,
+        banco_origen: banco,
+        fecha_pago: fechaPago,
+        status: 'PENDIENTE',
+        created_at: now
+      }
+    };
+  },
+
+  async getCursosOfertadosApi(providedApiKey = '', isInternalAdmin = false) {
+    if (!isInternalAdmin) {
+      const resConfig = await db.execute("SELECT clave, valor FROM configuracion WHERE UPPER(clave) IN ('API_KEY_SECRET', 'API_KEY_HABILITADA');");
+      const map = {};
+      resConfig.rows.forEach(r => { map[String(r.clave).toUpperCase()] = r.valor; });
+
+      const habilitada = map['API_KEY_HABILITADA'] !== 'false';
+      if (!habilitada) {
+        return { status: 'error', message: 'La plataforma de API del sistema se encuentra temporalmente deshabilitada.' };
+      }
+
+      const activeSecret = map['API_KEY_SECRET'];
+      if (!activeSecret || !providedApiKey || String(providedApiKey).trim() !== String(activeSecret).trim()) {
+        return { status: 'error', message: 'Secreto o API Key no autorizada o no proporcionada.' };
+      }
+    }
+
+    const resCursos = await db.execute("SELECT id, taller, descripcion, valor_estudiante, valor_foraneo, flayer, created_at FROM curso_ofertado ORDER BY id DESC;");
+    const cursosRaw = resCursos.rows || [];
+
+    let tasaDolar = 36.5;
+    try {
+      const resTasa = await db.execute("SELECT valor FROM configuracion WHERE UPPER(clave) = 'TASA_DOLAR_VALOR' LIMIT 1;");
+      if (resTasa.rows.length > 0 && parseFloat(resTasa.rows[0].valor) > 0) {
+        tasaDolar = parseFloat(resTasa.rows[0].valor);
+      }
+    } catch(e) {}
+
+    let bancosDisponibles = [];
+    try {
+      const resBancos = await db.execute("SELECT id, banco FROM banco ORDER BY id;");
+      bancosDisponibles = resBancos.rows.map(b => b.banco);
+    } catch(e) {}
+
+    const cursosFormateados = cursosRaw.map(c => {
+      const valEstUsd = parseFloat(c.valor_estudiante || 0);
+      const valForUsd = parseFloat(c.valor_foraneo || 0);
+      const valEstBs = parseFloat((valEstUsd * tasaDolar).toFixed(2));
+      const valForBs = parseFloat((valForUsd * tasaDolar).toFixed(2));
+
+      return {
+        id: c.id,
+        taller: c.taller,
+        titulo: c.taller,
+        descripcion: c.descripcion || '',
+        precios: {
+          usd: {
+            estudiante: valEstUsd,
+            foraneo: valForUsd,
+            formato_estudiante: `$${valEstUsd.toFixed(2)} USD`,
+            formato_foraneo: `$${valForUsd.toFixed(2)} USD`
+          },
+          bs: {
+            tasa_bcv: tasaDolar,
+            estudiante: valEstBs,
+            foraneo: valForBs,
+            formato_estudiante: `${valEstBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs.`,
+            formato_foraneo: `${valForBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs.`
+          }
+        },
+        flayer: c.flayer || '',
+        portada_url: c.flayer || '',
+        fecha_creacion: c.created_at || '',
+        disponible: true
+      };
+    });
+
+    return {
+      status: 'success',
+      plataforma: 'Universidad Politécnica Territorial de Puerto Cabello (UPTPC)',
+      tasa_oficial_bcv: tasaDolar,
+      total_cursos: cursosFormateados.length,
+      bancos_receptores: bancosDisponibles,
+      cursos: cursosFormateados,
+      timestamp: new Date().toISOString()
+    };
+  },
+
+  async bulkCreatePagos(pagosArray) {
+    if (!Array.isArray(pagosArray) || pagosArray.length === 0) {
+      return { status: 'error', message: 'No se recibieron pagos para procesar en lote' };
+    }
+
+    const existingUsersRes = await db.execute("SELECT id, cedula, nombre_completo FROM usuarios;");
+    const usersByCedula = new Map();
+    for (const u of existingUsersRes.rows) {
+      const norm = normalizeCedula(u.cedula);
+      if (norm) usersByCedula.set(norm, u);
+    }
+
+    const ofertasRes = await db.execute("SELECT id, taller FROM curso_ofertado;");
+    const ofertasList = ofertasRes.rows;
+    const primerCursoId = ofertasList[0]?.id || null;
+
+    const stmts = [];
+    const created = [];
+    const usuariosNuevosStmts = [];
+
+    for (const item of pagosArray) {
+      const rawCed = item.cedula || item.ci || '';
+      const normCed = normalizeCedula(rawCed);
+      if (!normCed) continue;
+
+      let usr = usersByCedula.get(normCed);
+      let usrId = '';
+      let usrNombre = '';
+
+      if (usr) {
+        usrId = usr.id;
+        usrNombre = usr.nombre_completo;
+      } else {
+        usrId = generateUUID();
+        usrNombre = String(item.nombre_completo || item.nombre || `PARTICIPANTE ${normCed}`).trim().toUpperCase();
+        const nuevoUsrObj = {
+          id: usrId,
+          cedula: normCed,
+          nombre_completo: usrNombre,
+          correo: item.correo || '',
+          telefono: item.telefono || '',
+          created_at: new Date().toISOString()
+        };
+        usuariosNuevosStmts.push({
+          sql: "INSERT INTO usuarios (id, cedula, nombre_completo, correo, telefono, created_at) VALUES (?, ?, ?, ?, ?, ?);",
+          args: [nuevoUsrObj.id, nuevoUsrObj.cedula, nuevoUsrObj.nombre_completo, nuevoUsrObj.correo, nuevoUsrObj.telefono, nuevoUsrObj.created_at]
+        });
+        usersByCedula.set(normCed, nuevoUsrObj);
+      }
+
+      let cursoId = item.id_curso_ofertado || item.curso_id || null;
+      if (!cursoId && item.curso_ofertado) {
+        const match = ofertasList.find(o => 
+          String(o.taller).toUpperCase().includes(String(item.curso_ofertado).toUpperCase()) ||
+          String(o.id) === String(item.curso_ofertado)
+        );
+        if (match) cursoId = match.id;
+      }
+      if (!cursoId) cursoId = primerCursoId;
+
+      const monto = parseFloat(item.monto || 0) || 0;
+      const ref = String(item.numero_transferencia || item.referencia || `CSV-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 900 + 100)}`).trim();
+      const banco = String(item.banco_origen || item.banco || 'Pago Móvil / Transferencia').trim();
+      const fecha = String(item.fecha_pago || item.fecha || new Date().toISOString().split('T')[0]).trim();
+      const pagoId = generateUUID();
+      const createdAt = new Date().toISOString();
+
+      stmts.push({
+        sql: "INSERT INTO pagos (id, id_usuario, id_curso_ofertado, banco_origen, monto, numero_transferencia, fecha_pago, capture, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+        args: [pagoId, usrId, cursoId, banco, monto, ref, fecha, '', 'false', createdAt]
+      });
+
+      created.push({
+        id: pagoId,
+        id_usuario: usrId,
+        cedula: normCed,
+        nombre_completo: usrNombre,
+        id_curso_ofertado: cursoId,
+        monto,
+        numero_transferencia: ref,
+        status: 'PENDIENTE'
+      });
+    }
+
+    if (usuariosNuevosStmts.length > 0) {
+      const chunkSize = 50;
+      for (let i = 0; i < usuariosNuevosStmts.length; i += chunkSize) {
+        await db.batch(usuariosNuevosStmts.slice(i, i + chunkSize), 'write');
+      }
+    }
+
+    if (stmts.length > 0) {
+      const chunkSize = 50;
+      for (let i = 0; i < stmts.length; i += chunkSize) {
+        await db.batch(stmts.slice(i, i + chunkSize), 'write');
+      }
+    }
+
+    return {
+      status: 'success',
+      message: `Se han registrado exitosamente ${created.length} pagos masivos en estado PENDIENTE.`,
+      count: created.length,
+      data: created
+    };
   }
 };
 

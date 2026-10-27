@@ -13,6 +13,7 @@
   let cachedPagos = [];
   let cachedUsuarios = [];
   let cachedOfertas = [];
+  let pagosMasivosParsed = [];
 
   async function init() {
     try {
@@ -574,6 +575,52 @@
       btnNuevoPago.addEventListener('click', () => abrirModalPago());
     }
 
+    const btnCargaMasiva = document.getElementById('btnCargaMasivaPagos');
+    if (btnCargaMasiva && !btnCargaMasiva.dataset.bound) {
+      btnCargaMasiva.dataset.bound = 'true';
+      btnCargaMasiva.addEventListener('click', () => abrirModalCargaMasivaPagos());
+    }
+
+    const fileCsvPagos = document.getElementById('fileCsvPagos');
+    if (fileCsvPagos && !fileCsvPagos.dataset.bound) {
+      fileCsvPagos.dataset.bound = 'true';
+      fileCsvPagos.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          const txtArea = document.getElementById('textareaCargaMasivaPagos');
+          if (txtArea) txtArea.value = evt.target.result;
+          procesarTextoPagosMasivos();
+        };
+        reader.readAsText(file);
+      });
+    }
+
+    const txtCargaMasiva = document.getElementById('textareaCargaMasivaPagos');
+    if (txtCargaMasiva && !txtCargaMasiva.dataset.bound) {
+      txtCargaMasiva.dataset.bound = 'true';
+      txtCargaMasiva.addEventListener('input', () => procesarTextoPagosMasivos());
+    }
+
+    const selCursoDefaultMasivo = document.getElementById('selectCursoDefaultPagosMasivos');
+    if (selCursoDefaultMasivo && !selCursoDefaultMasivo.dataset.bound) {
+      selCursoDefaultMasivo.dataset.bound = 'true';
+      selCursoDefaultMasivo.addEventListener('change', () => procesarTextoPagosMasivos());
+    }
+
+    const btnPlantillaCsv = document.getElementById('btnDescargarPlantillaCsvPagos');
+    if (btnPlantillaCsv && !btnPlantillaCsv.dataset.bound) {
+      btnPlantillaCsv.dataset.bound = 'true';
+      btnPlantillaCsv.addEventListener('click', () => descargarPlantillaCsvPagos());
+    }
+
+    const btnConfirmarMasivo = document.getElementById('btnConfirmarCargaMasivaPagos');
+    if (btnConfirmarMasivo && !btnConfirmarMasivo.dataset.bound) {
+      btnConfirmarMasivo.dataset.bound = 'true';
+      btnConfirmarMasivo.addEventListener('click', () => ejecutarCargaMasivaPagos());
+    }
+
     const btnRefrescar = document.getElementById('btnRefrescarPagos');
     if (btnRefrescar && !btnRefrescar.dataset.bound) {
       btnRefrescar.dataset.bound = 'true';
@@ -821,6 +868,397 @@
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
   }
 
+  // ═════════════════════════════════════════════════════════════════
+  // SECCIÓN 3: CARGA MASIVA DE PAGOS DECLARADOS (CSV / TEXTO COPIADO)
+  // ═════════════════════════════════════════════════════════════════
+
+  function abrirModalCargaMasivaPagos() {
+    if (window.authAdmin && window.authAdmin.isAuditor()) {
+      window.utils.showToast('Acceso restringido: Perfil AUDITOR es de solo lectura.', 'warning');
+      return;
+    }
+
+    pagosMasivosParsed = [];
+    const modalEl = document.getElementById('modalCargaMasivaPagos');
+    if (!modalEl) return;
+
+    const fileInput = document.getElementById('fileCsvPagos');
+    if (fileInput) fileInput.value = '';
+
+    const txtArea = document.getElementById('textareaCargaMasivaPagos');
+    if (txtArea) txtArea.value = '';
+
+    const selCurso = document.getElementById('selectCursoDefaultPagosMasivos');
+    if (selCurso) {
+      selCurso.innerHTML = '<option value="">-- Asignar automáticamente --</option>' +
+        cachedOfertas.map(o => `<option value="${o.id}">${window.utils.escapeHtml(o.taller)} ($${parseFloat(o.valor_estudiante || 0).toFixed(2)})</option>`).join('');
+    }
+
+    const container = document.getElementById('previewCargaMasivaPagosContainer');
+    if (container) {
+      container.innerHTML = `
+        <div class="text-center py-4 text-muted">
+          <i class="fa-solid fa-table-list fa-2x mb-2 text-secondary d-block"></i>
+          Suba un archivo CSV o pegue datos arriba para previsualizar los pagos antes de cargarlos al sistema.
+        </div>
+      `;
+    }
+
+    const btnConfirmar = document.getElementById('btnConfirmarCargaMasivaPagos');
+    if (btnConfirmar) {
+      btnConfirmar.disabled = true;
+      btnConfirmar.innerHTML = '<i class="fa-solid fa-cloud-arrow-up me-2"></i>Subir Pagos al Sistema (Quedan Pendientes)';
+    }
+
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+  }
+
+  function parsearTextoCsvPagos(text, defaultCursoId) {
+    if (!text || !text.trim()) return [];
+    const lines = text.split(/\r?\n/);
+    const parsed = [];
+
+    const cursoMap = new Map();
+    cachedOfertas.forEach(o => {
+      cursoMap.set(String(o.id), o);
+      cursoMap.set(String(o.taller).toUpperCase().trim(), o);
+    });
+
+    let headerIndices = null;
+
+    lines.forEach((line, lineIdx) => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+
+      let parts = trimmed.split(/[,;\t|]/).map(p => p.trim().replace(/^["']|["']$/g, ''));
+      if (parts.length === 1) {
+        const match = trimmed.match(/^([VE]?-?\d+)\s+(.+)$/i);
+        if (match) parts = [match[1], match[2]];
+      }
+
+      if (lineIdx === 0 && !headerIndices) {
+        const lowerFirst = parts.map(p => p.toLowerCase());
+        const isHeader = lowerFirst.some(p => /^(cedula|cédula|ci|dni|documento|referencia|ref|monto|taller|curso|banco|fecha)$/.test(p));
+        if (isHeader) {
+          headerIndices = {
+            cedula: lowerFirst.findIndex(p => /^(cedula|cédula|ci|dni|documento)$/.test(p)),
+            curso: lowerFirst.findIndex(p => /^(taller|curso|curso_ofertado|id_curso|id_curso_ofertado)$/.test(p)),
+            referencia: lowerFirst.findIndex(p => /^(referencia|ref|numero_transferencia|nro_transferencia|transferencia)$/.test(p)),
+            monto: lowerFirst.findIndex(p => /^(monto|monto_bs|valor|precio)$/.test(p)),
+            banco: lowerFirst.findIndex(p => /^(banco|banco_origen)$/.test(p)),
+            fecha: lowerFirst.findIndex(p => /^(fecha|fecha_pago)$/.test(p)),
+            nombre: lowerFirst.findIndex(p => /^(nombre|nombre_completo|participante|usuario)$/.test(p))
+          };
+          return;
+        }
+      }
+
+      let rawCedula = '';
+      let rawCurso = '';
+      let rawRef = '';
+      let rawMonto = '';
+      let rawBanco = '';
+      let rawFecha = '';
+      let rawNombre = '';
+
+      if (headerIndices) {
+        rawCedula = headerIndices.cedula !== -1 && parts[headerIndices.cedula] ? parts[headerIndices.cedula] : '';
+        rawCurso = headerIndices.curso !== -1 && parts[headerIndices.curso] ? parts[headerIndices.curso] : '';
+        rawRef = headerIndices.referencia !== -1 && parts[headerIndices.referencia] ? parts[headerIndices.referencia] : '';
+        rawMonto = headerIndices.monto !== -1 && parts[headerIndices.monto] ? parts[headerIndices.monto] : '';
+        rawBanco = headerIndices.banco !== -1 && parts[headerIndices.banco] ? parts[headerIndices.banco] : '';
+        rawFecha = headerIndices.fecha !== -1 && parts[headerIndices.fecha] ? parts[headerIndices.fecha] : '';
+        rawNombre = headerIndices.nombre !== -1 && parts[headerIndices.nombre] ? parts[headerIndices.nombre] : '';
+      } else {
+        rawCedula = parts[0] || '';
+        if (parts.length >= 6) {
+          rawCurso = parts[1];
+          rawRef = parts[2];
+          rawMonto = parts[3];
+          rawBanco = parts[4];
+          rawFecha = parts[5];
+        } else if (parts.length === 5) {
+          rawCurso = parts[1];
+          rawRef = parts[2];
+          rawMonto = parts[3];
+          rawBanco = parts[4];
+        } else if (parts.length === 4) {
+          rawCurso = parts[1];
+          rawRef = parts[2];
+          rawMonto = parts[3];
+        } else if (parts.length === 3) {
+          rawRef = parts[1];
+          rawMonto = parts[2];
+        } else if (parts.length === 2) {
+          if (/^[\d.,]+$/.test(parts[1])) {
+            rawMonto = parts[1];
+          } else {
+            rawCurso = parts[1];
+          }
+        }
+      }
+
+      if (!rawCedula || !/\d/.test(rawCedula)) return;
+
+      const normCedula = window.utils.normalizeCedula(rawCedula);
+      if (!normCedula) return;
+
+      let cursoObj = null;
+      if (rawCurso) {
+        cursoObj = cursoMap.get(String(rawCurso).trim()) || cursoMap.get(String(rawCurso).trim().toUpperCase());
+        if (!cursoObj) {
+          const term = String(rawCurso).toUpperCase().trim();
+          cursoObj = cachedOfertas.find(o => String(o.taller).toUpperCase().includes(term));
+        }
+      }
+      if (!cursoObj && defaultCursoId) {
+        cursoObj = cachedOfertas.find(o => String(o.id) === String(defaultCursoId));
+      }
+      if (!cursoObj && cachedOfertas.length > 0) {
+        cursoObj = cachedOfertas[0];
+      }
+
+      let montoNum = 0;
+      if (rawMonto) {
+        const cleanedMonto = String(rawMonto).replace(/[^0-9.,]/g, '').replace(',', '.');
+        montoNum = parseFloat(cleanedMonto) || 0;
+      }
+      if (montoNum === 0 && cursoObj) {
+        montoNum = parseFloat((parseFloat(cursoObj.valor_estudiante || 0) * (tasaDolarActual || 36.5)).toFixed(2));
+      }
+
+      const refFinal = rawRef ? String(rawRef).trim() : `CSV-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 900 + 100)}`;
+      const bancoFinal = rawBanco ? String(rawBanco).trim() : 'Pago Móvil / Transferencia';
+
+      let fechaFinal = new Date().toISOString().split('T')[0];
+      if (rawFecha) {
+        const fTrim = rawFecha.trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(fTrim)) {
+          fechaFinal = fTrim;
+        } else if (/^\d{2}[/-]\d{2}[/-]\d{4}$/.test(fTrim)) {
+          const p = fTrim.split(/[/-]/);
+          fechaFinal = `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`;
+        }
+      }
+
+      parsed.push({
+        cedula: normCedula,
+        nombre_completo: rawNombre,
+        id_curso_ofertado: cursoObj ? cursoObj.id : null,
+        nombre_curso: cursoObj ? cursoObj.taller : 'Taller no asignado',
+        numero_transferencia: refFinal,
+        monto: montoNum,
+        banco_origen: bancoFinal,
+        fecha_pago: fechaFinal,
+        status: 'PENDIENTE'
+      });
+    });
+
+    return parsed;
+  }
+
+  function procesarTextoPagosMasivos() {
+    const text = document.getElementById('textareaCargaMasivaPagos')?.value || '';
+    const defaultCursoId = document.getElementById('selectCursoDefaultPagosMasivos')?.value || '';
+    pagosMasivosParsed = parsearTextoCsvPagos(text, defaultCursoId);
+    renderizarPrevisualizacionPagos();
+  }
+
+  function renderizarPrevisualizacionPagos() {
+    const container = document.getElementById('previewCargaMasivaPagosContainer');
+    const btnConfirmar = document.getElementById('btnConfirmarCargaMasivaPagos');
+    if (!container) return;
+
+    if (pagosMasivosParsed.length === 0) {
+      container.innerHTML = `
+        <div class="alert alert-warning py-3 text-center mb-0">
+          <i class="fa-solid fa-triangle-exclamation fa-lg me-2"></i>
+          No se detectaron pagos válidos. Asegúrese de que cada línea contenga al menos la <strong>Cédula</strong> (ej: <code>V-12345678, Taller, 00123456, 350.50</code>).
+        </div>
+      `;
+      if (btnConfirmar) {
+        btnConfirmar.disabled = true;
+        btnConfirmar.innerHTML = '<i class="fa-solid fa-cloud-arrow-up me-2"></i>Subir Pagos al Sistema (Quedan Pendientes)';
+      }
+      return;
+    }
+
+    const usuariosMap = new Map();
+    cachedUsuarios.forEach(u => {
+      const clean = String(u.cedula || '').replace(/[\s.-]/g, '').toUpperCase();
+      if (clean) usuariosMap.set(clean, u);
+    });
+
+    let validadosCount = 0;
+    let montoTotal = 0;
+    let usuariosNuevosCount = 0;
+    let usuariosExistentesCount = 0;
+
+    let rowsHtml = '';
+    pagosMasivosParsed.forEach((p, idx) => {
+      validadosCount++;
+      montoTotal += parseFloat(p.monto || 0);
+
+      const cleanCed = String(p.cedula).replace(/[\s.-]/g, '').toUpperCase();
+      const existingUser = usuariosMap.get(cleanCed);
+
+      let usuarioBadge = '';
+      if (existingUser) {
+        usuariosExistentesCount++;
+        p.id_usuario = existingUser.id;
+        p.nombre_completo = existingUser.nombre_completo;
+        usuarioBadge = `<strong class="text-primary">${window.utils.escapeHtml(existingUser.nombre_completo)}</strong><br><small class="text-success"><i class="fa-solid fa-user-check me-1"></i>Registrado en BD</small>`;
+      } else {
+        usuariosNuevosCount++;
+        const nomDisplay = p.nombre_completo || `PARTICIPANTE ${p.cedula}`;
+        p.nombre_completo = nomDisplay;
+        usuarioBadge = `<strong class="text-dark">${window.utils.escapeHtml(nomDisplay)}</strong><br><small class="text-info"><i class="fa-solid fa-user-plus me-1"></i>Nuevo (Se creará en BD)</small>`;
+      }
+
+      rowsHtml += `
+        <tr>
+          <td class="text-center font-monospace">${idx + 1}</td>
+          <td><span class="badge bg-dark font-monospace">${window.utils.escapeHtml(p.cedula)}</span></td>
+          <td>${usuarioBadge}</td>
+          <td class="small fw-semibold text-wrap" style="max-width: 180px;">${window.utils.escapeHtml(p.nombre_curso)}</td>
+          <td class="text-center font-monospace small"><code>${window.utils.escapeHtml(p.numero_transferencia)}</code></td>
+          <td class="text-end fw-bold text-success">${parseFloat(p.monto || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.</td>
+          <td class="small text-muted">${window.utils.escapeHtml(p.banco_origen)}</td>
+          <td class="small text-center">${window.utils.escapeHtml(p.fecha_pago)}</td>
+          <td class="text-center">
+            <span class="badge bg-warning text-dark py-2 px-2 fw-bold">
+              <i class="fa-solid fa-clock me-1"></i>PENDIENTE
+            </span>
+          </td>
+        </tr>
+      `;
+    });
+
+    container.innerHTML = `
+      <div class="row g-2 mb-3">
+        <div class="col-md-3">
+          <div class="bg-white p-2 rounded border text-center shadow-sm">
+            <small class="text-muted d-block fw-semibold">Pagos a Subir</small>
+            <strong class="fs-5 text-primary">${validadosCount}</strong>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="bg-white p-2 rounded border text-center shadow-sm">
+            <small class="text-muted d-block fw-semibold">Monto Acumulado (Bs.)</small>
+            <strong class="fs-5 text-success">${montoTotal.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs.</strong>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="bg-white p-2 rounded border text-center shadow-sm">
+            <small class="text-muted d-block fw-semibold">Participantes</small>
+            <small class="d-block pt-1"><strong>${usuariosExistentesCount}</strong> en BD | <span class="text-info font-weight-bold"><strong>${usuariosNuevosCount}</strong> nuevos</span></small>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="bg-white p-2 rounded border text-center shadow-sm">
+            <small class="text-muted d-block fw-semibold">Estatus al Subir</small>
+            <span class="badge bg-warning text-dark mt-1"><i class="fa-solid fa-clock me-1"></i>PENDIENTE</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-responsive border rounded bg-white" style="max-height: 280px;">
+        <table class="table table-sm table-hover align-middle mb-0">
+          <thead class="table-light sticky-top">
+            <tr>
+              <th class="text-center" style="width: 40px;">#</th>
+              <th>Cédula</th>
+              <th>Participante</th>
+              <th>Curso / Taller Ofertado</th>
+              <th class="text-center">Referencia</th>
+              <th class="text-end">Monto</th>
+              <th>Banco</th>
+              <th class="text-center">Fecha</th>
+              <th class="text-center">Estatus Inicial</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    `;
+
+    if (btnConfirmar) {
+      btnConfirmar.disabled = (validadosCount === 0);
+      btnConfirmar.innerHTML = `<i class="fa-solid fa-cloud-arrow-up me-2"></i>Subir ${validadosCount} Pagos al Sistema (Quedan Pendientes)`;
+    }
+  }
+
+  async function ejecutarCargaMasivaPagos() {
+    if (window.authAdmin && window.authAdmin.isAuditor()) {
+      window.utils.showToast('Acceso restringido: Perfil AUDITOR es de solo lectura.', 'warning');
+      return;
+    }
+
+    if (pagosMasivosParsed.length === 0) {
+      window.utils.showToast('No hay registros válidos para subir.', 'info');
+      return;
+    }
+
+    const btn = document.getElementById('btnConfirmarCargaMasivaPagos');
+    const oldHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Subiendo pagos a la base de datos...';
+    }
+
+    try {
+      if (window.utils && window.utils.showLoading) {
+        window.utils.showLoading(50, 'Subiendo pagos masivos a Turso...', 'Registrando pagos en estado PENDIENTE');
+      }
+
+      const res = await window.api.bulkCreatePagos(pagosMasivosParsed);
+      if (res && res.status === 'success') {
+        window.utils.showToast(res.message || 'Pagos subidos exitosamente en espera de verificación.', 'success');
+        
+        const modalEl = document.getElementById('modalCargaMasivaPagos');
+        if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+
+        await cargarTablaPagos();
+
+        // Cambiar filtro para mostrar pendientes de inmediato
+        const selFiltro = document.getElementById('selectFiltroEstatusPago');
+        if (selFiltro) {
+          selFiltro.value = 'pendientes';
+          renderTablaPagosFiltrada();
+        }
+      } else {
+        window.utils.showToast('Error en la carga masiva: ' + (res?.message || 'Error desconocido'), 'danger');
+      }
+    } catch (err) {
+      console.error('Error al ejecutar carga masiva de pagos:', err);
+      window.utils.showToast('Error de conexión al subir pagos masivos', 'danger');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = oldHtml;
+      }
+      if (window.utils && window.utils.hideLoading) window.utils.hideLoading();
+    }
+  }
+
+  function descargarPlantillaCsvPagos() {
+    const csvContent = "cedula,curso_ofertado,referencia,monto,banco,fecha\n" +
+      "V-12345678,Taller de Inteligencia Artificial,00984572,350.50,Banco de Venezuela (0102),2026-10-25\n" +
+      "V-87654321,Desarrollo Web Fullstack,00451278,500.00,Pago Móvil Interbancario,2026-10-25\n" +
+      "V-19876543,Ciberseguridad y Redes,00781290,420.00,Banesco (0134),2026-10-25";
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'plantilla_carga_masiva_pagos_uptpc.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    window.utils.showToast('Plantilla CSV descargada', 'info');
+  }
+
   window.ofertasModule = {
     init,
     cargarTablaOfertas,
@@ -833,6 +1271,9 @@
     editarOferta,
     eliminarOferta,
     verFlayerFull,
-    verCaptureFull
+    verCaptureFull,
+    abrirModalCargaMasivaPagos,
+    ejecutarCargaMasivaPagos,
+    descargarPlantillaCsvPagos
   };
 })();
