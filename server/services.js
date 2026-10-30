@@ -349,6 +349,21 @@ const services = {
       }
     }
 
+    // Normalizaciones específicas para pagos
+    if (table === 'pagos') {
+      if (data.id_curso_ofertado !== undefined && data.id_curso_ofertado !== null) {
+        const parsedCurso = parseInt(data.id_curso_ofertado, 10);
+        if (!isNaN(parsedCurso)) {
+          data.id_curso_ofertado = String(parsedCurso);
+        }
+      }
+      if (data.status === undefined || data.status === false || String(data.status).toLowerCase() === 'false' || String(data.status) === '0') {
+        data.status = 'PENDIENTE';
+      } else if (data.status === true || String(data.status).toLowerCase() === 'true' || String(data.status) === '1' || String(data.status).toLowerCase() === 'aprobado') {
+        data.status = 'APROBADO';
+      }
+    }
+
     // Auto-generar UUID si la tabla lo usa como PK y no vino
     if (validCols.has('id') && (!data.id || String(data.id).trim() === '')) {
       if (table !== 'curso_ofertado' && table !== 'banco' && table !== 'tipo') {
@@ -390,6 +405,23 @@ const services = {
     for (const key of Object.keys(recordData || {})) {
       if (key !== 'id' && validCols.has(key)) {
         data[key] = recordData[key];
+      }
+    }
+
+    // Normalizaciones específicas para pagos
+    if (table === 'pagos') {
+      if (data.id_curso_ofertado !== undefined && data.id_curso_ofertado !== null) {
+        const parsedCurso = parseInt(data.id_curso_ofertado, 10);
+        if (!isNaN(parsedCurso)) {
+          data.id_curso_ofertado = String(parsedCurso);
+        }
+      }
+      if (data.status !== undefined && data.status !== null) {
+        if (data.status === true || String(data.status).toLowerCase() === 'true' || String(data.status) === '1' || String(data.status).toLowerCase() === 'aprobado') {
+          data.status = 'APROBADO';
+        } else if (data.status === false || String(data.status).toLowerCase() === 'false' || String(data.status) === '0' || String(data.status).toLowerCase() === 'pendiente') {
+          data.status = 'PENDIENTE';
+        }
       }
     }
 
@@ -709,16 +741,20 @@ const services = {
 
     // Resolver curso_ofertado
     let cursoId = pagoData.id_curso_ofertado || pagoData.curso_id || null;
+    if (cursoId) {
+      const pInt = parseInt(cursoId, 10);
+      if (!isNaN(pInt)) cursoId = String(pInt);
+    }
     if (!cursoId && pagoData.taller) {
       const cRes = await db.execute({
         sql: "SELECT id FROM curso_ofertado WHERE UPPER(taller) LIKE UPPER(?) LIMIT 1;",
         args: [`%${pagoData.taller}%`]
       });
-      if (cRes.rows.length > 0) cursoId = cRes.rows[0].id;
+      if (cRes.rows.length > 0) cursoId = String(cRes.rows[0].id);
     }
     if (!cursoId) {
       const primerCurso = await db.execute("SELECT id FROM curso_ofertado ORDER BY id DESC LIMIT 1;");
-      cursoId = primerCurso.rows[0]?.id || null;
+      cursoId = primerCurso.rows[0]?.id ? String(primerCurso.rows[0].id) : null;
     }
 
     const monto = parseFloat(pagoData.monto || pagoData.monto_bs || 0) || 0;
@@ -886,14 +922,18 @@ const services = {
       }
 
       let cursoId = item.id_curso_ofertado || item.curso_id || null;
+      if (cursoId) {
+        const pInt = parseInt(cursoId, 10);
+        if (!isNaN(pInt)) cursoId = String(pInt);
+      }
       if (!cursoId && item.curso_ofertado) {
         const match = ofertasList.find(o => 
           String(o.taller).toUpperCase().includes(String(item.curso_ofertado).toUpperCase()) ||
           String(o.id) === String(item.curso_ofertado)
         );
-        if (match) cursoId = match.id;
+        if (match) cursoId = String(match.id);
       }
-      if (!cursoId) cursoId = primerCursoId;
+      if (!cursoId) cursoId = primerCursoId ? String(primerCursoId) : null;
 
       const monto = parseFloat(item.monto || 0) || 0;
       const ref = String(item.numero_transferencia || item.referencia || `CSV-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 900 + 100)}`).trim();

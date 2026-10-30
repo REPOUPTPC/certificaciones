@@ -2151,16 +2151,17 @@
         const uploadRes = await window.api.uploadImage(compressedBase64, filename, 'pagos');
         const captureUrl = (uploadRes && uploadRes.status === 'success') ? uploadRes.url : compressedBase64;
 
+        const cursoIdNormalizado = String(parseInt(cursoSeleccionadoActual.id, 10) || cursoSeleccionadoActual.id);
         const nuevoPago = {
           id: window.utils.generateUUID(),
           id_usuario: usuarioIdentificadoActual.id,
-          id_curso_ofertado: cursoSeleccionadoActual.id,
+          id_curso_ofertado: cursoIdNormalizado,
           banco_origen,
           monto,
           numero_transferencia,
           fecha_pago,
           capture: captureUrl,
-          status: false,
+          status: 'PENDIENTE',
           created_at: new Date().toISOString()
         };
 
@@ -2253,11 +2254,13 @@
         `;
 
         misPagos.forEach(p => {
-          const curso = cursosMap[String(p.id_curso_ofertado)] || {};
-          const isVerificado = (p.status === true || String(p.status).toLowerCase() === 'true');
+          const rawId = String(p.id_curso_ofertado || '').trim();
+          const intId = parseInt(rawId, 10);
+          const curso = cursosMap[rawId] || (!isNaN(intId) ? cursosMap[String(intId)] : null) || {};
+          const isVerificado = (p.status === true || String(p.status).toLowerCase() === 'true' || String(p.status).toLowerCase() === 'aprobado' || String(p.status) === '1');
           const badge = isVerificado
-            ? '<span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>Verificado / Enviado a Admin</span>'
-            : '<span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i>En Proceso</span>';
+            ? '<span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>Verificado / Aprobado</span>'
+            : '<span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i>En Proceso de Verificación</span>';
 
           const captureBtn = p.capture 
             ? `<a href="${window.utils.escapeHtml(p.capture)}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fa-solid fa-image"></i> Ver</a>`

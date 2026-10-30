@@ -2543,28 +2543,63 @@ if (!empty($data['cursos'])) {
                   <small class="text-muted">Si no aparece, regístrelo previamente en Usuarios.</small>
                   <small class="text-success fw-semibold" id="lblContadorUsuariosPago"></small>
                 </div>
+                <!-- Panel de información detallada del participante declarado -->
+                <div id="boxInfoParticipanteModal" class="card p-2 bg-light border mt-2 shadow-sm rounded-3" style="display: none;">
+                  <div class="small">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                      <span class="text-muted"><i class="fa-solid fa-user me-1 text-primary"></i>Nombre:</span>
+                      <strong class="text-dark text-truncate ms-2" id="lblInfoModalNombre"></strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                      <span class="text-muted"><i class="fa-solid fa-id-card me-1 text-primary"></i>Cédula:</span>
+                      <strong class="font-monospace text-dark" id="lblInfoModalCedula"></strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                      <span class="text-muted"><i class="fa-solid fa-envelope me-1 text-primary"></i>Correo:</span>
+                      <span class="text-dark text-truncate ms-2" id="lblInfoModalCorreo"></span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                      <span class="text-muted"><i class="fa-solid fa-phone me-1 text-primary"></i>Teléfono:</span>
+                      <span id="lblInfoModalTelefono"></span>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div class="col-md-6">
                 <label class="form-label fw-bold">Curso / Taller Ofertado: <span class="text-danger">*</span></label>
                 <select class="form-select" id="inputPagoCursoOfertadoId" required>
                   <option value="">-- Seleccionar Taller --</option>
                 </select>
+                <!-- Panel de información del taller ofertado -->
+                <div id="boxInfoTallerModal" class="card p-2 bg-light border mt-2 shadow-sm rounded-3" style="display: none;">
+                  <div class="small">
+                    <div class="fw-bold text-primary mb-1" id="lblInfoModalTallerNombre"></div>
+                    <div class="d-flex justify-content-between align-items-center mb-1 text-muted">
+                      <span>Costo Estudiante:</span>
+                      <strong class="text-success" id="lblInfoModalCostoEst"></strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center text-muted">
+                      <span>Costo Foráneo / Público:</span>
+                      <strong class="text-info" id="lblInfoModalCostoFor"></strong>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
             <div class="row g-3 mb-3">
               <div class="col-md-4">
-                <label class="form-label fw-bold">Banco de Origen:</label>
-                <select class="form-select" id="inputPagoBancoOrigen">
-                  <option value="Banco de Venezuela (0102)">Banco de Venezuela (0102)</option>
-                  <option value="Banesco (0134)">Banesco (0134)</option>
-                  <option value="Banco Mercantil (0105)">Banco Mercantil (0105)</option>
-                  <option value="BBVA Provincial (0108)">BBVA Provincial (0108)</option>
-                  <option value="Banco Nacional de Crédito BNC (0191)">Banco Nacional de Crédito BNC (0191)</option>
-                  <option value="Bancamiga (0172)">Bancamiga (0172)</option>
-                  <option value="Pago Móvil Interbancario">Pago Móvil Interbancario</option>
+                <label class="form-label fw-bold">Banco de Origen: <span class="text-danger">*</span></label>
+                <select class="form-select" id="inputPagoBancoOrigen" required>
+                  <option value="">-- Seleccionar Banco --</option>
+                  <option value="Banco de Venezuela">Banco de Venezuela (0102)</option>
+                  <option value="Banesco">Banesco (0134)</option>
+                  <option value="Mercantil">Banco Mercantil (0105)</option>
+                  <option value="Banco Provincial">BBVA Provincial (0108)</option>
+                  <option value="Banco Nacional de Crédito (BNC)">Banco Nacional de Crédito BNC (0191)</option>
+                  <option value="Bancamiga">Bancamiga (0172)</option>
+                  <option value="Pago Móvil / Otras Entidades">Pago Móvil / Otras Entidades</option>
                   <option value="Efectivo / Taquilla">Efectivo / Taquilla</option>
-                  <option value="Otro">Otro Banco</option>
                 </select>
               </div>
               <div class="col-md-4">

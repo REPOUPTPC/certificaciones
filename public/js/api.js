@@ -268,8 +268,15 @@
           return { status: 'success', data: this._globalCache };
         }
         if (action === 'getById' && targetTable && Array.isArray(this._globalCache[targetTable])) {
-          const found = this._globalCache[targetTable].find(r => String(r.id) === String(params.id));
-          return { status: 'success', data: found || null };
+          const rawId = String(params.id || '').trim();
+          const intId = parseInt(rawId, 10);
+          const found = this._globalCache[targetTable].find(r => 
+            String(r.id).trim() === rawId || 
+            (!isNaN(intId) && parseInt(r.id, 10) === intId)
+          );
+          if (found) {
+            return { status: 'success', data: found };
+          }
         }
         if (action === 'searchCertificado') {
           const termino = String(params.termino || '').trim().toUpperCase();
@@ -311,9 +318,14 @@
         }
       }
 
-      // Fallback directo a Google Apps Script
+      // Fallback directo al backend remoto
       try {
         const json = await this.fetchRemoteDirect(action, params);
+        if (json && json.status === 'success' && json.data && action === 'getById' && targetTable && this._globalCache) {
+          if (!Array.isArray(this._globalCache[targetTable])) this._globalCache[targetTable] = [];
+          const exists = this._globalCache[targetTable].some(r => String(r.id) === String(json.data.id));
+          if (!exists) this._globalCache[targetTable].push(json.data);
+        }
         this._isUsingMockData = false;
         return json;
       } catch (err) {

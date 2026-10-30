@@ -13,7 +13,169 @@
   let cachedPagos = [];
   let cachedUsuarios = [];
   let cachedOfertas = [];
+  let cachedBancos = [];
   let pagosMasivosParsed = [];
+
+  function resolverOferta(cursoId) {
+    if (!cursoId && cursoId !== 0) return null;
+    const rawStr = String(cursoId).trim();
+    const intId = parseInt(rawStr, 10);
+    return cachedOfertas.find(o => 
+      String(o.id).trim() === rawStr || 
+      (!isNaN(intId) && parseInt(o.id, 10) === intId)
+    ) || null;
+  }
+
+  function isPagoVerificado(status) {
+    if (status === true || status === 1) return true;
+    const s = String(status || '').trim().toLowerCase();
+    return s === 'true' || s === '1' || s === 'aprobado' || s === 'confirmado';
+  }
+
+  function poblarSelectBancos(selectElement, bancoSeleccionado = '') {
+    if (!selectElement) return;
+
+    let options = '<option value="">-- Seleccionar Banco --</option>';
+    
+    const listaBancos = (Array.isArray(cachedBancos) && cachedBancos.length > 0)
+      ? cachedBancos.map(b => b.banco)
+      : [
+          'Banco de Venezuela',
+          'Banesco',
+          'Mercantil',
+          'Banco Provincial',
+          'Banco Nacional de Crédito (BNC)',
+          'Bancamiga',
+          'Banco Bicentenario',
+          'Banco del Tesoro',
+          'Banco Exterior',
+          'Banco Caroní',
+          'Banco Activo',
+          'Banco Plaza',
+          '100% Banco',
+          'Banplus',
+          'Del Sur Banco Universal',
+          'Pago Móvil / Otras Entidades',
+          'Efectivo / Taquilla'
+        ];
+
+    listaBancos.forEach(b => {
+      options += `<option value="${window.utils.escapeHtml(b)}">${window.utils.escapeHtml(b)}</option>`;
+    });
+
+    selectElement.innerHTML = options;
+
+    if (bancoSeleccionado) {
+      seleccionarBancoEnSelect(selectElement, bancoSeleccionado);
+    }
+  }
+
+  function seleccionarBancoEnSelect(selectElement, bancoValor) {
+    if (!selectElement || !bancoValor) return;
+    const valTrim = String(bancoValor).trim();
+    const valLower = valTrim.toLowerCase();
+
+    // 1. Coincidencia exacta
+    for (let i = 0; i < selectElement.options.length; i++) {
+      if (selectElement.options[i].value === valTrim) {
+        selectElement.selectedIndex = i;
+        return;
+      }
+    }
+
+    // 2. Coincidencia sin distinción de mayúsculas/minúsculas
+    for (let i = 0; i < selectElement.options.length; i++) {
+      if (selectElement.options[i].value.toLowerCase() === valLower) {
+        selectElement.selectedIndex = i;
+        return;
+      }
+    }
+
+    // 3. Coincidencia parcial (ej: "Bancamiga" coincide con "Bancamiga (0172)")
+    for (let i = 0; i < selectElement.options.length; i++) {
+      const optVal = selectElement.options[i].value.toLowerCase();
+      const optText = selectElement.options[i].textContent.toLowerCase();
+      if ((optVal && (optVal.includes(valLower) || valLower.includes(optVal))) ||
+          (optText && (optText.includes(valLower) || valLower.includes(optText)))) {
+        selectElement.selectedIndex = i;
+        return;
+      }
+    }
+
+    // 4. Si no existía en el select, agregarlo dinámicamente para nunca perder el dato declarado
+    const newOpt = document.createElement('option');
+    newOpt.value = valTrim;
+    newOpt.textContent = valTrim;
+    newOpt.selected = true;
+    selectElement.appendChild(newOpt);
+    selectElement.value = valTrim;
+  }
+
+  function actualizarBoxInfoParticipante(userId) {
+    const box = document.getElementById('boxInfoParticipanteModal');
+    if (!box) return;
+
+    if (!userId) {
+      box.style.display = 'none';
+      return;
+    }
+
+    const u = cachedUsuarios.find(x => String(x.id) === String(userId));
+    if (!u) {
+      box.style.display = 'none';
+      return;
+    }
+
+    const elNom = document.getElementById('lblInfoModalNombre');
+    const elCed = document.getElementById('lblInfoModalCedula');
+    const elCor = document.getElementById('lblInfoModalCorreo');
+    const elTel = document.getElementById('lblInfoModalTelefono');
+
+    if (elNom) elNom.textContent = u.nombre_completo || 'N/A';
+    if (elCed) elCed.textContent = u.cedula || 'N/A';
+    if (elCor) elCor.textContent = u.correo || 'No registrado';
+    if (elTel) {
+      if (u.telefono) {
+        const cleanTel = u.telefono.replace(/[^0-9]/g, '');
+        elTel.innerHTML = `<a href="https://wa.me/${cleanTel}" target="_blank" class="text-success text-decoration-none fw-bold" title="Abrir chat en WhatsApp"><i class="fa-brands fa-whatsapp me-1"></i>${window.utils.escapeHtml(u.telefono)}</a>`;
+      } else {
+        elTel.innerHTML = '<span class="text-warning small"><i class="fa-solid fa-phone-slash me-1"></i>Sin teléfono</span>';
+      }
+    }
+
+    box.style.display = 'block';
+  }
+
+  function actualizarBoxInfoTaller(cursoId) {
+    const box = document.getElementById('boxInfoTallerModal');
+    if (!box) return;
+
+    if (!cursoId) {
+      box.style.display = 'none';
+      return;
+    }
+
+    const ofr = resolverOferta(cursoId);
+    if (!ofr) {
+      box.style.display = 'none';
+      return;
+    }
+
+    const elNom = document.getElementById('lblInfoModalTallerNombre');
+    const elEst = document.getElementById('lblInfoModalCostoEst');
+    const elFor = document.getElementById('lblInfoModalCostoFor');
+
+    const valEstUsd = parseFloat(ofr.valor_estudiante || 0);
+    const valForUsd = parseFloat(ofr.valor_foraneo || 0);
+    const valEstBs = (valEstUsd * tasaDolarActual).toLocaleString('es-VE', { minimumFractionDigits: 2 });
+    const valForBs = (valForUsd * tasaDolarActual).toLocaleString('es-VE', { minimumFractionDigits: 2 });
+
+    if (elNom) elNom.textContent = ofr.taller;
+    if (elEst) elEst.textContent = `$${valEstUsd.toFixed(2)} USD (${valEstBs} Bs.)`;
+    if (elFor) elFor.textContent = `$${valForUsd.toFixed(2)} USD (${valForBs} Bs.)`;
+
+    box.style.display = 'block';
+  }
 
   async function init() {
     try {
@@ -125,15 +287,17 @@
     tbody.innerHTML = '<tr><td colspan="9" class="text-center py-3"><i class="fa-solid fa-spinner fa-spin me-2"></i>Cargando declaraciones de pagos...</td></tr>';
 
     try {
-      const [resPagos, resUsuarios, resOfertas] = await Promise.all([
+      const [resPagos, resUsuarios, resOfertas, resBancos] = await Promise.all([
         window.api.getAll('pagos'),
         window.api.getAll('usuarios'),
-        window.api.getAll('curso_ofertado')
+        window.api.getAll('curso_ofertado'),
+        window.api.getAll('banco')
       ]);
 
       cachedPagos = (resPagos && resPagos.status === 'success' && Array.isArray(resPagos.data)) ? resPagos.data : [];
       cachedUsuarios = (resUsuarios && resUsuarios.status === 'success' && Array.isArray(resUsuarios.data)) ? resUsuarios.data : [];
       cachedOfertas = (resOfertas && resOfertas.status === 'success' && Array.isArray(resOfertas.data)) ? resOfertas.data : [];
+      cachedBancos = (resBancos && resBancos.status === 'success' && Array.isArray(resBancos.data)) ? resBancos.data : [];
 
       actualizarMetricasPagos();
       renderTablaPagosFiltrada();
@@ -150,7 +314,7 @@
     let montoTotalAprobadoBs = 0;
 
     cachedPagos.forEach(p => {
-      const isOk = (p.status === true || String(p.status).toLowerCase() === 'true' || String(p.status).toLowerCase() === 'aprobado');
+      const isOk = isPagoVerificado(p.status);
       if (isOk) {
         aprobados++;
         montoTotalAprobadoBs += parseFloat(p.monto || 0);
@@ -185,10 +349,9 @@
     const filtroVal = selectFiltro ? selectFiltro.value : 'todos';
 
     const usuariosMap = Object.fromEntries(cachedUsuarios.map(u => [String(u.id), u]));
-    const ofertasMap = Object.fromEntries(cachedOfertas.map(o => [String(o.id), o]));
 
     let filtrados = cachedPagos.filter(p => {
-      const isVerificado = (p.status === true || String(p.status).toLowerCase() === 'true' || String(p.status).toLowerCase() === 'aprobado');
+      const isVerificado = isPagoVerificado(p.status);
       
       if (filtroVal === 'pendientes' && isVerificado) return false;
       if (filtroVal === 'aprobados' && !isVerificado) return false;
@@ -196,12 +359,14 @@
       if (!searchVal) return true;
 
       const usr = usuariosMap[String(p.id_usuario)] || {};
-      const ofr = ofertasMap[String(p.id_curso_ofertado)] || {};
+      const ofr = resolverOferta(p.id_curso_ofertado) || {};
+      const nombreTaller = ofr.taller || p.taller || 'Taller No Especificado';
+
       const matchUsuario = String(usr.nombre_completo || '').toUpperCase().includes(searchVal);
       const matchCedula = String(usr.cedula || '').toUpperCase().includes(searchVal);
       const matchRef = String(p.numero_transferencia || '').toUpperCase().includes(searchVal);
       const matchBanco = String(p.banco_origen || '').toUpperCase().includes(searchVal);
-      const matchTaller = String(ofr.taller || '').toUpperCase().includes(searchVal);
+      const matchTaller = String(nombreTaller).toUpperCase().includes(searchVal);
 
       return matchUsuario || matchCedula || matchRef || matchBanco || matchTaller;
     });
@@ -218,9 +383,10 @@
     let html = '';
     filtrados.forEach(p => {
       const usr = usuariosMap[String(p.id_usuario)] || {};
-      const ofr = ofertasMap[String(p.id_curso_ofertado)] || {};
+      const ofr = resolverOferta(p.id_curso_ofertado) || {};
+      const nombreTaller = ofr.taller || p.taller || 'Taller No Especificado';
 
-      const isVerificado = (p.status === true || String(p.status).toLowerCase() === 'true' || String(p.status).toLowerCase() === 'aprobado');
+      const isVerificado = isPagoVerificado(p.status);
       const statusBadge = isVerificado 
         ? '<span class="badge bg-success py-2 px-3 fw-bold"><i class="fa-solid fa-circle-check me-1"></i>APROBADO</span>'
         : '<span class="badge bg-warning text-dark py-2 px-3 fw-bold"><i class="fa-solid fa-clock me-1"></i>PENDIENTE</span>';
@@ -268,7 +434,7 @@
             <br><small class="text-muted"><i class="fa-solid fa-id-card me-1"></i>${window.utils.escapeHtml(usr.cedula || 'N/A')}</small>
             ${usr.telefono ? `<br><small><a href="https://wa.me/${usr.telefono.replace(/[^0-9]/g, '')}" target="_blank" class="text-success text-decoration-none fw-semibold" title="Contactar vía WhatsApp"><i class="fa-brands fa-whatsapp me-1"></i>${window.utils.escapeHtml(usr.telefono)}</a></small>` : '<br><small class="text-warning"><i class="fa-solid fa-phone-slash me-1"></i>Sin registrar</small>'}
           </td>
-          <td class="align-middle font-weight-bold text-wrap small" style="max-width: 200px;">${window.utils.escapeHtml(ofr.taller || 'Taller No Especificado')}</td>
+          <td class="align-middle font-weight-bold text-wrap small" style="max-width: 200px;">${window.utils.escapeHtml(nombreTaller)}</td>
           <td class="align-middle small">${window.utils.escapeHtml(p.banco_origen || 'N/A')}</td>
           <td class="align-middle text-center font-weight-bold text-success">${parseFloat(p.monto || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.</td>
           <td class="align-middle text-center"><code>${window.utils.escapeHtml(p.numero_transferencia || 'S/R')}</code></td>
@@ -459,9 +625,31 @@
     }
   }
 
-  function seleccionarUsuarioPagoManual(userId) {
-    const u = cachedUsuarios.find(x => String(x.id) === String(userId));
-    if (!u) return;
+  async function seleccionarUsuarioPagoManual(userId) {
+    if (!userId) {
+      actualizarBoxInfoParticipante(null);
+      return;
+    }
+
+    let u = cachedUsuarios.find(x => String(x.id) === String(userId));
+    if (!u) {
+      try {
+        const resU = await window.api.getById('usuarios', userId);
+        if (resU && resU.status === 'success' && resU.data) {
+          u = resU.data;
+          if (!cachedUsuarios.some(x => String(x.id) === String(u.id))) {
+            cachedUsuarios.push(u);
+          }
+        }
+      } catch (e) {
+        console.warn('Error resolviendo usuario por ID:', e);
+      }
+    }
+
+    if (!u) {
+      actualizarBoxInfoParticipante(null);
+      return;
+    }
 
     const selUsuario = document.getElementById('inputPagoUsuarioId');
     const inputBuscar = document.getElementById('inputBuscarUsuarioPagoManual');
@@ -471,8 +659,11 @@
 
     // Poblar lista completa garantizando que el usuario quede seleccionado en el desplegable
     if (selUsuario) {
-      selUsuario.innerHTML = `<option value="">-- Seleccionar Participante (${cachedUsuarios.length}) --</option>` +
-        cachedUsuarios.map(usr => `<option value="${usr.id}">${window.utils.escapeHtml(usr.cedula)} - ${window.utils.escapeHtml(usr.nombre_completo)}</option>`).join('');
+      let opt = Array.from(selUsuario.options).find(o => String(o.value) === String(u.id));
+      if (!opt) {
+        selUsuario.innerHTML = `<option value="">-- Seleccionar Participante (${cachedUsuarios.length}) --</option>` +
+          cachedUsuarios.map(usr => `<option value="${usr.id}">${window.utils.escapeHtml(usr.cedula)} - ${window.utils.escapeHtml(usr.nombre_completo)}</option>`).join('');
+      }
       selUsuario.value = String(u.id);
     }
 
@@ -488,6 +679,8 @@
     if (lblContador) {
       lblContador.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i>Participante seleccionado';
     }
+
+    actualizarBoxInfoParticipante(u.id);
   }
 
   async function abrirModalPago(pagoId = null) {
@@ -503,7 +696,11 @@
 
     form.reset();
 
-    // Asegurar que la lista de usuarios esté cargada si aún estaba vacía
+    // Ocultar paneles de información al reiniciar
+    actualizarBoxInfoParticipante(null);
+    actualizarBoxInfoTaller(null);
+
+    // Asegurar que las listas maestras estén cargadas
     if (!Array.isArray(cachedUsuarios) || cachedUsuarios.length === 0) {
       try {
         const resU = await window.api.getAll('usuarios');
@@ -515,19 +712,45 @@
       }
     }
 
+    if (!Array.isArray(cachedOfertas) || cachedOfertas.length === 0) {
+      try {
+        const resO = await window.api.getAll('curso_ofertado');
+        if (resO && resO.status === 'success' && Array.isArray(resO.data)) {
+          cachedOfertas = resO.data;
+        }
+      } catch (e) {
+        console.warn('Error cargando ofertas para modal de pago:', e);
+      }
+    }
+
+    if (!Array.isArray(cachedBancos) || cachedBancos.length === 0) {
+      try {
+        const resB = await window.api.getAll('banco');
+        if (resB && resB.status === 'success' && Array.isArray(resB.data)) {
+          cachedBancos = resB.data;
+        }
+      } catch (e) {
+        console.warn('Error cargando bancos para modal de pago:', e);
+      }
+    }
+
     // Reiniciar buscador y poblar usuarios
     const inputBuscarUsuario = document.getElementById('inputBuscarUsuarioPagoManual');
     if (inputBuscarUsuario) inputBuscarUsuario.value = '';
     filtrarUsuariosPagoManual('', false);
 
     const selUsuario = document.getElementById('inputPagoUsuarioId');
+    const selCurso = document.getElementById('inputPagoCursoOfertadoId');
+    const selBanco = document.getElementById('inputPagoBancoOrigen');
 
     // Poblar cursos ofertados
-    const selCurso = document.getElementById('inputPagoCursoOfertadoId');
     if (selCurso) {
       selCurso.innerHTML = '<option value="">-- Seleccionar Taller --</option>' +
         cachedOfertas.map(o => `<option value="${o.id}">${window.utils.escapeHtml(o.taller)} ($${parseFloat(o.valor_estudiante || 0).toFixed(2)})</option>`).join('');
     }
+
+    // Poblar bancos dinámicamente desde la base de datos
+    poblarSelectBancos(selBanco);
 
     const containerPreview = document.getElementById('containerPreviewCapture');
     const imgPreview = document.getElementById('imgPagoCapturePreview');
@@ -546,20 +769,52 @@
       if (titleEl) titleEl.innerHTML = '<i class="fa-solid fa-pen-to-square me-2"></i>Editar Declaración de Pago';
       document.getElementById('inputPagoId').value = p.id;
       document.getElementById('inputPagoCaptureUrl').value = p.capture || '';
+
+      // 1. Cargar y seleccionar el participante
       if (p.id_usuario) {
-        seleccionarUsuarioPagoManual(p.id_usuario);
+        await seleccionarUsuarioPagoManual(p.id_usuario);
       } else if (selUsuario) {
         selUsuario.value = '';
+        actualizarBoxInfoParticipante(null);
       }
-      if (selCurso) selCurso.value = p.id_curso_ofertado || '';
-      document.getElementById('inputPagoBancoOrigen').value = p.banco_origen || 'Banco de Venezuela (0102)';
+
+      // 2. Cargar y seleccionar el taller ofertado
+      const ofr = resolverOferta(p.id_curso_ofertado);
+      if (selCurso) {
+        if (ofr) {
+          selCurso.value = String(ofr.id);
+        } else if (p.id_curso_ofertado) {
+          const rawCursoId = String(parseInt(p.id_curso_ofertado, 10) || p.id_curso_ofertado);
+          let matchOpt = Array.from(selCurso.options).find(o => String(o.value) === rawCursoId);
+          if (matchOpt) {
+            selCurso.value = rawCursoId;
+          } else {
+            const newOpt = document.createElement('option');
+            newOpt.value = rawCursoId;
+            newOpt.textContent = `Taller ID ${rawCursoId}`;
+            newOpt.selected = true;
+            selCurso.appendChild(newOpt);
+            selCurso.value = rawCursoId;
+          }
+        }
+        actualizarBoxInfoTaller(selCurso.value);
+      }
+
+      // 3. Cargar y seleccionar el banco de origen declarado por el usuario
+      if (selBanco && p.banco_origen) {
+        seleccionarBancoEnSelect(selBanco, p.banco_origen);
+      }
+
+      // 4. Cargar monto, referencia y fecha
       document.getElementById('inputPagoMonto').value = p.monto || '';
       document.getElementById('inputPagoReferencia').value = p.numero_transferencia || '';
       document.getElementById('inputPagoFecha').value = p.fecha_pago ? p.fecha_pago.split('T')[0] : '';
       
-      const isAprobado = (p.status === true || String(p.status).toLowerCase() === 'true' || String(p.status).toLowerCase() === 'aprobado');
+      // 5. Estatus
+      const isAprobado = isPagoVerificado(p.status);
       document.getElementById('inputPagoStatus').value = isAprobado ? 'true' : 'false';
 
+      // 6. Capture de comprobante
       if (p.capture && imgPreview && containerPreview) {
         imgPreview.src = p.capture;
         containerPreview.style.display = 'block';
@@ -570,6 +825,8 @@
       document.getElementById('inputPagoCaptureUrl').value = '';
       document.getElementById('inputPagoFecha').value = new Date().toISOString().split('T')[0];
       document.getElementById('inputPagoStatus').value = 'true'; // Por defecto los pagos manuales en administración se registran como confirmados
+      actualizarBoxInfoParticipante(null);
+      actualizarBoxInfoTaller(null);
     }
 
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
@@ -623,15 +880,17 @@
         }
       }
 
+      const cursoIdNormalizado = String(parseInt(id_curso_ofertado, 10) || id_curso_ofertado);
+
       const payload = {
         id_usuario,
-        id_curso_ofertado,
+        id_curso_ofertado: cursoIdNormalizado,
         banco_origen,
         monto,
         numero_transferencia,
         fecha_pago,
         capture: captureUrl,
-        status: statusVal
+        status: statusVal ? 'APROBADO' : 'PENDIENTE'
       };
 
       if (id) {
@@ -824,6 +1083,7 @@
         filtrarUsuariosPagoManual('', false);
         const sel = document.getElementById('inputPagoUsuarioId');
         if (sel) sel.value = '';
+        actualizarBoxInfoParticipante(null);
       });
     }
 
@@ -853,6 +1113,15 @@
           if (btnLimpiar) btnLimpiar.style.display = 'inline-block';
           if (lblContador) lblContador.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i>Participante seleccionado';
         }
+        actualizarBoxInfoParticipante(e.target.value);
+      });
+    }
+
+    const selCursoPago = document.getElementById('inputPagoCursoOfertadoId');
+    if (selCursoPago && !selCursoPago.dataset.bound) {
+      selCursoPago.dataset.bound = 'true';
+      selCursoPago.addEventListener('change', (e) => {
+        actualizarBoxInfoTaller(e.target.value);
       });
     }
 
