@@ -1022,23 +1022,30 @@ const services = {
       url TEXT NOT NULL,
       campo_cedula TEXT,
       campo_nombre TEXT,
+      campo_array TEXT,
       api_key TEXT,
+      api_secret TEXT,
+      descripcion TEXT,
       activa TEXT DEFAULT 'true',
       ultima_importacion TEXT,
       ultimo_resultado TEXT,
       created_at TEXT
     );`);
+    try { await db.execute("ALTER TABLE fuentes_externas ADD COLUMN api_secret TEXT;"); } catch (e) {}
+    try { await db.execute("ALTER TABLE fuentes_externas ADD COLUMN descripcion TEXT;"); } catch (e) {}
+    try { await db.execute("ALTER TABLE fuentes_externas ADD COLUMN campo_array TEXT;"); } catch (e) {}
     fuentesTableReady = true;
   },
 
   async listFuentesExternas() {
     await this.ensureFuentesExternasTable();
     const res = await db.execute("SELECT * FROM fuentes_externas ORDER BY created_at ASC;");
-    // Nunca se devuelve la API key completa al navegador
     const data = res.rows.map(r => ({
       ...r,
-      api_key: '',
+      api_key: r.api_key || '',
+      api_secret_masked: r.api_secret ? (r.api_secret.slice(0, 7) + '••••' + r.api_secret.slice(-4)) : '',
       tiene_api_key: Boolean(r.api_key),
+      tiene_api_secret: Boolean(r.api_secret),
       activa: String(r.activa).toLowerCase() !== 'false'
     }));
     return { status: 'success', data };
@@ -1055,27 +1062,33 @@ const services = {
 
     const campoCedula = String(fuente.campo_cedula || '').trim();
     const campoNombre = String(fuente.campo_nombre || '').trim();
+    const campoArray = String(fuente.campo_array || '').trim();
+    const descripcion = String(fuente.descripcion || '').trim();
     const activa = fuente.activa === false || String(fuente.activa).toLowerCase() === 'false' ? 'false' : 'true';
 
     if (fuente.id) {
       const existing = await db.execute({ sql: "SELECT * FROM fuentes_externas WHERE id = ? LIMIT 1;", args: [String(fuente.id)] });
       if (existing.rows.length === 0) return { status: 'error', message: 'Fuente externa no encontrada.' };
-      // Si no se envía una nueva API key se conserva la anterior (salvo que se pida borrarla)
+      
       let apiKey = existing.rows[0].api_key || '';
       if (fuente.borrar_api_key) apiKey = '';
-      else if (String(fuente.api_key || '').trim()) apiKey = String(fuente.api_key).trim();
+      else if (fuente.api_key !== undefined && String(fuente.api_key).trim() !== '') apiKey = String(fuente.api_key).trim();
+
+      let apiSecret = existing.rows[0].api_secret || '';
+      if (fuente.borrar_api_secret) apiSecret = '';
+      else if (fuente.api_secret !== undefined && String(fuente.api_secret).trim() !== '') apiSecret = String(fuente.api_secret).trim();
 
       await db.execute({
-        sql: "UPDATE fuentes_externas SET nombre = ?, url = ?, campo_cedula = ?, campo_nombre = ?, api_key = ?, activa = ? WHERE id = ?;",
-        args: [nombre, url, campoCedula, campoNombre, apiKey, activa, String(fuente.id)]
+        sql: "UPDATE fuentes_externas SET nombre = ?, url = ?, campo_cedula = ?, campo_nombre = ?, campo_array = ?, descripcion = ?, api_key = ?, api_secret = ?, activa = ? WHERE id = ?;",
+        args: [nombre, url, campoCedula, campoNombre, campoArray, descripcion, apiKey, apiSecret, activa, String(fuente.id)]
       });
       return { status: 'success', message: 'Fuente externa actualizada correctamente.', id: fuente.id };
     }
 
     const id = generateUUID();
     await db.execute({
-      sql: "INSERT INTO fuentes_externas (id, nombre, url, campo_cedula, campo_nombre, api_key, activa, ultima_importacion, ultimo_resultado, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-      args: [id, nombre, url, campoCedula, campoNombre, String(fuente.api_key || '').trim(), activa, '', '', new Date().toISOString()]
+      sql: "INSERT INTO fuentes_externas (id, nombre, url, campo_cedula, campo_nombre, campo_array, descripcion, api_key, api_secret, activa, ultima_importacion, ultimo_resultado, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+      args: [id, nombre, url, campoCedula, campoNombre, campoArray, descripcion, String(fuente.api_key || '').trim(), String(fuente.api_secret || '').trim(), activa, '', '', new Date().toISOString()]
     });
     return { status: 'success', message: 'Fuente externa registrada correctamente.', id };
   },
@@ -1088,8 +1101,95 @@ const services = {
   },
 
   /**
+   * Ejecuta una prueba en vivo contra la fuente (usando ID existente o credenciales temporales del modal)
+   */
+  async testFuenteExterna(params = {}) {
+    await this.ensureFuentesExternasTable();
+    let fuente = { ...params };
+    if (params.id) {
+      const fRes = await db.execute({ sql: "SELECT * FROM fuentes_externas WHERE id = ? LIMIT 1;", args: [String(params.id)] });
+      if (fRes.rows.length === 0) return { status: 'error', message: 'Fuente externa no encontrada.' };
+      fuente = { ...fRes.rows[0], ...params };
+      // Conservar secretos si no se enviaron en params
+      if (!params.api_key && fRes.rows[0].api_key) fuente.api_key = fRes.rows[0].api_key;
+      if (!params.api_secret && fRes.rows[0].api_secret) fuente.api_secret = fRes.rows[0].api_secret;
+    }
+
+    if (!validarUrlExterna(fuente.url)) {
+      return { status: 'error', message: 'La dirección web ingresada no es válida (debe iniciar con http:// o https://).' };
+    }
+
+    try {
+      const { json, latenciaMs } = await consultarEndpointExterno(fuente);
+      const registros = extraerRegistrosJson(json, fuente.campo_array);
+      if (!Array.isArray(registros)) {
+        return {
+          status: 'error',
+          message: 'La fuente respondió correctamente (200 OK), pero no se detectó un array de estudiantes/participantes en el JSON.',
+          latenciaMs,
+          jsonPreview: json
+        };
+      }
+
+      // Comparar contra usuarios existentes en Turso
+      const existingRes = await db.execute("SELECT cedula FROM usuarios;");
+      const existentes = new Set(existingRes.rows.map(r => normalizeCedula(r.cedula)).filter(Boolean));
+
+      const listaEstudiantes = [];
+      let nuevosCount = 0;
+      let existentesCount = 0;
+      let invalidosCount = 0;
+      const vistos = new Set();
+
+      for (const reg of registros) {
+        if (!reg || typeof reg !== 'object') { invalidosCount++; continue; }
+        const cedula = normalizeCedula(obtenerCampo(reg, fuente.campo_cedula, CAMPOS_CEDULA));
+        let nombre = String(obtenerCampo(reg, fuente.campo_nombre, CAMPOS_NOMBRE) || '').trim();
+        if (!nombre && !fuente.campo_nombre) {
+          const nombres = obtenerCampo(reg, '', ['nombres', 'primer_nombre', 'first_name', 'firstname']);
+          const apellidos = obtenerCampo(reg, '', ['apellidos', 'apellido', 'primer_apellido', 'last_name', 'lastname']);
+          nombre = [nombres, apellidos].filter(Boolean).join(' ').trim();
+        }
+        nombre = nombre.replace(/\s+/g, ' ').toUpperCase();
+
+        if (!cedula || !nombre) { invalidosCount++; continue; }
+        if (vistos.has(cedula)) continue;
+        vistos.add(cedula);
+
+        const yaExiste = existentes.has(cedula);
+        if (yaExiste) existentesCount++;
+        else nuevosCount++;
+
+        listaEstudiantes.push({
+          cedula,
+          nombre_completo: nombre,
+          ya_en_bd: yaExiste
+        });
+      }
+
+      return {
+        status: 'success',
+        message: `Conexión en vivo exitosa (${latenciaMs} ms). Se encontraron ${registros.length} registros en la fuente.`,
+        latenciaMs,
+        resumen: {
+          total_recibidos: registros.length,
+          validos: listaEstudiantes.length,
+          nuevos: nuevosCount,
+          existentes: existentesCount,
+          invalidos: invalidosCount
+        },
+        estudiantes: listaEstudiantes
+      };
+    } catch (err) {
+      return {
+        status: 'error',
+        message: `Fallo al conectar con la fuente externa: ${err.message}`
+      };
+    }
+  },
+
+  /**
    * Descarga el JSON de la fuente externa y registra en `usuarios` las cédulas que no existan.
-   * Con soloPrevisualizar = true no escribe en la base de datos (modo prueba).
    */
   async importarFuenteExterna(id, soloPrevisualizar = false) {
     await this.ensureFuentesExternasTable();
@@ -1101,34 +1201,20 @@ const services = {
       return { status: 'error', message: 'La URL configurada en la fuente no es válida.' };
     }
 
-    // 1. Descargar JSON
+    // 1. Descargar JSON con headers x-api-key y x-api-secret
     let json;
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 20000);
+    let latenciaMs = 0;
     try {
-      const headers = { 'Accept': 'application/json' };
-      if (fuente.api_key) {
-        headers['Authorization'] = `Bearer ${fuente.api_key}`;
-        headers['x-api-key'] = fuente.api_key;
-      }
-      const resp = await fetch(fuente.url, { method: 'GET', headers, signal: controller.signal });
-      if (!resp.ok) throw new Error(`La fuente respondió con HTTP ${resp.status}`);
-      const text = await resp.text();
-      try {
-        json = JSON.parse(text.replace(/^\uFEFF/, ''));
-      } catch (e) {
-        throw new Error('La respuesta de la fuente no es un JSON válido.');
-      }
+      const resp = await consultarEndpointExterno(fuente);
+      json = resp.json;
+      latenciaMs = resp.latenciaMs;
     } catch (err) {
-      const msg = err.name === 'AbortError' ? 'Tiempo de espera agotado (20 s) al consultar la fuente.' : err.message;
-      if (!soloPrevisualizar) await registrarResultadoFuente(fuente.id, `ERROR: ${msg}`);
-      return { status: 'error', message: `No se pudo obtener datos de "${fuente.nombre}": ${msg}` };
-    } finally {
-      clearTimeout(timer);
+      if (!soloPrevisualizar) await registrarResultadoFuente(fuente.id, `ERROR: ${err.message}`);
+      return { status: 'error', message: `No se pudo obtener datos de "${fuente.nombre}": ${err.message}` };
     }
 
     // 2. Extraer registros
-    const registros = extraerRegistrosJson(json);
+    const registros = extraerRegistrosJson(json, fuente.campo_array);
     if (!Array.isArray(registros)) {
       const msg = 'No se encontró una lista de registros en el JSON recibido.';
       if (!soloPrevisualizar) await registrarResultadoFuente(fuente.id, `ERROR: ${msg}`);
@@ -1140,6 +1226,7 @@ const services = {
     const existentes = new Set(existingRes.rows.map(r => normalizeCedula(r.cedula)).filter(Boolean));
 
     const nuevos = [];
+    const todosProcesados = [];
     let yaExistentes = 0;
     let invalidos = 0;
     let duplicadosEnFuente = 0;
@@ -1160,8 +1247,18 @@ const services = {
       if (vistosEnFuente.has(cedula)) { duplicadosEnFuente++; continue; }
       vistosEnFuente.add(cedula);
 
-      if (existentes.has(cedula)) { yaExistentes++; continue; }
-      nuevos.push({ id: generateUUID(), cedula, nombre_completo: nombre });
+      const yaEsta = existentes.has(cedula);
+      if (yaEsta) {
+        yaExistentes++;
+      } else {
+        nuevos.push({ id: generateUUID(), cedula, nombre_completo: nombre });
+      }
+
+      todosProcesados.push({
+        cedula,
+        nombre_completo: nombre,
+        ya_en_bd: yaEsta
+      });
     }
 
     const resumen = {
@@ -1169,15 +1266,16 @@ const services = {
       nuevos: nuevos.length,
       existentes: yaExistentes,
       invalidos,
-      duplicados_en_fuente: duplicadosEnFuente
+      duplicados_en_fuente: duplicadosEnFuente,
+      latenciaMs
     };
 
     if (soloPrevisualizar) {
       return {
         status: 'success',
-        message: `Prueba de "${fuente.nombre}": ${registros.length} registros recibidos, ${nuevos.length} nuevos por registrar.`,
+        message: `Prueba en vivo con "${fuente.nombre}": ${registros.length} registros en JSON, ${nuevos.length} nuevos por registrar.`,
         resumen,
-        muestra: nuevos.slice(0, 15)
+        estudiantes: todosProcesados
       };
     }
 
@@ -1192,12 +1290,12 @@ const services = {
       await db.batch(stmts.slice(i, i + chunkSize), 'write');
     }
 
-    const textoResultado = `${now} | Recibidos: ${resumen.total_recibidos}, Nuevos: ${resumen.nuevos}, Existentes: ${resumen.existentes}, Inválidos: ${resumen.invalidos}`;
+    const textoResultado = `${now.slice(0, 19).replace('T', ' ')} | Recibidos: ${resumen.total_recibidos}, Nuevos: ${resumen.nuevos}, Ya en BD: ${resumen.existentes}`;
     await registrarResultadoFuente(fuente.id, textoResultado, now);
 
     return {
       status: 'success',
-      message: `Importación desde "${fuente.nombre}" completada. Participantes nuevos registrados: ${nuevos.length} (ya existentes: ${yaExistentes}, inválidos: ${invalidos}).`,
+      message: `Importación desde "${fuente.nombre}" completada. Participantes nuevos registrados: ${nuevos.length} (ya existentes: ${yaExistentes}).`,
       resumen,
       created: nuevos
     };
@@ -1216,6 +1314,42 @@ function validarUrlExterna(url) {
     return u.protocol === 'http:' || u.protocol === 'https:';
   } catch (e) {
     return false;
+  }
+}
+
+async function consultarEndpointExterno(fuente) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 25000);
+  const t0 = Date.now();
+  try {
+    const headers = {
+      'Accept': 'application/json',
+      'User-Agent': 'UPTPC-Certificaciones/2.0'
+    };
+    if (fuente.api_key) {
+      headers['x-api-key'] = String(fuente.api_key).trim();
+      headers['Authorization'] = `Bearer ${String(fuente.api_key).trim()}`;
+    }
+    if (fuente.api_secret) {
+      headers['x-api-secret'] = String(fuente.api_secret).trim();
+      headers['x-secret'] = String(fuente.api_secret).trim();
+    }
+    const resp = await fetch(fuente.url, { method: 'GET', headers, signal: controller.signal });
+    const latenciaMs = Date.now() - t0;
+    if (!resp.ok) {
+      const errText = await resp.text().catch(() => '');
+      throw new Error(`HTTP ${resp.status}: ${errText.slice(0, 150) || resp.statusText}`);
+    }
+    const text = await resp.text();
+    let json;
+    try {
+      json = JSON.parse(text.replace(/^\uFEFF/, ''));
+    } catch (e) {
+      throw new Error('La respuesta recibida no es un formato JSON válido.');
+    }
+    return { ok: true, json, latenciaMs };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -1242,17 +1376,20 @@ function obtenerCampo(obj, rutaPreferida, candidatos) {
   return '';
 }
 
-// Admite: [ ... ], { data: [...] }, { usuarios: [...] }, { data: { items: [...] } }, etc.
-function extraerRegistrosJson(json) {
+// Admite: [ ... ], { data: [...] }, { estudiantes: [...] }, { usuarios: [...] }, etc.
+function extraerRegistrosJson(json, campoArrayPreferido = '') {
   if (Array.isArray(json)) return json;
   if (!json || typeof json !== 'object') return null;
-  const preferidas = ['data', 'usuarios', 'participantes', 'estudiantes', 'personas', 'results', 'resultados', 'items', 'records', 'rows', 'registros'];
+  if (campoArrayPreferido && Array.isArray(json[campoArrayPreferido])) {
+    return json[campoArrayPreferido];
+  }
+  const preferidas = ['estudiantes', 'data', 'usuarios', 'participantes', 'personas', 'alumnos', 'results', 'resultados', 'items', 'records', 'rows', 'registros'];
   for (const k of preferidas) {
     if (Array.isArray(json[k])) return json[k];
   }
   for (const k of preferidas) {
     if (json[k] && typeof json[k] === 'object') {
-      const inner = extraerRegistrosJson(json[k]);
+      const inner = extraerRegistrosJson(json[k], campoArrayPreferido);
       if (inner) return inner;
     }
   }

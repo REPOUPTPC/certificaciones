@@ -215,6 +215,52 @@
           await this.guardarFuenteExterna(e);
         });
       }
+
+      // Mostrar / ocultar secreto de la fuente
+      const btnToggleSecret = document.getElementById('btnToggleVerApiSecretFuente');
+      if (btnToggleSecret && !btnToggleSecret.dataset.bound) {
+        btnToggleSecret.dataset.bound = 'true';
+        btnToggleSecret.addEventListener('click', () => {
+          const inp = document.getElementById('inputFuenteApiSecret');
+          const icon = document.getElementById('iconVerApiSecretFuente');
+          if (inp && icon) {
+            const isPass = inp.type === 'password';
+            inp.type = isPass ? 'text' : 'password';
+            icon.className = isPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+          }
+        });
+      }
+
+      // Botón probar conexión dentro del modal de configuración
+      const btnTestModal = document.getElementById('btnProbarConexionModalFuente');
+      if (btnTestModal && !btnTestModal.dataset.bound) {
+        btnTestModal.dataset.bound = 'true';
+        btnTestModal.addEventListener('click', async () => {
+          await this.probarConexionModalFuente();
+        });
+      }
+
+      // Buscador en tiempo real dentro del modal de previsualización
+      const inpBuscarPreview = document.getElementById('inputBuscarEstudiantePreview');
+      if (inpBuscarPreview && !inpBuscarPreview.dataset.bound) {
+        inpBuscarPreview.dataset.bound = 'true';
+        inpBuscarPreview.addEventListener('input', () => {
+          this.renderTablaPreviewEstudiantes();
+        });
+      }
+
+      // Confirmar importación desde el modal de previsualización
+      const btnConfirmarImportar = document.getElementById('btnConfirmarImportarDesdePreview');
+      if (btnConfirmarImportar && !btnConfirmarImportar.dataset.bound) {
+        btnConfirmarImportar.dataset.bound = 'true';
+        btnConfirmarImportar.addEventListener('click', async () => {
+          if (this.activePreviewFuenteId) {
+            const previewModal = document.getElementById('modalPrevisualizarFuente');
+            if (previewModal) bootstrap.Modal.getOrCreateInstance(previewModal).hide();
+            await this.importarFuente(this.activePreviewFuenteId);
+          }
+        });
+      }
     },
 
     async descargarRespaldo() {
@@ -833,6 +879,8 @@
     // ═════════════════════════════════════════════════════════════════
 
     cachedFuentesExternas: [],
+    activePreviewEstudiantes: [],
+    activePreviewFuenteId: null,
 
     async cargarFuentesExternas() {
       const contenedor = document.getElementById('contenedorFuentesExternas');
@@ -852,7 +900,7 @@
               <i class="fa-solid fa-network-wired fa-2x text-muted mb-2 d-block"></i>
               <h6 class="fw-bold text-dark mb-1">No hay fuentes externas configuradas aún</h6>
               <p class="text-muted small mb-3">
-                Agregue una dirección web (API) que suministre cédulas y nombres completos en formato JSON para poder sincronizarlos con el sistema con solo un clic.
+                Agregue una dirección web (API) que suministre cédulas y nombres completos en formato JSON para sincronizarlos con el sistema con solo 1 clic.
               </p>
               <button type="button" class="btn btn-sm btn-primary fw-bold" onclick="window.mantenimientoModule.abrirModalFuente()">
                 <i class="fa-solid fa-plus-circle me-1"></i> Agregar Primera Fuente de Datos
@@ -872,6 +920,14 @@
             ? `<div class="small text-muted mt-2 p-2 bg-light rounded border font-monospace" style="font-size: 0.75rem;"><i class="fa-solid fa-clock-rotate-left me-1 text-primary"></i><strong>Último resultado:</strong> ${window.utils.escapeHtml(f.ultimo_resultado)}</div>`
             : '<div class="small text-muted mt-2 fst-italic" style="font-size: 0.75rem;"><i class="fa-solid fa-clock me-1"></i>Pendiente por primera importación</div>';
 
+          const apiKeyDisplay = f.api_key 
+            ? `<code>${window.utils.escapeHtml(f.api_key)}</code>` 
+            : '<span class="text-muted small">Sin API Key</span>';
+
+          const apiSecretDisplay = f.tiene_api_secret 
+            ? `<span class="badge bg-dark font-monospace text-light"><i class="fa-solid fa-lock me-1 text-warning"></i>${window.utils.escapeHtml(f.api_secret_masked || 'Configurado')}</span>` 
+            : '<span class="text-muted small">Sin Secreto</span>';
+
           html += `
             <div class="col-12">
               <div class="card border shadow-sm p-3 bg-white h-100">
@@ -880,8 +936,8 @@
                     <div class="d-flex align-items-center gap-2 mb-1">
                       <h6 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-globe text-primary me-2"></i>${window.utils.escapeHtml(f.nombre)}</h6>
                       ${activaBadge}
-                      ${f.tiene_api_key ? '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle small"><i class="fa-solid fa-key me-1"></i>Auth Token</span>' : ''}
                     </div>
+                    ${f.descripcion ? `<small class="text-muted d-block mb-1">${window.utils.escapeHtml(f.descripcion)}</small>` : ''}
                     <div class="font-monospace text-primary small text-break">
                       <a href="${window.utils.escapeHtml(f.url)}" target="_blank" class="text-decoration-none">
                         ${window.utils.escapeHtml(f.url)} <i class="fa-solid fa-arrow-up-right-from-square ms-1" style="font-size: 0.7rem;"></i>
@@ -889,13 +945,13 @@
                     </div>
                   </div>
                   <div class="d-flex align-items-center gap-1 flex-wrap">
-                    <button type="button" class="btn btn-sm btn-success fw-bold px-3 shadow-sm" onclick="window.mantenimientoModule.importarFuente('${f.id}')" title="Descargar e incorporar participantes a la BD">
-                      <i class="fa-solid fa-bolt me-1"></i> Importar Ahora (1 Clic)
+                    <button type="button" class="btn btn-sm btn-info fw-bold px-3 shadow-sm" onclick="window.mantenimientoModule.abrirPreviewFuente('${f.id}')" title="Probar conexión en vivo y ver la lista completa de estudiantes">
+                      <i class="fa-solid fa-vial me-1"></i> Probar en Vivo
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-info" onclick="window.mantenimientoModule.probarFuente('${f.id}')" title="Probar conexión y previsualizar participantes sin guardar">
-                      <i class="fa-solid fa-vial me-1"></i> Probar
+                    <button type="button" class="btn btn-sm btn-success fw-bold px-3 shadow-sm" onclick="window.mantenimientoModule.importarFuente('${f.id}')" title="Descargar e incorporar participantes a la BD con 1 clic">
+                      <i class="fa-solid fa-cloud-arrow-down me-1"></i> Importar Ahora (1 Clic)
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="window.mantenimientoModule.abrirModalFuente('${f.id}')" title="Editar configuración de esta fuente">
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="window.mantenimientoModule.abrirModalFuente('${f.id}')" title="Editar configuración">
                       <i class="fa-solid fa-pen"></i>
                     </button>
                     <button type="button" class="btn btn-sm btn-outline-danger" onclick="window.mantenimientoModule.eliminarFuente('${f.id}', '${window.utils.escapeHtml(f.nombre)}')" title="Eliminar fuente">
@@ -904,10 +960,16 @@
                   </div>
                 </div>
 
-                <div class="d-flex gap-3 flex-wrap small text-muted pt-2 border-top">
-                  <span><strong>Mapeo Cédula:</strong> <code>${window.utils.escapeHtml(f.campo_cedula || 'Auto')}</code></span>
-                  <span><strong>Mapeo Nombre:</strong> <code>${window.utils.escapeHtml(f.campo_nombre || 'Auto')}</code></span>
-                  <span><strong>Registrada:</strong> ${f.created_at ? f.created_at.slice(0, 10) : 'N/A'}</span>
+                <div class="row g-2 pt-2 border-top small text-muted align-items-center">
+                  <div class="col-md-4">
+                    <strong>x-api-key:</strong> ${apiKeyDisplay}
+                  </div>
+                  <div class="col-md-4">
+                    <strong>x-api-secret:</strong> ${apiSecretDisplay}
+                  </div>
+                  <div class="col-md-4 text-md-end">
+                    <span><strong>Mapeo:</strong> <code>${window.utils.escapeHtml(f.campo_cedula || 'cedula')}</code> / <code>${window.utils.escapeHtml(f.campo_nombre || 'nombre_completo')}</code></span>
+                  </div>
                 </div>
 
                 ${ultimoRes}
@@ -935,10 +997,19 @@
       const inpNombre = document.getElementById('inputFuenteNombre');
       const inpUrl = document.getElementById('inputFuenteUrl');
       const selActiva = document.getElementById('inputFuenteActiva');
+      const inpApiKey = document.getElementById('inputFuenteApiKey');
+      const inpApiSecret = document.getElementById('inputFuenteApiSecret');
+      const inpDesc = document.getElementById('inputFuenteDescripcion');
       const inpCampoCedula = document.getElementById('inputFuenteCampoCedula');
       const inpCampoNombre = document.getElementById('inputFuenteCampoNombre');
-      const inpApiKey = document.getElementById('inputFuenteApiKey');
+      const inpCampoArray = document.getElementById('inputFuenteCampoArray');
+      const testContainer = document.getElementById('contenedorResultadoTestModalFuente');
       const lblTitulo = document.getElementById('lblModalFuenteTitulo');
+
+      if (testContainer) {
+        testContainer.style.display = 'none';
+        testContainer.innerHTML = '';
+      }
 
       if (id) {
         const fuente = this.cachedFuentesExternas.find(f => String(f.id) === String(id));
@@ -947,9 +1018,12 @@
           if (inpNombre) inpNombre.value = fuente.nombre || '';
           if (inpUrl) inpUrl.value = fuente.url || '';
           if (selActiva) selActiva.value = fuente.activa ? 'true' : 'false';
+          if (inpApiKey) inpApiKey.value = fuente.api_key || '';
+          if (inpApiSecret) inpApiSecret.value = ''; // Se deja vacío para conservar el actual salvo que se modifique
+          if (inpDesc) inpDesc.value = fuente.descripcion || '';
           if (inpCampoCedula) inpCampoCedula.value = fuente.campo_cedula || '';
           if (inpCampoNombre) inpCampoNombre.value = fuente.campo_nombre || '';
-          if (inpApiKey) inpApiKey.value = '';
+          if (inpCampoArray) inpCampoArray.value = fuente.campo_array || '';
           if (lblTitulo) lblTitulo.innerHTML = '<i class="fa-solid fa-pen-to-square me-2"></i>Editar Dirección Web (API Externa)';
         }
       } else {
@@ -957,13 +1031,201 @@
         if (inpNombre) inpNombre.value = '';
         if (inpUrl) inpUrl.value = '';
         if (selActiva) selActiva.value = 'true';
+        if (inpApiKey) inpApiKey.value = '';
+        if (inpApiSecret) inpApiSecret.value = '';
+        if (inpDesc) inpDesc.value = '';
         if (inpCampoCedula) inpCampoCedula.value = '';
         if (inpCampoNombre) inpCampoNombre.value = '';
-        if (inpApiKey) inpApiKey.value = '';
+        if (inpCampoArray) inpCampoArray.value = '';
         if (lblTitulo) lblTitulo.innerHTML = '<i class="fa-solid fa-globe me-2"></i>Configurar Dirección Web (API de Participantes)';
       }
 
       bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    },
+
+    async probarConexionModalFuente() {
+      const url = document.getElementById('inputFuenteUrl')?.value.trim();
+      const apiKey = document.getElementById('inputFuenteApiKey')?.value.trim();
+      const apiSecret = document.getElementById('inputFuenteApiSecret')?.value.trim();
+      const campoCedula = document.getElementById('inputFuenteCampoCedula')?.value.trim();
+      const campoNombre = document.getElementById('inputFuenteCampoNombre')?.value.trim();
+      const campoArray = document.getElementById('inputFuenteCampoArray')?.value.trim();
+      const id = document.getElementById('inputFuenteId')?.value.trim();
+
+      const contenedor = document.getElementById('contenedorResultadoTestModalFuente');
+      const btn = document.getElementById('btnProbarConexionModalFuente');
+
+      if (!url) {
+        window.utils.showToast('Debe ingresar la URL para poder realizar la prueba.', 'warning');
+        return;
+      }
+
+      const oldHtml = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Probando en vivo...';
+      }
+
+      if (contenedor) {
+        contenedor.style.display = 'block';
+        contenedor.innerHTML = '<div class="alert alert-info py-2 px-3 small mb-0"><i class="fa-solid fa-spinner fa-spin me-2"></i>Consultando el endpoint externo en vivo...</div>';
+      }
+
+      try {
+        const payload = { url, api_key: apiKey, api_secret: apiSecret, campo_cedula: campoCedula, campo_nombre: campoNombre, campo_array: campoArray, id };
+        const res = await window.api.testFuenteExterna(payload);
+
+        if (contenedor) {
+          if (res && res.status === 'success') {
+            const r = res.resumen || {};
+            const muestraHtml = (res.estudiantes || []).slice(0, 5).map(e => `
+              <li class="py-1 d-flex justify-content-between align-items-center">
+                <span><code>${window.utils.escapeHtml(e.cedula)}</code> - ${window.utils.escapeHtml(e.nombre_completo)}</span>
+                ${e.ya_en_bd ? '<span class="badge bg-secondary-subtle text-secondary small">Ya en BD</span>' : '<span class="badge bg-success-subtle text-success small">Nuevo</span>'}
+              </li>
+            `).join('');
+
+            contenedor.innerHTML = `
+              <div class="alert alert-success py-3 px-3 mb-0 small">
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-success-subtle">
+                  <strong class="text-success"><i class="fa-solid fa-circle-check me-1"></i>¡Conexión Exitosa (200 OK)!</strong>
+                  <span class="badge bg-success">${res.latenciaMs} ms</span>
+                </div>
+                <div class="row g-2 text-center mb-2">
+                  <div class="col-4 bg-white p-2 rounded border">
+                    <small class="text-muted d-block">Total en API</small>
+                    <strong class="text-primary fs-6">${r.total_recibidos || 0}</strong>
+                  </div>
+                  <div class="col-4 bg-white p-2 rounded border">
+                    <small class="text-muted d-block">Nuevos a Incorporar</small>
+                    <strong class="text-success fs-6">${r.nuevos || 0}</strong>
+                  </div>
+                  <div class="col-4 bg-white p-2 rounded border">
+                    <small class="text-muted d-block">Ya Registrados</small>
+                    <strong class="text-secondary fs-6">${r.existentes || 0}</strong>
+                  </div>
+                </div>
+                <div class="bg-white p-2 rounded border">
+                  <small class="text-muted fw-bold d-block mb-1">Primeros participantes detectados:</small>
+                  <ul class="list-unstyled mb-0 font-monospace small" style="max-height: 120px; overflow-y: auto;">
+                    ${muestraHtml}
+                  </ul>
+                </div>
+              </div>
+            `;
+          } else {
+            contenedor.innerHTML = `
+              <div class="alert alert-danger py-2 px-3 mb-0 small">
+                <i class="fa-solid fa-triangle-exclamation me-1"></i> <strong>Error de conexión:</strong> ${window.utils.escapeHtml(res?.message || 'Fallo desconocido')}
+              </div>
+            `;
+          }
+        }
+      } catch (err) {
+        if (contenedor) {
+          contenedor.innerHTML = `
+            <div class="alert alert-danger py-2 px-3 mb-0 small">
+              <i class="fa-solid fa-triangle-exclamation me-1"></i> <strong>Excepción de red:</strong> ${err.message}
+            </div>
+          `;
+        }
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = oldHtml;
+        }
+      }
+    },
+
+    async abrirPreviewFuente(id) {
+      this.activePreviewFuenteId = id;
+      const fuente = this.cachedFuentesExternas.find(f => String(f.id) === String(id));
+      const nombreFuente = fuente ? fuente.nombre : 'Fuente Externa';
+      const urlFuente = fuente ? fuente.url : '';
+
+      const modalEl = document.getElementById('modalPrevisualizarFuente');
+      if (!modalEl) return;
+
+      document.getElementById('lblModalPreviewFuenteTitulo').textContent = `Prueba en Vivo: ${nombreFuente}`;
+      document.getElementById('lblPreviewFuenteUrl').textContent = urlFuente;
+      document.getElementById('lblPreviewFuenteUrl').title = urlFuente;
+
+      const tbody = document.getElementById('tbodyPreviewEstudiantesFuente');
+      if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Consultando en vivo con la API externa...</td></tr>';
+      }
+
+      const inpBuscar = document.getElementById('inputBuscarEstudiantePreview');
+      if (inpBuscar) inpBuscar.value = '';
+
+      bootstrap.Modal.getOrCreateInstance(modalEl).show();
+
+      try {
+        const res = await window.api.testFuenteExterna({ id });
+        if (res && res.status === 'success') {
+          const r = res.resumen || {};
+          this.activePreviewEstudiantes = res.estudiantes || [];
+
+          document.getElementById('previewTotalEstudiantes').textContent = r.total_recibidos || 0;
+          document.getElementById('previewNuevosEstudiantes').textContent = r.nuevos || 0;
+          document.getElementById('previewExistentesEstudiantes').textContent = r.existentes || 0;
+          document.getElementById('previewLatenciaMs').textContent = `${res.latenciaMs || 0} ms`;
+
+          const btnImport = document.getElementById('btnConfirmarImportarDesdePreview');
+          if (btnImport) {
+            btnImport.innerHTML = `<i class="fa-solid fa-cloud-arrow-down me-2"></i>Importar los ${r.nuevos || 0} Nuevos al Sistema (1 Clic)`;
+            btnImport.disabled = (r.nuevos === 0);
+          }
+
+          this.renderTablaPreviewEstudiantes();
+        } else {
+          if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-4"><i class="fa-solid fa-triangle-exclamation me-2"></i>Error: ${window.utils.escapeHtml(res?.message || 'No se pudo conectar')}</td></tr>`;
+          }
+        }
+      } catch (err) {
+        if (tbody) {
+          tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-4"><i class="fa-solid fa-triangle-exclamation me-2"></i>Error de conexión: ${err.message}</td></tr>`;
+        }
+      }
+    },
+
+    renderTablaPreviewEstudiantes() {
+      const tbody = document.getElementById('tbodyPreviewEstudiantesFuente');
+      if (!tbody) return;
+
+      const q = (document.getElementById('inputBuscarEstudiantePreview')?.value || '').trim().toUpperCase();
+      let list = this.activePreviewEstudiantes || [];
+
+      if (q) {
+        list = list.filter(e => 
+          String(e.cedula || '').toUpperCase().includes(q) || 
+          String(e.nombre_completo || '').toUpperCase().includes(q)
+        );
+      }
+
+      if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No se encontraron estudiantes que coincidan con la búsqueda.</td></tr>';
+        return;
+      }
+
+      let html = '';
+      list.forEach((e, idx) => {
+        const badge = e.ya_en_bd 
+          ? '<span class="badge bg-secondary-subtle text-secondary border border-secondary small"><i class="fa-solid fa-check me-1"></i>En Sistema</span>'
+          : '<span class="badge bg-success-subtle text-success border border-success small"><i class="fa-solid fa-user-plus me-1"></i>Nuevo (Se creará)</span>';
+
+        html += `
+          <tr>
+            <td class="text-center font-monospace text-muted small">${idx + 1}</td>
+            <td class="font-monospace fw-bold text-dark"><span class="badge bg-dark">${window.utils.escapeHtml(e.cedula)}</span></td>
+            <td><strong>${window.utils.escapeHtml(e.nombre_completo)}</strong></td>
+            <td class="text-center">${badge}</td>
+          </tr>
+        `;
+      });
+
+      tbody.innerHTML = html;
     },
 
     async guardarFuenteExterna(e) {
@@ -972,9 +1234,12 @@
       const inpNombre = document.getElementById('inputFuenteNombre');
       const inpUrl = document.getElementById('inputFuenteUrl');
       const selActiva = document.getElementById('inputFuenteActiva');
+      const inpApiKey = document.getElementById('inputFuenteApiKey');
+      const inpApiSecret = document.getElementById('inputFuenteApiSecret');
+      const inpDesc = document.getElementById('inputFuenteDescripcion');
       const inpCampoCedula = document.getElementById('inputFuenteCampoCedula');
       const inpCampoNombre = document.getElementById('inputFuenteCampoNombre');
-      const inpApiKey = document.getElementById('inputFuenteApiKey');
+      const inpCampoArray = document.getElementById('inputFuenteCampoArray');
       const btn = document.getElementById('btnGuardarFuenteExterna');
 
       const fuenteData = {
@@ -982,9 +1247,12 @@
         nombre: inpNombre ? inpNombre.value.trim() : '',
         url: inpUrl ? inpUrl.value.trim() : '',
         activa: selActiva ? selActiva.value === 'true' : true,
+        api_key: inpApiKey ? inpApiKey.value.trim() : '',
+        api_secret: inpApiSecret ? inpApiSecret.value.trim() : '',
+        descripcion: inpDesc ? inpDesc.value.trim() : '',
         campo_cedula: inpCampoCedula ? inpCampoCedula.value.trim() : '',
         campo_nombre: inpCampoNombre ? inpCampoNombre.value.trim() : '',
-        api_key: inpApiKey ? inpApiKey.value.trim() : ''
+        campo_array: inpCampoArray ? inpCampoArray.value.trim() : ''
       };
 
       if (!fuenteData.nombre || !fuenteData.url) {
@@ -1043,7 +1311,7 @@
       const nombreFuente = fuente ? fuente.nombre : 'Fuente Externa';
 
       if (window.utils && window.utils.showLoading) {
-        window.utils.showLoading(40, `Consultando ${nombreFuente}...`, 'Descargando JSON e incorporando participantes');
+        window.utils.showLoading(40, `Consultando ${nombreFuente}...`, 'Descargando JSON e incorporando participantes con 1 clic');
       }
 
       try {
@@ -1061,32 +1329,6 @@
       } catch (err) {
         console.error('Error en importación:', err);
         window.utils.showToast('Error de conexión al importar desde la fuente externa', 'danger');
-      } finally {
-        if (window.utils && window.utils.hideLoading) window.utils.hideLoading();
-      }
-    },
-
-    async probarFuente(id) {
-      const fuente = this.cachedFuentesExternas.find(f => String(f.id) === String(id));
-      const nombreFuente = fuente ? fuente.nombre : 'Fuente Externa';
-
-      if (window.utils && window.utils.showLoading) {
-        window.utils.showLoading(50, `Probando conexión con ${nombreFuente}...`, 'Validando formato JSON y campos');
-      }
-
-      try {
-        const res = await window.api.importarFuenteExterna(id, true);
-        if (res && res.status === 'success') {
-          const r = res.resumen || {};
-          const muestra = (res.muestra || []).map(m => `• ${m.cedula} - ${m.nombre_completo}`).join('\n');
-          const mensajeMuestra = muestra ? `\n\nPrimeros participantes detectados que se registrarían:\n${muestra}` : '';
-          alert(`Prueba exitosa con "${nombreFuente}":\n\nTotal registros recibidos en JSON: ${r.total_recibidos || 0}\nParticipantes nuevos por registrar: ${r.nuevos || 0}\nYa existentes en la BD: ${r.existentes || 0}\nInválidos o sin cédula: ${r.invalidos || 0}${mensajeMuestra}`);
-        } else {
-          window.utils.showToast('Fallo en la prueba: ' + (res?.message || 'Error desconocido'), 'danger');
-        }
-      } catch (err) {
-        console.error('Error al probar fuente externa:', err);
-        window.utils.showToast('Error de conexión al probar la fuente externa', 'danger');
       } finally {
         if (window.utils && window.utils.hideLoading) window.utils.hideLoading();
       }

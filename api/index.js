@@ -117,6 +117,10 @@ module.exports = async function handler(req, res) {
           result = await services.listFuentesExternas();
           break;
 
+        case 'testFuenteExterna':
+          result = await services.testFuenteExterna(body || query || {});
+          break;
+
         case 'getCursosOfertadosApi':
         case 'listarCursosApi': {
           const apiKeyHeader = req.headers['x-api-key'] || req.headers['x-apikey'] || 
@@ -185,6 +189,10 @@ module.exports = async function handler(req, res) {
           result = await services.listFuentesExternas();
           break;
 
+        case 'testFuenteExterna':
+          result = await services.testFuenteExterna(body || query || {});
+          break;
+
         case 'saveFuenteExterna':
           result = await services.saveFuenteExterna(body.fuente || {});
           break;
@@ -231,6 +239,10 @@ module.exports = async function handler(req, res) {
 
         case 'listFuentesExternas':
           result = await services.listFuentesExternas();
+          break;
+
+        case 'testFuenteExterna':
+          result = await services.testFuenteExterna(body || query || {});
           break;
 
         case 'getCursosOfertadosApi':

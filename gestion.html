@@ -2897,14 +2897,14 @@ if (!empty($data['cursos'])) {
             <div class="alert alert-info py-2 px-3 small d-flex align-items-center mb-3">
               <i class="fa-solid fa-circle-info fa-lg me-2 text-info"></i>
               <div>
-                El sistema consultará esta dirección web mediante una petición <code>GET</code>, extraerá el JSON recibido e incorporará automáticamente a la base de datos (tabla <code>usuarios</code>) aquellas cédulas que aún no existan en el sistema, todo con la ejecución de <strong>un solo clic</strong>.
+                El sistema consultará esta dirección web mediante una petición <code>GET</code> enviando los encabezados <code>x-api-key</code> y <code>x-api-secret</code>, extraerá el JSON recibido e incorporará automáticamente a la base de datos (tabla <code>usuarios</code>) aquellas cédulas que aún no existan en el sistema con <strong>1 solo clic</strong>.
               </div>
             </div>
 
             <div class="row g-3">
               <div class="col-md-7">
-                <label class="form-label small fw-bold">Nombre o Etiqueta de la Fuente: <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="inputFuenteNombre" placeholder="Ej: Registro Estudiantes Taller 2026, Portal Web, etc." required>
+                <label class="form-label small fw-bold">Nombre / Aplicación Web: <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="inputFuenteNombre" placeholder="Ej: SGN - Sistema de Gestión de Notas (UPTPC)" required>
               </div>
 
               <div class="col-md-5">
@@ -2919,37 +2919,170 @@ if (!empty($data['cursos'])) {
                 <label class="form-label small fw-bold">Dirección Web (URL del Endpoint JSON): <span class="text-danger">*</span></label>
                 <div class="input-group">
                   <span class="input-group-text bg-light font-monospace small"><i class="fa-solid fa-link"></i></span>
-                  <input type="url" class="form-control font-monospace" id="inputFuenteUrl" placeholder="https://mi-servidor.edu.ve/api/participantes" required>
+                  <input type="url" class="form-control font-monospace" id="inputFuenteUrl" placeholder="https://sgn.cyt.uptpc.edu.ve/api/sgn?action=apiExportEstudiantes" required>
                 </div>
-                <small class="text-muted">Dirección web accesible vía HTTPS o HTTP que responda un array JSON o un objeto con clave <code>data</code>, <code>usuarios</code>, etc.</small>
+                <small class="text-muted">Dirección web accesible vía HTTPS o HTTP que responda un array JSON o un objeto con lista de estudiantes.</small>
+              </div>
+
+              <!-- Credenciales de la Fuente (API Key Pública y Secreto API) -->
+              <div class="col-md-6">
+                <label class="form-label small fw-bold">API Key (Pública / Identificador):</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light small"><i class="fa-solid fa-key text-warning"></i></span>
+                  <input type="text" class="form-control font-monospace small" id="inputFuenteApiKey" placeholder="Ej: sgn_live_fde45f7ea82ee3f1c7146842">
+                </div>
+                <small class="text-muted font-monospace" style="font-size: 0.72rem;">Header enviado: <code>x-api-key</code></small>
               </div>
 
               <div class="col-md-6">
-                <label class="form-label small fw-bold">Clave del Campo Cédula (Opcional):</label>
-                <input type="text" class="form-control font-monospace" id="inputFuenteCampoCedula" placeholder="Auto (detecta cedula, ci, dni, etc.)">
-                <small class="text-muted">Por defecto detecta <code>cedula</code>, <code>ci</code>, <code>dni</code>, <code>documento</code>.</small>
-              </div>
-
-              <div class="col-md-6">
-                <label class="form-label small fw-bold">Clave del Campo Nombre (Opcional):</label>
-                <input type="text" class="form-control font-monospace" id="inputFuenteCampoNombre" placeholder="Auto (detecta nombre_completo, etc.)">
-                <small class="text-muted">Por defecto detecta <code>nombre_completo</code>, <code>nombre</code> o combina nombres + apellidos.</small>
+                <label class="form-label small fw-bold">Secreto API (Clave Secreta):</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light small"><i class="fa-solid fa-lock text-danger"></i></span>
+                  <input type="password" class="form-control font-monospace small" id="inputFuenteApiSecret" placeholder="Ej: sec_0a377e1facea672f36207ea...">
+                  <button class="btn btn-outline-secondary" type="button" id="btnToggleVerApiSecretFuente" title="Mostrar/ocultar secreto">
+                    <i class="fa-solid fa-eye" id="iconVerApiSecretFuente"></i>
+                  </button>
+                </div>
+                <small class="text-muted font-monospace" style="font-size: 0.72rem;">Header enviado: <code>x-api-secret</code></small>
               </div>
 
               <div class="col-12">
-                <label class="form-label small fw-bold">Token de Autenticación / API Key (Opcional):</label>
-                <input type="password" class="form-control font-monospace" id="inputFuenteApiKey" placeholder="Dejar en blanco si es una API abierta">
-                <small class="text-muted">Si la API externa requiere token, se enviará en <code>Authorization: Bearer [TOKEN]</code> y en el encabezado <code>x-api-key</code>.</small>
+                <label class="form-label small fw-bold">Descripción / Observación (Opcional):</label>
+                <input type="text" class="form-control" id="inputFuenteDescripcion" placeholder="Ej: Exportación de nómina de estudiantes activos desde el SGN">
+              </div>
+
+              <!-- Parámetros Opcionales de Mapeo JSON -->
+              <div class="col-12">
+                <div class="p-3 bg-light rounded border">
+                  <span class="fw-bold small d-block mb-2 text-dark"><i class="fa-solid fa-sliders me-1 text-primary"></i>Mapeo Inteligente de Campos JSON (Opcional - Autodetección Activa)</span>
+                  <div class="row g-2">
+                    <div class="col-md-4">
+                      <label class="form-label small mb-1">Clave de Cédula:</label>
+                      <input type="text" class="form-control form-control-sm font-monospace" id="inputFuenteCampoCedula" placeholder="Auto (detecta cedula, ci, etc.)">
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small mb-1">Clave de Nombre Completo:</label>
+                      <input type="text" class="form-control form-control-sm font-monospace" id="inputFuenteCampoNombre" placeholder="Auto (detecta nombre_completo, etc.)">
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small mb-1">Clave del Array en JSON:</label>
+                      <input type="text" class="form-control form-control-sm font-monospace" id="inputFuenteCampoArray" placeholder="Auto (detecta estudiantes, data, etc.)">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Panel interactivo de prueba en vivo dentro del modal -->
+              <div class="col-12" id="contenedorResultadoTestModalFuente" style="display: none;">
+                <!-- Se llena dinámicamente con los resultados de la prueba en vivo -->
               </div>
             </div>
           </div>
-          <div class="modal-footer bg-light">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-            <button type="submit" class="btn btn-primary fw-bold px-4 shadow-sm" id="btnGuardarFuenteExterna">
-              <i class="fa-solid fa-floppy-disk me-1"></i> Guardar Fuente en Base de Datos
+          <div class="modal-footer bg-light d-flex justify-content-between">
+            <button type="button" class="btn btn-outline-info fw-bold" id="btnProbarConexionModalFuente">
+              <i class="fa-solid fa-vial me-1"></i> Probar Conexión en Vivo
             </button>
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button type="submit" class="btn btn-primary fw-bold px-4 shadow-sm" id="btnGuardarFuenteExterna">
+                <i class="fa-solid fa-floppy-disk me-1"></i> Guardar Fuente en Base de Datos
+              </button>
+            </div>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Previsualización Interactiva y Prueba en Vivo de Fuente Externa -->
+  <div class="modal fade" id="modalPrevisualizarFuente" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content shadow-lg border-0">
+        <div class="modal-header bg-dark text-white">
+          <div class="d-flex align-items-center gap-2">
+            <i class="fa-solid fa-vial-circle-check text-success fa-xl"></i>
+            <div>
+              <h5 class="modal-title fw-bold mb-0" id="lblModalPreviewFuenteTitulo">Prueba en Vivo de API Externa</h5>
+              <small class="text-white-50" id="lblModalPreviewFuenteSubtitulo">Inspección de datos en tiempo real antes de incorporar al sistema</small>
+            </div>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body p-4 bg-light">
+          <!-- Métricas de la Prueba -->
+          <div class="row g-2 mb-3" id="metricasPreviewFuente">
+            <div class="col-md-3">
+              <div class="bg-white p-3 rounded border text-center shadow-sm">
+                <small class="text-muted d-block fw-semibold">Total en API Externa</small>
+                <strong class="fs-4 text-primary" id="previewTotalEstudiantes">0</strong>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="bg-white p-3 rounded border text-center shadow-sm">
+                <small class="text-muted d-block fw-semibold">Nuevos por Registrar</small>
+                <strong class="fs-4 text-success" id="previewNuevosEstudiantes">0</strong>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="bg-white p-3 rounded border text-center shadow-sm">
+                <small class="text-muted d-block fw-semibold">Ya Registrados en BD</small>
+                <strong class="fs-4 text-secondary" id="previewExistentesEstudiantes">0</strong>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="bg-white p-3 rounded border text-center shadow-sm">
+                <small class="text-muted d-block fw-semibold">Latencia del Endpoint</small>
+                <strong class="fs-4 text-info" id="previewLatenciaMs">0 ms</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Buscador en tiempo real de la lista -->
+          <div class="card border p-3 bg-white mb-3 shadow-sm">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <div class="input-group" style="max-width: 380px;">
+                <span class="input-group-text bg-light"><i class="fa-solid fa-magnifying-glass"></i></span>
+                <input type="text" class="form-control" id="inputBuscarEstudiantePreview" placeholder="Buscar por cédula o nombre en la lista...">
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-success-subtle text-success border border-success px-2 py-1 small">
+                  <i class="fa-solid fa-circle-check me-1"></i>200 OK
+                </span>
+                <small class="text-muted font-monospace" id="lblPreviewFuenteUrl" style="max-width: 350px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabla de Estudiantes Encontrados -->
+          <div class="table-responsive bg-white border rounded shadow-sm" style="max-height: 380px;">
+            <table class="table table-sm table-hover align-middle mb-0">
+              <thead class="table-light sticky-top">
+                <tr>
+                  <th class="text-center" style="width: 50px;">#</th>
+                  <th style="width: 140px;">Cédula</th>
+                  <th>Nombre Completo</th>
+                  <th class="text-center" style="width: 170px;">Estado en Sistema</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyPreviewEstudiantesFuente">
+                <tr>
+                  <td colspan="4" class="text-center py-4 text-muted">
+                    <div class="spinner-border spinner-border-sm text-primary me-2"></div> Conectando con la API externa...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer bg-white border-top">
+          <small class="text-muted me-auto">
+            <i class="fa-solid fa-shield-halved text-success me-1"></i>No se crearán duplicados. Las cédulas ya registradas se omiten automáticamente.
+          </small>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+          <button type="button" class="btn btn-success fw-bold px-4 shadow-sm" id="btnConfirmarImportarDesdePreview">
+            <i class="fa-solid fa-cloud-arrow-down me-2"></i>Importar al Sistema (1 Clic)
+          </button>
+        </div>
       </div>
     </div>
   </div>

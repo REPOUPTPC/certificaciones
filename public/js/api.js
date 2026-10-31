@@ -558,6 +558,9 @@
     async importarFuenteExterna(id, soloPrevisualizar = false) {
       return this.post('importarFuenteExterna', { id, soloPrevisualizar });
     },
+    async testFuenteExterna(params = {}) {
+      return this.post('testFuenteExterna', params);
+    },
     async getCursosOfertadosApi(apiKey = null) {
       const params = apiKey ? { api_key: apiKey } : {};
       return this.get('getCursosOfertadosApi', params);
