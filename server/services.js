@@ -871,10 +871,14 @@ const services = {
     };
   },
 
-  async bulkCreatePagos(pagosArray) {
+  async bulkCreatePagos(pagosArray, opciones = {}) {
     if (!Array.isArray(pagosArray) || pagosArray.length === 0) {
       return { status: 'error', message: 'No se recibieron pagos para procesar en lote' };
     }
+    // Por defecto, los participantes inexistentes se registran automáticamente con su cédula y nombre
+    const crearUsuariosNuevos = opciones.crearUsuariosNuevos !== false && String(opciones.crearUsuariosNuevos).toLowerCase() !== 'false';
+    const omitidos = [];
+    let usuariosActualizados = 0;
 
     const existingUsersRes = await db.execute("SELECT id, cedula, nombre_completo FROM usuarios;");
     const usersByCedula = new Map();
@@ -900,12 +904,27 @@ const services = {
       let usrId = '';
       let usrNombre = '';
 
+      const nombreRecibido = String(item.nombre_completo || item.nombre || '').trim().toUpperCase();
+
       if (usr) {
         usrId = usr.id;
         usrNombre = usr.nombre_completo;
+        // Si el participante fue creado antes con un nombre genérico, se completa con el nombre real recibido
+        if (nombreRecibido && /^PARTICIPANTE\s/i.test(String(usrNombre || ''))) {
+          usuariosNuevosStmts.push({
+            sql: "UPDATE usuarios SET nombre_completo = ? WHERE id = ?;",
+            args: [nombreRecibido, usrId]
+          });
+          usersByCedula.set(normCed, { id: usrId, cedula: normCed, nombre_completo: nombreRecibido });
+          usrNombre = nombreRecibido;
+          usuariosActualizados++;
+        }
+      } else if (!crearUsuariosNuevos) {
+        omitidos.push({ cedula: normCed, motivo: 'Participante no registrado en el sistema' });
+        continue;
       } else {
         usrId = generateUUID();
-        usrNombre = String(item.nombre_completo || item.nombre || `PARTICIPANTE ${normCed}`).trim().toUpperCase();
+        usrNombre = nombreRecibido || `PARTICIPANTE ${normCed}`;
         const nuevoUsrObj = {
           id: usrId,
           cedula: normCed,
@@ -939,12 +958,13 @@ const services = {
       const ref = String(item.numero_transferencia || item.referencia || `CSV-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 900 + 100)}`).trim();
       const banco = String(item.banco_origen || item.banco || 'Pago Móvil / Transferencia').trim();
       const fecha = String(item.fecha_pago || item.fecha || new Date().toISOString().split('T')[0]).trim();
+      const capture = String(item.capture || item.comprobante || item.comprobante_url || '').trim();
       const pagoId = generateUUID();
       const createdAt = new Date().toISOString();
 
       stmts.push({
         sql: "INSERT INTO pagos (id, id_usuario, id_curso_ofertado, banco_origen, monto, numero_transferencia, fecha_pago, capture, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-        args: [pagoId, usrId, cursoId, banco, monto, ref, fecha, '', 'false', createdAt]
+        args: [pagoId, usrId, cursoId, banco, monto, ref, fecha, capture, 'false', createdAt]
       });
 
       created.push({
@@ -973,13 +993,283 @@ const services = {
       }
     }
 
+    const usuariosCreados = usuariosNuevosStmts.filter(s => s.sql.startsWith('INSERT')).length;
+    let message = `Se han registrado exitosamente ${created.length} pagos masivos en estado PENDIENTE.`;
+    if (usuariosCreados > 0) message += ` Participantes nuevos registrados: ${usuariosCreados}.`;
+    if (usuariosActualizados > 0) message += ` Nombres completados: ${usuariosActualizados}.`;
+    if (omitidos.length > 0) message += ` Omitidos (participante inexistente): ${omitidos.length}.`;
+
     return {
       status: 'success',
-      message: `Se han registrado exitosamente ${created.length} pagos masivos en estado PENDIENTE.`,
+      message,
       count: created.length,
+      usuariosCreados,
+      usuariosActualizados,
+      omitidos,
       data: created
+    };
+  },
+
+  // ═════════════════════════════════════════════════════════════════
+  // FUENTES EXTERNAS DE PARTICIPANTES (API JSON: cédula + nombre completo)
+  // ═════════════════════════════════════════════════════════════════
+
+  async ensureFuentesExternasTable() {
+    if (fuentesTableReady) return;
+    await db.execute(`CREATE TABLE IF NOT EXISTS fuentes_externas (
+      id TEXT PRIMARY KEY,
+      nombre TEXT NOT NULL,
+      url TEXT NOT NULL,
+      campo_cedula TEXT,
+      campo_nombre TEXT,
+      api_key TEXT,
+      activa TEXT DEFAULT 'true',
+      ultima_importacion TEXT,
+      ultimo_resultado TEXT,
+      created_at TEXT
+    );`);
+    fuentesTableReady = true;
+  },
+
+  async listFuentesExternas() {
+    await this.ensureFuentesExternasTable();
+    const res = await db.execute("SELECT * FROM fuentes_externas ORDER BY created_at ASC;");
+    // Nunca se devuelve la API key completa al navegador
+    const data = res.rows.map(r => ({
+      ...r,
+      api_key: '',
+      tiene_api_key: Boolean(r.api_key),
+      activa: String(r.activa).toLowerCase() !== 'false'
+    }));
+    return { status: 'success', data };
+  },
+
+  async saveFuenteExterna(fuente = {}) {
+    await this.ensureFuentesExternasTable();
+    const nombre = String(fuente.nombre || '').trim();
+    const url = String(fuente.url || '').trim();
+    if (!nombre) return { status: 'error', message: 'El nombre de la fuente es obligatorio.' };
+    if (!validarUrlExterna(url)) {
+      return { status: 'error', message: 'La dirección web debe ser una URL válida que comience por http:// o https://' };
+    }
+
+    const campoCedula = String(fuente.campo_cedula || '').trim();
+    const campoNombre = String(fuente.campo_nombre || '').trim();
+    const activa = fuente.activa === false || String(fuente.activa).toLowerCase() === 'false' ? 'false' : 'true';
+
+    if (fuente.id) {
+      const existing = await db.execute({ sql: "SELECT * FROM fuentes_externas WHERE id = ? LIMIT 1;", args: [String(fuente.id)] });
+      if (existing.rows.length === 0) return { status: 'error', message: 'Fuente externa no encontrada.' };
+      // Si no se envía una nueva API key se conserva la anterior (salvo que se pida borrarla)
+      let apiKey = existing.rows[0].api_key || '';
+      if (fuente.borrar_api_key) apiKey = '';
+      else if (String(fuente.api_key || '').trim()) apiKey = String(fuente.api_key).trim();
+
+      await db.execute({
+        sql: "UPDATE fuentes_externas SET nombre = ?, url = ?, campo_cedula = ?, campo_nombre = ?, api_key = ?, activa = ? WHERE id = ?;",
+        args: [nombre, url, campoCedula, campoNombre, apiKey, activa, String(fuente.id)]
+      });
+      return { status: 'success', message: 'Fuente externa actualizada correctamente.', id: fuente.id };
+    }
+
+    const id = generateUUID();
+    await db.execute({
+      sql: "INSERT INTO fuentes_externas (id, nombre, url, campo_cedula, campo_nombre, api_key, activa, ultima_importacion, ultimo_resultado, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+      args: [id, nombre, url, campoCedula, campoNombre, String(fuente.api_key || '').trim(), activa, '', '', new Date().toISOString()]
+    });
+    return { status: 'success', message: 'Fuente externa registrada correctamente.', id };
+  },
+
+  async deleteFuenteExterna(id) {
+    await this.ensureFuentesExternasTable();
+    if (!id) return { status: 'error', message: 'ID de fuente no especificado.' };
+    await db.execute({ sql: "DELETE FROM fuentes_externas WHERE id = ?;", args: [String(id)] });
+    return { status: 'success', message: 'Fuente externa eliminada.' };
+  },
+
+  /**
+   * Descarga el JSON de la fuente externa y registra en `usuarios` las cédulas que no existan.
+   * Con soloPrevisualizar = true no escribe en la base de datos (modo prueba).
+   */
+  async importarFuenteExterna(id, soloPrevisualizar = false) {
+    await this.ensureFuentesExternasTable();
+    const fRes = await db.execute({ sql: "SELECT * FROM fuentes_externas WHERE id = ? LIMIT 1;", args: [String(id || '')] });
+    if (fRes.rows.length === 0) return { status: 'error', message: 'Fuente externa no encontrada.' };
+    const fuente = fRes.rows[0];
+
+    if (!validarUrlExterna(fuente.url)) {
+      return { status: 'error', message: 'La URL configurada en la fuente no es válida.' };
+    }
+
+    // 1. Descargar JSON
+    let json;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+    try {
+      const headers = { 'Accept': 'application/json' };
+      if (fuente.api_key) {
+        headers['Authorization'] = `Bearer ${fuente.api_key}`;
+        headers['x-api-key'] = fuente.api_key;
+      }
+      const resp = await fetch(fuente.url, { method: 'GET', headers, signal: controller.signal });
+      if (!resp.ok) throw new Error(`La fuente respondió con HTTP ${resp.status}`);
+      const text = await resp.text();
+      try {
+        json = JSON.parse(text.replace(/^\uFEFF/, ''));
+      } catch (e) {
+        throw new Error('La respuesta de la fuente no es un JSON válido.');
+      }
+    } catch (err) {
+      const msg = err.name === 'AbortError' ? 'Tiempo de espera agotado (20 s) al consultar la fuente.' : err.message;
+      if (!soloPrevisualizar) await registrarResultadoFuente(fuente.id, `ERROR: ${msg}`);
+      return { status: 'error', message: `No se pudo obtener datos de "${fuente.nombre}": ${msg}` };
+    } finally {
+      clearTimeout(timer);
+    }
+
+    // 2. Extraer registros
+    const registros = extraerRegistrosJson(json);
+    if (!Array.isArray(registros)) {
+      const msg = 'No se encontró una lista de registros en el JSON recibido.';
+      if (!soloPrevisualizar) await registrarResultadoFuente(fuente.id, `ERROR: ${msg}`);
+      return { status: 'error', message: msg };
+    }
+
+    // 3. Comparar contra usuarios existentes
+    const existingRes = await db.execute("SELECT cedula FROM usuarios;");
+    const existentes = new Set(existingRes.rows.map(r => normalizeCedula(r.cedula)).filter(Boolean));
+
+    const nuevos = [];
+    let yaExistentes = 0;
+    let invalidos = 0;
+    let duplicadosEnFuente = 0;
+    const vistosEnFuente = new Set();
+
+    for (const reg of registros) {
+      if (!reg || typeof reg !== 'object') { invalidos++; continue; }
+      const cedula = normalizeCedula(obtenerCampo(reg, fuente.campo_cedula, CAMPOS_CEDULA));
+      let nombre = String(obtenerCampo(reg, fuente.campo_nombre, CAMPOS_NOMBRE) || '').trim();
+      if (!nombre && !fuente.campo_nombre) {
+        const nombres = obtenerCampo(reg, '', ['nombres', 'primer_nombre', 'first_name', 'firstname']);
+        const apellidos = obtenerCampo(reg, '', ['apellidos', 'apellido', 'primer_apellido', 'last_name', 'lastname']);
+        nombre = [nombres, apellidos].filter(Boolean).join(' ').trim();
+      }
+      nombre = nombre.replace(/\s+/g, ' ').toUpperCase();
+
+      if (!cedula || !nombre) { invalidos++; continue; }
+      if (vistosEnFuente.has(cedula)) { duplicadosEnFuente++; continue; }
+      vistosEnFuente.add(cedula);
+
+      if (existentes.has(cedula)) { yaExistentes++; continue; }
+      nuevos.push({ id: generateUUID(), cedula, nombre_completo: nombre });
+    }
+
+    const resumen = {
+      total_recibidos: registros.length,
+      nuevos: nuevos.length,
+      existentes: yaExistentes,
+      invalidos,
+      duplicados_en_fuente: duplicadosEnFuente
+    };
+
+    if (soloPrevisualizar) {
+      return {
+        status: 'success',
+        message: `Prueba de "${fuente.nombre}": ${registros.length} registros recibidos, ${nuevos.length} nuevos por registrar.`,
+        resumen,
+        muestra: nuevos.slice(0, 15)
+      };
+    }
+
+    // 4. Registrar nuevos participantes
+    const now = new Date().toISOString();
+    const stmts = nuevos.map(u => ({
+      sql: "INSERT INTO usuarios (id, cedula, nombre_completo, correo, telefono, created_at) VALUES (?, ?, ?, ?, ?, ?);",
+      args: [u.id, u.cedula, u.nombre_completo, '', '', now]
+    }));
+    const chunkSize = 50;
+    for (let i = 0; i < stmts.length; i += chunkSize) {
+      await db.batch(stmts.slice(i, i + chunkSize), 'write');
+    }
+
+    const textoResultado = `${now} | Recibidos: ${resumen.total_recibidos}, Nuevos: ${resumen.nuevos}, Existentes: ${resumen.existentes}, Inválidos: ${resumen.invalidos}`;
+    await registrarResultadoFuente(fuente.id, textoResultado, now);
+
+    return {
+      status: 'success',
+      message: `Importación desde "${fuente.nombre}" completada. Participantes nuevos registrados: ${nuevos.length} (ya existentes: ${yaExistentes}, inválidos: ${invalidos}).`,
+      resumen,
+      created: nuevos
     };
   }
 };
+
+// ─── Utilidades para fuentes externas ───────────────────────────────
+let fuentesTableReady = false;
+
+const CAMPOS_CEDULA = ['cedula', 'cédula', 'ci', 'cedula_identidad', 'nro_cedula', 'numero_cedula', 'documento', 'dni', 'identificacion', 'id_number', 'document'];
+const CAMPOS_NOMBRE = ['nombre_completo', 'nombrecompleto', 'nombre_apellido', 'nombres_apellidos', 'full_name', 'fullname', 'nombre', 'name'];
+
+function validarUrlExterna(url) {
+  try {
+    const u = new URL(String(url || '').trim());
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch (e) {
+    return false;
+  }
+}
+
+// Busca un valor dentro del objeto: primero por la ruta indicada (admite "persona.cedula"), luego por nombres comunes
+function obtenerCampo(obj, rutaPreferida, candidatos) {
+  const leerRuta = (o, ruta) => String(ruta).split('.').reduce((acc, k) => {
+    if (acc === undefined || acc === null || typeof acc !== 'object') return undefined;
+    if (k in acc) return acc[k];
+    const key = Object.keys(acc).find(x => x.toLowerCase() === k.toLowerCase());
+    return key !== undefined ? acc[key] : undefined;
+  }, o);
+
+  if (rutaPreferida) {
+    const v = leerRuta(obj, rutaPreferida);
+    return v === undefined || v === null ? '' : String(v);
+  }
+  const keys = Object.keys(obj);
+  for (const c of candidatos) {
+    const key = keys.find(k => k.toLowerCase() === c);
+    if (key !== undefined && obj[key] !== null && obj[key] !== undefined && String(obj[key]).trim() !== '') {
+      return String(obj[key]);
+    }
+  }
+  return '';
+}
+
+// Admite: [ ... ], { data: [...] }, { usuarios: [...] }, { data: { items: [...] } }, etc.
+function extraerRegistrosJson(json) {
+  if (Array.isArray(json)) return json;
+  if (!json || typeof json !== 'object') return null;
+  const preferidas = ['data', 'usuarios', 'participantes', 'estudiantes', 'personas', 'results', 'resultados', 'items', 'records', 'rows', 'registros'];
+  for (const k of preferidas) {
+    if (Array.isArray(json[k])) return json[k];
+  }
+  for (const k of preferidas) {
+    if (json[k] && typeof json[k] === 'object') {
+      const inner = extraerRegistrosJson(json[k]);
+      if (inner) return inner;
+    }
+  }
+  const primerArray = Object.values(json).find(v => Array.isArray(v));
+  return primerArray || null;
+}
+
+async function registrarResultadoFuente(id, texto, fecha = null) {
+  try {
+    if (fecha) {
+      await db.execute({ sql: "UPDATE fuentes_externas SET ultimo_resultado = ?, ultima_importacion = ? WHERE id = ?;", args: [texto, fecha, String(id)] });
+    } else {
+      await db.execute({ sql: "UPDATE fuentes_externas SET ultimo_resultado = ? WHERE id = ?;", args: [texto, String(id)] });
+    }
+  } catch (e) {
+    console.warn('No se pudo registrar el resultado de la fuente externa:', e.message);
+  }
+}
 
 module.exports = services;

@@ -113,6 +113,10 @@ module.exports = async function handler(req, res) {
           result = await services.getApiKeyConfig();
           break;
 
+        case 'listFuentesExternas':
+          result = await services.listFuentesExternas();
+          break;
+
         case 'getCursosOfertadosApi':
         case 'listarCursosApi': {
           const apiKeyHeader = req.headers['x-api-key'] || req.headers['x-apikey'] || 
@@ -144,7 +148,7 @@ module.exports = async function handler(req, res) {
       const userRole = String(req.headers['x-user-role'] || body._userRole || body.userRole || '').toUpperCase();
 
       // Validación estricta para perfil AUDITOR: no puede crear, modificar ni eliminar registros
-      const mutationActions = ['create', 'update', 'delete', 'bulkCreateUsuarios', 'bulkCreatePagos', 'bulkCertificar', 'saveDiseno', 'setDisenoActivo', 'updateConfiguracion', 'regenerateApiKey', 'toggleApiKey'];
+      const mutationActions = ['create', 'update', 'delete', 'bulkCreateUsuarios', 'bulkCreatePagos', 'bulkCertificar', 'saveDiseno', 'setDisenoActivo', 'updateConfiguracion', 'regenerateApiKey', 'toggleApiKey', 'saveFuenteExterna', 'deleteFuenteExterna', 'importarFuenteExterna'];
       if (userRole === 'AUDITOR' && mutationActions.includes(postAction)) {
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.status(403).json({
@@ -174,7 +178,23 @@ module.exports = async function handler(req, res) {
           break;
 
         case 'bulkCreatePagos':
-          result = await services.bulkCreatePagos(body.pagos || []);
+          result = await services.bulkCreatePagos(body.pagos || [], body.opciones || {});
+          break;
+
+        case 'listFuentesExternas':
+          result = await services.listFuentesExternas();
+          break;
+
+        case 'saveFuenteExterna':
+          result = await services.saveFuenteExterna(body.fuente || {});
+          break;
+
+        case 'deleteFuenteExterna':
+          result = await services.deleteFuenteExterna(body.id);
+          break;
+
+        case 'importarFuenteExterna':
+          result = await services.importarFuenteExterna(body.id, Boolean(body.soloPrevisualizar));
           break;
 
         case 'bulkCertificar':
@@ -207,6 +227,10 @@ module.exports = async function handler(req, res) {
 
         case 'getApiKeyInfo':
           result = await services.getApiKeyConfig();
+          break;
+
+        case 'listFuentesExternas':
+          result = await services.listFuentesExternas();
           break;
 
         case 'getCursosOfertadosApi':

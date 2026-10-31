@@ -1436,40 +1436,69 @@
 
       if (lineIdx === 0 && !headerIndices) {
         const lowerFirst = parts.map(p => p.toLowerCase());
-        const isHeader = lowerFirst.some(p => /^(cedula|cédula|ci|dni|documento|referencia|ref|monto|taller|curso|banco|fecha)$/.test(p));
+        const isHeader = lowerFirst.some(p => /^(cedula|cédula|ci|dni|documento|referencia|ref|monto|taller|curso|curso_ofertado|banco|banco_origen|fecha|nombre|nombre_completo|capture|comprobante)$/.test(p));
         if (isHeader) {
           headerIndices = {
             cedula: lowerFirst.findIndex(p => /^(cedula|cédula|ci|dni|documento)$/.test(p)),
-            curso: lowerFirst.findIndex(p => /^(taller|curso|curso_ofertado|id_curso|id_curso_ofertado)$/.test(p)),
+            nombre: lowerFirst.findIndex(p => /^(nombre_completo|nombre|participante|usuario)$/.test(p)),
+            curso: lowerFirst.findIndex(p => /^(curso_ofertado|taller|curso|id_curso|id_curso_ofertado)$/.test(p)),
             referencia: lowerFirst.findIndex(p => /^(referencia|ref|numero_transferencia|nro_transferencia|transferencia)$/.test(p)),
             monto: lowerFirst.findIndex(p => /^(monto|monto_bs|valor|precio)$/.test(p)),
-            banco: lowerFirst.findIndex(p => /^(banco|banco_origen)$/.test(p)),
-            fecha: lowerFirst.findIndex(p => /^(fecha|fecha_pago)$/.test(p)),
-            nombre: lowerFirst.findIndex(p => /^(nombre|nombre_completo|participante|usuario)$/.test(p))
+            banco: lowerFirst.findIndex(p => /^(banco_origen|banco)$/.test(p)),
+            capture: lowerFirst.findIndex(p => /^(capture|comprobante|capture_url|soporte|imagen)$/.test(p)),
+            fecha: lowerFirst.findIndex(p => /^(fecha|fecha_pago)$/.test(p))
           };
           return;
         }
       }
 
       let rawCedula = '';
+      let rawNombre = '';
       let rawCurso = '';
       let rawRef = '';
       let rawMonto = '';
       let rawBanco = '';
+      let rawCapture = '';
       let rawFecha = '';
-      let rawNombre = '';
 
       if (headerIndices) {
         rawCedula = headerIndices.cedula !== -1 && parts[headerIndices.cedula] ? parts[headerIndices.cedula] : '';
+        rawNombre = headerIndices.nombre !== -1 && parts[headerIndices.nombre] ? parts[headerIndices.nombre] : '';
         rawCurso = headerIndices.curso !== -1 && parts[headerIndices.curso] ? parts[headerIndices.curso] : '';
         rawRef = headerIndices.referencia !== -1 && parts[headerIndices.referencia] ? parts[headerIndices.referencia] : '';
         rawMonto = headerIndices.monto !== -1 && parts[headerIndices.monto] ? parts[headerIndices.monto] : '';
         rawBanco = headerIndices.banco !== -1 && parts[headerIndices.banco] ? parts[headerIndices.banco] : '';
+        rawCapture = headerIndices.capture !== -1 && parts[headerIndices.capture] ? parts[headerIndices.capture] : '';
         rawFecha = headerIndices.fecha !== -1 && parts[headerIndices.fecha] ? parts[headerIndices.fecha] : '';
-        rawNombre = headerIndices.nombre !== -1 && parts[headerIndices.nombre] ? parts[headerIndices.nombre] : '';
       } else {
+        // Formato estándar posicional:
+        // cedula, nombre_completo, curso_ofertado, referencia, monto, banco_origen, capture, fecha
         rawCedula = parts[0] || '';
-        if (parts.length >= 6) {
+        if (parts.length >= 8) {
+          rawNombre = parts[1];
+          rawCurso = parts[2];
+          rawRef = parts[3];
+          rawMonto = parts[4];
+          rawBanco = parts[5];
+          rawCapture = parts[6];
+          rawFecha = parts[7];
+        } else if (parts.length === 7) {
+          if (/^\d{4}-\d{2}-\d{2}$|^\d{2}[/-]\d{2}[/-]\d{4}$/.test(parts[6].trim())) {
+            rawNombre = parts[1];
+            rawCurso = parts[2];
+            rawRef = parts[3];
+            rawMonto = parts[4];
+            rawBanco = parts[5];
+            rawFecha = parts[6];
+          } else {
+            rawCurso = parts[1];
+            rawRef = parts[2];
+            rawMonto = parts[3];
+            rawBanco = parts[4];
+            rawCapture = parts[5];
+            rawFecha = parts[6];
+          }
+        } else if (parts.length === 6) {
           rawCurso = parts[1];
           rawRef = parts[2];
           rawMonto = parts[3];
@@ -1541,12 +1570,13 @@
 
       parsed.push({
         cedula: normCedula,
-        nombre_completo: rawNombre,
+        nombre_completo: rawNombre ? String(rawNombre).trim().toUpperCase() : '',
         id_curso_ofertado: cursoObj ? cursoObj.id : null,
         nombre_curso: cursoObj ? cursoObj.taller : 'Taller no asignado',
         numero_transferencia: refFinal,
         monto: montoNum,
         banco_origen: bancoFinal,
+        capture: rawCapture ? String(rawCapture).trim() : '',
         fecha_pago: fechaFinal,
         status: 'PENDIENTE'
       });
@@ -1613,6 +1643,10 @@
         usuarioBadge = `<strong class="text-dark">${window.utils.escapeHtml(nomDisplay)}</strong><br><small class="text-info"><i class="fa-solid fa-user-plus me-1"></i>Nuevo (Se creará en BD)</small>`;
       }
 
+      const captureCol = p.capture 
+        ? `<button type="button" class="btn btn-sm btn-outline-info py-0 px-2" onclick="window.ofertasModule.verCaptureFull('${window.utils.escapeHtml(p.capture)}', '${window.utils.escapeHtml(p.nombre_completo)}')"><i class="fa-solid fa-image me-1"></i>Ver</button>`
+        : '<span class="text-muted small">Sin Capture</span>';
+
       rowsHtml += `
         <tr>
           <td class="text-center font-monospace">${idx + 1}</td>
@@ -1622,6 +1656,7 @@
           <td class="text-center font-monospace small"><code>${window.utils.escapeHtml(p.numero_transferencia)}</code></td>
           <td class="text-end fw-bold text-success">${parseFloat(p.monto || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.</td>
           <td class="small text-muted">${window.utils.escapeHtml(p.banco_origen)}</td>
+          <td class="text-center small">${captureCol}</td>
           <td class="small text-center">${window.utils.escapeHtml(p.fecha_pago)}</td>
           <td class="text-center">
             <span class="badge bg-warning text-dark py-2 px-2 fw-bold">
@@ -1666,11 +1701,12 @@
             <tr>
               <th class="text-center" style="width: 40px;">#</th>
               <th>Cédula</th>
-              <th>Participante</th>
-              <th>Curso / Taller Ofertado</th>
+              <th>Nombre Completo</th>
+              <th>Curso Ofertado</th>
               <th class="text-center">Referencia</th>
               <th class="text-end">Monto</th>
-              <th>Banco</th>
+              <th>Banco Origen</th>
+              <th class="text-center">Capture</th>
               <th class="text-center">Fecha</th>
               <th class="text-center">Estatus Inicial</th>
             </tr>
@@ -1709,7 +1745,9 @@
         window.utils.showLoading(50, 'Subiendo pagos masivos a Turso...', 'Registrando pagos en estado PENDIENTE');
       }
 
-      const res = await window.api.bulkCreatePagos(pagosMasivosParsed);
+      const switchCrear = document.getElementById('checkCrearUsuariosInexistentesPagos');
+      const crearUsuariosNuevos = switchCrear ? switchCrear.checked : true;
+      const res = await window.api.bulkCreatePagos(pagosMasivosParsed, { crearUsuariosNuevos });
       if (res && res.status === 'success') {
         window.utils.showToast(res.message || 'Pagos subidos exitosamente en espera de verificación.', 'success');
         
@@ -1717,6 +1755,9 @@
         if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).hide();
 
         await cargarTablaPagos();
+        if (window.api && window.api.preloadAllData) {
+          window.api.preloadAllData(true).catch(() => {});
+        }
 
         // Cambiar filtro para mostrar pendientes de inmediato
         const selFiltro = document.getElementById('selectFiltroEstatusPago');
@@ -1800,10 +1841,10 @@
   }
 
   function descargarPlantillaCsvPagos() {
-    const csvContent = "cedula,curso_ofertado,referencia,monto,banco,fecha\n" +
-      "V-12345678,Taller de Inteligencia Artificial,00984572,350.50,Banco de Venezuela (0102),2026-10-25\n" +
-      "V-87654321,Desarrollo Web Fullstack,00451278,500.00,Pago Móvil Interbancario,2026-10-25\n" +
-      "V-19876543,Ciberseguridad y Redes,00781290,420.00,Banesco (0134),2026-10-25";
+    const csvContent = "cedula,nombre_completo,curso_ofertado,referencia,monto,banco_origen,capture,fecha\n" +
+      "V-12345678,PEDRO PÉREZ,Taller de Inteligencia Artificial,00984572,350.50,Banco de Venezuela (0102),https://certificados.uptpc.edu.ve/img/comprobante1.jpg,2026-10-25\n" +
+      "V-87654321,MARÍA GÓMEZ,Desarrollo Web Fullstack,00451278,500.00,Pago Móvil Interbancario,,2026-10-25\n" +
+      "V-19876543,CARLOS LÓPEZ,Ciberseguridad y Redes,00781290,420.00,Banesco (0134),,2026-10-25";
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -1814,7 +1855,7 @@
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    window.utils.showToast('Plantilla CSV descargada', 'info');
+    window.utils.showToast('Plantilla CSV descargada con el formato oficial', 'info');
   }
 
   window.ofertasModule = {

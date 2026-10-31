@@ -145,15 +145,6 @@
         <i class="fa-solid fa-sliders me-2"></i> <span class="sidebar-text">Configuración Global</span>
       </a>
     </div>
-
-    <div class="p-3 border-top border-secondary">
-      <div class="small text-white-50 text-center mb-2">
-        <span class="badge bg-success"><i class="fa-solid fa-bolt me-1"></i> Vercel + Turso + R2</span>
-      </div>
-      <button class="btn btn-outline-light w-100 btn-sm text-start" id="btnAbrirConfiguracion">
-        <i class="fa-solid fa-circle-nodes me-2"></i> Estado de Conexión
-      </button>
-    </div>
   </aside>
 
   <!-- ═══ CONTENIDO PRINCIPAL ═══ -->
@@ -1187,6 +1178,22 @@
           </span>
         </div>
 
+        <!-- Tarjeta de Estado de Infraestructura y Conexión (Trasladada desde el Dashboard) -->
+        <div class="card bg-light border p-3 rounded-3 mb-4">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-3">
+              <span class="badge bg-success py-2 px-3 fs-6"><i class="fa-solid fa-bolt me-1"></i> Vercel + Turso + R2</span>
+              <div>
+                <strong class="d-block text-dark small">Arquitectura Activa: Vercel Serverless (Node.js) + Base de Datos Turso (LibSQL) + Cloudflare R2</strong>
+                <small class="text-muted">Monitoreo de latencia, diagnóstico de infraestructura y conectividad edge en tiempo real.</small>
+              </div>
+            </div>
+            <button type="button" class="btn btn-outline-dark fw-bold btn-sm shadow-sm" id="btnAbrirConfiguracion">
+              <i class="fa-solid fa-circle-nodes me-2 text-success"></i> Estado de Conexión
+            </button>
+          </div>
+        </div>
+
         <form id="formConfiguracionesGlobales">
           <div class="row g-4 mt-1">
             <!-- Bloque 1: Parámetros Institucionales -->
@@ -1583,6 +1590,35 @@ if (!empty($data['cursos'])) {
                   Haga clic en <strong>Previsualizar</strong> para inspeccionar la estructura del JSON devuelto en tiempo real.
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bloque 6: Fuentes Externas de Participantes (Importación vía API Web con 1 Clic) -->
+        <div class="card border p-4 mt-4 shadow-sm bg-white rounded-3">
+          <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 border-bottom pb-3">
+            <div>
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <h5 class="fw-bold mb-0 text-primary">
+                  <i class="fa-solid fa-cloud-arrow-down me-2 text-success"></i>Fuentes Externas de Participantes (Importación vía API Web)
+                </h5>
+                <span class="badge bg-success-subtle text-success border border-success">
+                  <i class="fa-solid fa-bolt me-1"></i>Ejecución con 1 Clic
+                </span>
+              </div>
+              <small class="text-muted">
+                Configure direcciones web (APIs externas o endpoints) que suministren listados de participantes en formato JSON con <strong>Cédula</strong> y <strong>Nombre Completo</strong>. Las direcciones se guardan de forma persistente en la base de datos distribuida <strong>Turso</strong> y permiten importar participantes al sistema con la ejecución de un solo clic sin duplicados.
+              </small>
+            </div>
+            <button type="button" class="btn btn-primary fw-bold shadow-sm" id="btnNuevaFuenteExterna">
+              <i class="fa-solid fa-plus-circle me-1"></i> Agregar Dirección Web (API)
+            </button>
+          </div>
+
+          <!-- Contenedor dinámico de Fuentes Configuradas -->
+          <div id="contenedorFuentesExternas">
+            <div class="text-center py-4 text-muted">
+              <div class="spinner-border spinner-border-sm text-primary me-2"></div> Cargando fuentes externas configuradas...
             </div>
           </div>
         </div>
@@ -2692,8 +2728,19 @@ if (!empty($data['cursos'])) {
           </div>
 
           <div class="mb-3">
-            <label class="form-label small fw-bold">O Pegar Registros Directamente (Cédula, Taller, Referencia, Monto, Banco, Fecha):</label>
-            <textarea class="form-control font-monospace small" id="textareaCargaMasivaPagos" rows="3" placeholder="V-12345678, Taller de Inteligencia Artificial, 00984572, 350.50, Banco de Venezuela, 2026-10-25&#10;V-87654321, Desarrollo Web, 00451278, 500.00, Pago Móvil, 2026-10-25"></textarea>
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <label class="form-label small fw-bold mb-0">O Pegar Registros Directamente (Formato oficial: <code>cedula, nombre_completo, curso_ofertado, referencia, monto, banco_origen, capture, fecha</code>):</label>
+              <span class="badge bg-secondary-subtle text-secondary small">Admite tabulaciones, comas o punto y coma</span>
+            </div>
+            <textarea class="form-control font-monospace small" id="textareaCargaMasivaPagos" rows="3" placeholder="V-12345678, PEDRO PÉREZ, Taller de Inteligencia Artificial, 00984572, 350.50, Banco de Venezuela (0102), https://ejemplo.com/capture1.jpg, 2026-10-25&#10;V-87654321, MARÍA GÓMEZ, Desarrollo Web Fullstack, 00451278, 500.00, Pago Móvil Interbancario, , 2026-10-25"></textarea>
+          </div>
+
+          <div class="form-check form-switch mb-3 bg-light p-2 ps-5 rounded border">
+            <input class="form-check-input" type="checkbox" id="checkCrearUsuariosInexistentesPagos" checked>
+            <label class="form-check-label small fw-bold text-dark" for="checkCrearUsuariosInexistentesPagos">
+              <i class="fa-solid fa-user-plus text-primary me-1"></i>Registrar automáticamente al participante si la cédula no existe en el sistema (con su nombre completo)
+            </label>
+            <small class="text-muted d-block">Si el participante ya existe en Turso DB, el pago se vinculará a su cuenta sin duplicarlo.</small>
           </div>
 
           <!-- Contenedor de Previsualización -->
@@ -2830,6 +2877,79 @@ if (!empty($data['cursos'])) {
           </small>
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Agregar / Editar Fuente Externa de Participantes (API JSON) -->
+  <div class="modal fade" id="modalFuenteExterna" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content shadow-lg border-0">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title fw-bold" id="lblModalFuenteTitulo">
+            <i class="fa-solid fa-globe me-2"></i>Configurar Dirección Web (API de Participantes)
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <form id="formFuenteExterna">
+          <input type="hidden" id="inputFuenteId">
+          <div class="modal-body p-4">
+            <div class="alert alert-info py-2 px-3 small d-flex align-items-center mb-3">
+              <i class="fa-solid fa-circle-info fa-lg me-2 text-info"></i>
+              <div>
+                El sistema consultará esta dirección web mediante una petición <code>GET</code>, extraerá el JSON recibido e incorporará automáticamente a la base de datos (tabla <code>usuarios</code>) aquellas cédulas que aún no existan en el sistema, todo con la ejecución de <strong>un solo clic</strong>.
+              </div>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-md-7">
+                <label class="form-label small fw-bold">Nombre o Etiqueta de la Fuente: <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="inputFuenteNombre" placeholder="Ej: Registro Estudiantes Taller 2026, Portal Web, etc." required>
+              </div>
+
+              <div class="col-md-5">
+                <label class="form-label small fw-bold">Estado de la Fuente:</label>
+                <select class="form-select" id="inputFuenteActiva">
+                  <option value="true">Activa (Disponible para importar)</option>
+                  <option value="false">Desactivada (Pausada)</option>
+                </select>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label small fw-bold">Dirección Web (URL del Endpoint JSON): <span class="text-danger">*</span></label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light font-monospace small"><i class="fa-solid fa-link"></i></span>
+                  <input type="url" class="form-control font-monospace" id="inputFuenteUrl" placeholder="https://mi-servidor.edu.ve/api/participantes" required>
+                </div>
+                <small class="text-muted">Dirección web accesible vía HTTPS o HTTP que responda un array JSON o un objeto con clave <code>data</code>, <code>usuarios</code>, etc.</small>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label small fw-bold">Clave del Campo Cédula (Opcional):</label>
+                <input type="text" class="form-control font-monospace" id="inputFuenteCampoCedula" placeholder="Auto (detecta cedula, ci, dni, etc.)">
+                <small class="text-muted">Por defecto detecta <code>cedula</code>, <code>ci</code>, <code>dni</code>, <code>documento</code>.</small>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label small fw-bold">Clave del Campo Nombre (Opcional):</label>
+                <input type="text" class="form-control font-monospace" id="inputFuenteCampoNombre" placeholder="Auto (detecta nombre_completo, etc.)">
+                <small class="text-muted">Por defecto detecta <code>nombre_completo</code>, <code>nombre</code> o combina nombres + apellidos.</small>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label small fw-bold">Token de Autenticación / API Key (Opcional):</label>
+                <input type="password" class="form-control font-monospace" id="inputFuenteApiKey" placeholder="Dejar en blanco si es una API abierta">
+                <small class="text-muted">Si la API externa requiere token, se enviará en <code>Authorization: Bearer [TOKEN]</code> y en el encabezado <code>x-api-key</code>.</small>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer bg-light">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary fw-bold px-4 shadow-sm" id="btnGuardarFuenteExterna">
+              <i class="fa-solid fa-floppy-disk me-1"></i> Guardar Fuente en Base de Datos
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>

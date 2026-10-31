@@ -551,7 +551,13 @@
     async regenerateApiKey() { return this.post('regenerateApiKey'); },
     async toggleApiKey(habilitada) { return this.post('toggleApiKey', { habilitada }); },
     async inyectarPago(pagoData) { return this.post('inyectarPago', pagoData); },
-    async bulkCreatePagos(pagos) { return this.post('bulkCreatePagos', { pagos }); },
+    async bulkCreatePagos(pagos, opciones = {}) { return this.post('bulkCreatePagos', { pagos, opciones }); },
+    async listFuentesExternas() { return this.get('listFuentesExternas'); },
+    async saveFuenteExterna(fuente) { return this.post('saveFuenteExterna', { fuente }); },
+    async deleteFuenteExterna(id) { return this.post('deleteFuenteExterna', { id }); },
+    async importarFuenteExterna(id, soloPrevisualizar = false) {
+      return this.post('importarFuenteExterna', { id, soloPrevisualizar });
+    },
     async getCursosOfertadosApi(apiKey = null) {
       const params = apiKey ? { api_key: apiKey } : {};
       return this.get('getCursosOfertadosApi', params);
