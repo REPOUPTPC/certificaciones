@@ -1,0 +1,5 @@
+# Ignorar archivos legados de Google Apps Script y carpetas deprecadas
+google_sheet.gs
+*.gs
+appsscript.json
+legacy/

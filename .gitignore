@@ -32,4 +32,6 @@ scratch/
 
 # Google Apps Script legado (opcional)
 google_sheet.gs
+*.gs
 appsscript.json
+legacy/

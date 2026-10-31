@@ -305,8 +305,11 @@
         <p class="text-secondary mb-0 fw-semibold">UNIDAD DE CIENCIA Y TECNOLOGÍA</p>
       </div>
     </div>
-    <div>
-      <a href="cursos.html" class="btn btn-outline-primary font-weight-bold py-2 px-3 shadow-sm">
+    <div class="d-flex align-items-center flex-wrap justify-content-end">
+      <!-- Badge de Sesión Activa de Usuario -->
+      <div id="containerUserHeaderBadgeConsulta" class="mr-3 my-1" style="display: none;"></div>
+
+      <a href="cursos.html" class="btn btn-outline-primary font-weight-bold py-2 px-3 shadow-sm my-1" id="btnIrACursos">
         <i class="fa-solid fa-store mr-2"></i>VER OFERTA DE CURSOS
       </a>
     </div>
@@ -445,6 +448,8 @@ async function _fetchJson(url) {
 // ============================================================
 // EVENT LISTENERS
 // ============================================================
+// EVENT LISTENERS Y RECUPERACIÓN DE SESIÓN (SIN PARÁMETROS GET)
+// ============================================================
 document.addEventListener('DOMContentLoaded', function() {
   cargarDisenoActivo();
   if (window.api && window.api.preloadAllData) {
@@ -454,11 +459,18 @@ document.addEventListener('DOMContentLoaded', function() {
   const inputBusqueda = document.getElementById('busqueda');
   if (inputBusqueda) {
     inputBusqueda.addEventListener('input', () => {
-      if (inputBusqueda.value.trim() !== ultimoTerminoBusqueda) {
+      const val = inputBusqueda.value.trim().toUpperCase();
+      if (val !== ultimoTerminoBusqueda) {
         document.getElementById('resultados').innerHTML = '';
         document.getElementById('cert-section').style.display = 'none';
       }
-      inputBusqueda.value = inputBusqueda.value.toUpperCase();
+      inputBusqueda.value = val;
+
+      // Preservar la cédula activa en almacenamiento local a medida que el usuario escribe
+      if (val.length >= 4) {
+        const norm = window.utils ? window.utils.normalizeCedula(val) : val;
+        localStorage.setItem('uptpc_cedula_activa', norm);
+      }
     });
 
     inputBusqueda.addEventListener('keypress', (e) => {
@@ -466,17 +478,152 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  // Interceptar clic en botón "VER OFERTA DE CURSOS" para sincronizar la sesión antes de salir
+  const btnIrACursos = document.getElementById('btnIrACursos');
+  if (btnIrACursos) {
+    btnIrACursos.addEventListener('click', () => {
+      const val = (document.getElementById('busqueda')?.value || '').trim();
+      if (val) {
+        const norm = window.utils ? window.utils.normalizeCedula(val) : val.toUpperCase();
+        localStorage.setItem('uptpc_cedula_activa', norm);
+        const stored = localStorage.getItem('uptpc_usuario_sesion');
+        if (!stored) {
+          localStorage.setItem('uptpc_usuario_sesion', JSON.stringify({
+            cedula: norm,
+            nombre_completo: ''
+          }));
+        }
+      }
+    });
+  }
+
+  // Prioridad 1: Si hay parámetros GET (por ejemplo, QR externo de certificado ?ID=XYZ)
   const urlParams = new URLSearchParams(window.location.search);
   const idParam = urlParams.get('ID') || urlParams.get('id');
   const cedulaParam = urlParams.get('cedula');
+
   if (idParam) {
     document.getElementById('busqueda').value = idParam.trim();
     buscarCertificado();
   } else if (cedulaParam) {
     document.getElementById('busqueda').value = cedulaParam.trim();
     buscarCertificado();
+  } else {
+    // Prioridad 2: SIN GET -> Restaurar sesión y datos del usuario desde Web Storage
+    recuperarSesionStorageEnConsulta();
   }
 });
+
+// ============================================================
+// FUNCIONES DE GESTIÓN DE SESIÓN DE USUARIO (SIN GET)
+// ============================================================
+function guardarSesionDesdeCertificado(cert) {
+  if (!cert || !cert.cedula) return;
+  const cedulaNorm = window.utils ? window.utils.normalizeCedula(cert.cedula) : cert.cedula;
+  const nombre_completo = cert.nombre_completo || '';
+
+  localStorage.setItem('uptpc_cedula_activa', cedulaNorm);
+
+  let sesion = {
+    cedula: cedulaNorm,
+    nombre_completo: nombre_completo,
+    correo: cert.correo || '',
+    telefono: cert.telefono || ''
+  };
+  localStorage.setItem('uptpc_usuario_sesion', JSON.stringify(sesion));
+  actualizarBadgeSesionConsulta(sesion);
+
+  // Enriquecer en segundo plano con la base de datos de usuarios si existe
+  if (window.api && window.api.getAll) {
+    window.api.getAll('usuarios').then(res => {
+      if (res && res.status === 'success' && Array.isArray(res.data)) {
+        const targetNorm = cedulaNorm.replace(/[\s-]/g, '').toUpperCase();
+        const u = res.data.find(x => {
+          const uNorm = window.utils ? window.utils.normalizeCedula(x.cedula).replace(/[\s-]/g, '').toUpperCase() : String(x.cedula).toUpperCase();
+          return uNorm === targetNorm;
+        });
+        if (u) {
+          sesion = { ...sesion, ...u };
+          localStorage.setItem('uptpc_usuario_sesion', JSON.stringify(sesion));
+          actualizarBadgeSesionConsulta(sesion);
+        }
+      }
+    }).catch(() => {});
+  }
+}
+
+function guardarSesionActivaConsulta(usuario) {
+  if (!usuario || !usuario.cedula) return;
+  const cedulaNorm = window.utils ? window.utils.normalizeCedula(usuario.cedula) : usuario.cedula;
+  localStorage.setItem('uptpc_cedula_activa', cedulaNorm);
+  localStorage.setItem('uptpc_usuario_sesion', JSON.stringify(usuario));
+  actualizarBadgeSesionConsulta(usuario);
+}
+
+function actualizarBadgeSesionConsulta(sesion) {
+  const container = document.getElementById('containerUserHeaderBadgeConsulta');
+  if (!container) return;
+  if (!sesion || !sesion.cedula) {
+    container.style.display = 'none';
+    container.innerHTML = '';
+    return;
+  }
+  const nombre = sesion.nombre_completo || 'Usuario Identificado';
+  container.style.display = 'inline-block';
+  container.innerHTML = `
+    <div class="badge badge-primary text-white py-2 px-3 d-inline-flex align-items-center shadow-sm rounded-pill" style="font-size: 0.85rem; font-weight: normal;">
+      <i class="fa-solid fa-circle-user text-warning mr-2" style="font-size: 1rem;"></i>
+      <span class="font-weight-bold mr-2">${_esc(nombre)}</span>
+      <span class="badge badge-light text-primary font-weight-bold mr-2">${_esc(sesion.cedula)}</span>
+      <button type="button" class="btn btn-sm btn-link text-white p-0 ml-1 text-decoration-none" onclick="cerrarSesionUsuarioConsulta()" title="Cerrar identificación">
+        <i class="fa-solid fa-right-from-bracket"></i>
+      </button>
+    </div>
+  `;
+}
+
+function cerrarSesionUsuarioConsulta() {
+  localStorage.removeItem('uptpc_usuario_sesion');
+  localStorage.removeItem('uptpc_cedula_activa');
+  ultimoTerminoBusqueda = '';
+  const input = document.getElementById('busqueda');
+  if (input) input.value = '';
+  const resultadosDiv = document.getElementById('resultados');
+  if (resultadosDiv) resultadosDiv.innerHTML = '';
+  const certSec = document.getElementById('cert-section');
+  if (certSec) certSec.style.display = 'none';
+  actualizarBadgeSesionConsulta(null);
+}
+
+function recuperarSesionStorageEnConsulta() {
+  try {
+    const stored = localStorage.getItem('uptpc_usuario_sesion');
+    const storedCedula = localStorage.getItem('uptpc_cedula_activa');
+    let cedulaTarget = '';
+    let sesionObj = null;
+
+    if (stored) {
+      sesionObj = JSON.parse(stored);
+      if (sesionObj && sesionObj.cedula) {
+        cedulaTarget = sesionObj.cedula;
+        actualizarBadgeSesionConsulta(sesionObj);
+      }
+    }
+    if (!cedulaTarget && storedCedula) {
+      cedulaTarget = storedCedula;
+    }
+
+    if (cedulaTarget) {
+      const input = document.getElementById('busqueda');
+      if (input) {
+        input.value = cedulaTarget;
+        buscarCertificado();
+      }
+    }
+  } catch(e) {
+    console.warn('Error recuperando sesión en consulta:', e);
+  }
+}
 
 async function cargarDisenoActivo() {
   try {
@@ -534,6 +681,8 @@ async function buscarCertificado() {
       if (resultados[0] && resultados[0].id) {
         window.api.logConsulta(resultados[0].id).catch(() => {});
       }
+      // Sincronizar sesión y datos del usuario encontrado
+      guardarSesionDesdeCertificado(resultados[0]);
     } else {
       // 3. No se encontraron certificados. Verificar si el término es una Cédula y evaluar la tabla 'usuarios'
       await manejarBusquedaSinCertificados(terminoRaw, termino);
@@ -563,6 +712,9 @@ async function manejarBusquedaSinCertificados(terminoRaw, terminoNorm) {
     });
 
     if (usuario) {
+      // Guardar y sincronizar sesión activa del usuario
+      guardarSesionActivaConsulta(usuario);
+
       // Caso 1: El usuario existe pero NO posee certificaciones
       resultadosDiv.innerHTML = `
         <div class="alert alert-info p-4 rounded-3 text-center border-0 shadow-sm mt-3">
@@ -606,6 +758,11 @@ async function manejarBusquedaSinCertificados(terminoRaw, terminoNorm) {
         </div>
       `;
     } else {
+      // Registrar cédula activa para mantener la intención de navegación
+      if (terminoNorm) {
+        localStorage.setItem('uptpc_cedula_activa', terminoNorm);
+      }
+
       // Caso 2: El usuario no existe en la base de datos de usuarios
       resultadosDiv.innerHTML = `
         <div class="alert alert-warning p-4 rounded-3 text-center border-0 shadow-sm mt-3">
@@ -663,6 +820,7 @@ async function guardarNuevoUsuarioModal(e) {
     if (res && res.status === 'success') {
       $('#modalRegistroUsuario').modal('hide');
       alert('¡Registro de usuario completado exitosamente!');
+      guardarSesionActivaConsulta(nuevoUsuario);
       document.getElementById('busqueda').value = cedula;
       buscarCertificado();
     } else {
@@ -688,6 +846,15 @@ async function guardarPerfilUsuario(e, userId) {
     const res = await window.api.update('usuarios', userId, { correo, telefono });
     if (res && res.status === 'success') {
       alert('¡Perfil de usuario actualizado exitosamente!');
+      try {
+        const stored = localStorage.getItem('uptpc_usuario_sesion');
+        if (stored) {
+          const u = JSON.parse(stored);
+          u.correo = correo;
+          u.telefono = telefono;
+          guardarSesionActivaConsulta(u);
+        }
+      } catch(e) {}
     } else {
       alert('Error al actualizar el perfil.');
     }

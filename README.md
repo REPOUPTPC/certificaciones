@@ -38,10 +38,11 @@ Plataforma web integral para la creación, diseño interactivo en Canvas, emisi�
 
 ## 🛠️ Arquitectura Tecnológica
 
-- **Frontend**: HTML5 Semántico, Vanilla CSS3 (Sistema de diseño moderno con Glassmorphic UI), JavaScript ES6+ (Arquitectura modular).
-- **Backend / API**: Google Apps Script (`google_sheet.gs` Versión **V008**).
-- **Base de Datos**: Google Sheets API.
-- **Almacenamiento de Archivos**: Google Drive API (Carpeta `GESTION_CERTIFICADOS`).
+- **Frontend**: HTML5 Semántico, Vanilla CSS3 (Sistema de diseño moderno con Glassmorphic UI), JavaScript ES6+ (Arquitectura modular en `/js/`).
+- **Backend / API**: Vercel Serverless Functions (`/api/index.js`).
+- **Base de Datos**: Turso (libSQL / SQLite distribuido) en `/server/db.js` y `/server/services.js`.
+- **Almacenamiento de Archivos**: Cloudflare R2 / S3 API (`/server/storage.js`).
+- **Legacy (Inactivo)**: Google Apps Script (`google_sheet.gs`) fue completamente migrado y archivado en `/legacy/`.
 
 ---
 
@@ -52,8 +53,12 @@ Plataforma web integral para la creación, diseño interactivo en Canvas, emisi�
 ├── index.html           # Página de inicio / Redirección principal
 ├── gestion.html         # Panel de Administración y Diseñador Canvas
 ├── consulta.html        # Portal Público de Validación de Certificados
-├── google_sheet.gs      # Script Backend de Google Apps Script (Versión V008)
-├── appsscript.json      # Configuración de manifiesto y permisos de Apps Script
+├── cursos.html          # Tienda Virtual y Oferta de Cursos/Talleres
+├── api/
+│   └── index.js         # Endpoint Serverless principal (Vercel)
+├── server/
+│   ├── db.js            # Cliente Turso DB
+│   └── services.js      # Servicios y consultas de datos
 ├── css/
 │   ├── main.css         # Estilos globales y sistema de tokens CSS
 │   ├── disenador.css    # Estilos del Diseñador Canvas Interactivo
@@ -77,18 +82,15 @@ Plataforma web integral para la creación, diseño interactivo en Canvas, emisi�
 
 ---
 
-## 📋 Configuración e Instalación
+## 📋 Configuración y Despliegue
 
-1. **Google Sheets & Apps Script**:
-   - Cree un nuevo documento en Google Sheets.
-   - Abra el editor de código (**Extensiones > Apps Script**).
-   - Copie el contenido de [`google_sheet.gs`](file:///home/herrera/Documents/antigravity/blissful-curie/google_sheet.gs) (Versión V008) en el archivo principal.
-   - Asegúrese de ajustar el archivo [`appsscript.json`](file:///home/herrera/Documents/antigravity/blissful-curie/appsscript.json) con los permisos de OAuth necesarios.
-   - Despliegue como **Aplicación Web** (`Ejecutar como: Yo`, `Acceso: Cualquier persona`).
-
-2. **Frontend**:
-   - Abra `gestion.html` en cualquier navegador web moderno o servidor local.
-   - Ingrese el URL de la Aplicación Web desplegada en la configuración del panel de administración.
+1. **Variables de Entorno**:
+   - Configure las credenciales de Turso DB (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`) y Cloudflare R2 en `.env`.
+2. **Servidor Local / Desarrollo**:
+   - Ejecute `npm install` y `npm run dev` para levantar el entorno de desarrollo local.
+3. **Despliegue en Vercel**:
+   - El proyecto cuenta con `vercel.json` y los endpoints Serverless en `/api/index.js`.
+   - Ejecute `npm run build` para sincronizar los archivos estáticos en `/public`.
 
 ---
 

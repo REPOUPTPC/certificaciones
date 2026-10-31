@@ -851,7 +851,18 @@
         if (stored) {
           sesionUsuarioActual = JSON.parse(stored);
           usuarioIdentificadoActual = sesionUsuarioActual;
-          cargarCursosRealizadosUsuario(sesionUsuarioActual.cedula);
+          if (sesionUsuarioActual && sesionUsuarioActual.cedula) {
+            cargarCursosRealizadosUsuario(sesionUsuarioActual.cedula);
+            if (!sesionUsuarioActual.nombre_completo || sesionUsuarioActual.nombre_completo === 'Participante') {
+              resolverDatosCompletosSesion(sesionUsuarioActual.cedula);
+            }
+          }
+        } else {
+          // Si no hay sesión completa pero se colocó cédula en consulta.html
+          const cedulaActiva = localStorage.getItem('uptpc_cedula_activa');
+          if (cedulaActiva) {
+            resolverDatosCompletosSesion(cedulaActiva);
+          }
         }
       } catch(e) {
         sesionUsuarioActual = null;
@@ -859,15 +870,58 @@
       actualizarBarraSesionHeader();
     }
 
+    async function resolverDatosCompletosSesion(cedulaRaw) {
+      if (!cedulaRaw) return;
+      const cedulaNorm = window.utils ? window.utils.normalizeCedula(cedulaRaw) : cedulaRaw;
+      const targetNorm = cedulaNorm.replace(/[\s-]/g, '').toUpperCase();
+
+      try {
+        // 1. Intentar resolver con la tabla de usuarios
+        const resUsers = await window.api.getAll('usuarios');
+        const usuarios = (resUsers && resUsers.status === 'success' && Array.isArray(resUsers.data)) ? resUsers.data : [];
+        const found = usuarios.find(u => {
+          const uNorm = window.utils ? window.utils.normalizeCedula(u.cedula).replace(/[\s-]/g, '').toUpperCase() : String(u.cedula).toUpperCase();
+          return uNorm === targetNorm || String(u.cedula).toUpperCase() === cedulaRaw.toUpperCase();
+        });
+
+        if (found) {
+          establecerSesionUsuario(found);
+          return;
+        }
+
+        // 2. Si no está en usuarios, consultar certificados para extraer su nombre oficial
+        const resCerts = await window.api.searchCertificados(cedulaNorm);
+        if (resCerts && resCerts.status === 'success' && Array.isArray(resCerts.data) && resCerts.data.length > 0) {
+          const cert = resCerts.data[0];
+          establecerSesionUsuario({
+            cedula: cert.cedula || cedulaNorm,
+            nombre_completo: cert.nombre_completo || 'Participante',
+            correo: cert.correo || '',
+            telefono: cert.telefono || ''
+          });
+          return;
+        }
+
+        // 3. Si no existe en BD aún, establecer sesión base con la cédula
+        establecerSesionUsuario({
+          cedula: cedulaNorm,
+          nombre_completo: 'Usuario (' + cedulaNorm + ')'
+        });
+      } catch(err) {
+        console.warn('Error resolviendo datos completos de la sesión en cursos:', err);
+      }
+    }
+
     function actualizarBarraSesionHeader() {
       const container = document.getElementById('containerUserHeaderBadge');
       if (!container) return;
 
       if (sesionUsuarioActual) {
+        const nombreDisplay = sesionUsuarioActual.nombre_completo || 'Usuario Identificado';
         container.innerHTML = `
           <div class="badge bg-primary text-white py-2 px-3 d-inline-flex align-items-center gap-2 shadow-sm rounded-pill border border-light">
             <i class="fa-solid fa-circle-user text-warning fs-6"></i>
-            <span class="fw-bold">${window.utils.escapeHtml(sesionUsuarioActual.nombre_completo)}</span>
+            <span class="fw-bold">${window.utils.escapeHtml(nombreDisplay)}</span>
             <span class="badge bg-light text-primary fw-bold">${window.utils.escapeHtml(sesionUsuarioActual.cedula)}</span>
             <button class="btn btn-sm btn-link text-white p-0 ms-1 text-decoration-none" onclick="cerrarSesionUsuario()" title="Cerrar identificación">
               <i class="fa-solid fa-right-from-bracket"></i>
@@ -891,6 +945,10 @@
       const input = document.getElementById('inputIdentificarCedulaModal');
       const alerta = document.getElementById('contenedorAlertaIdentificacion');
       const textoMsg = document.getElementById('textoMensajeIdentificar');
+
+      if (!cedulaSugerida) {
+        cedulaSugerida = localStorage.getItem('uptpc_cedula_activa') || '';
+      }
 
       if (textoMsg) {
         if (mensajePersonalizado) {
@@ -991,6 +1049,10 @@
       const inputCorreo = document.getElementById('inputRegCorreoModal');
       const inputTelefono = document.getElementById('inputRegTelefonoModal');
 
+      if (!cedulaSugerida) {
+        cedulaSugerida = localStorage.getItem('uptpc_cedula_activa') || '';
+      }
+
       if (inputCedula) inputCedula.value = cedulaSugerida ? window.utils.normalizeCedula(cedulaSugerida) : '';
       if (inputNombre) inputNombre.value = '';
       if (inputCorreo) inputCorreo.value = '';
@@ -1064,6 +1126,9 @@
       usuarioIdentificadoActual = usuario;
       try {
         localStorage.setItem('uptpc_usuario_sesion', JSON.stringify(usuario));
+        if (usuario && usuario.cedula) {
+          localStorage.setItem('uptpc_cedula_activa', usuario.cedula);
+        }
       } catch(e) {}
 
       // Migrar favoritos de visitante si existieran
@@ -1077,6 +1142,7 @@
 
     function cerrarSesionUsuario() {
       localStorage.removeItem('uptpc_usuario_sesion');
+      localStorage.removeItem('uptpc_cedula_activa');
       sesionUsuarioActual = null;
       usuarioIdentificadoActual = null;
       listaCursosRealizadosCache = [];
