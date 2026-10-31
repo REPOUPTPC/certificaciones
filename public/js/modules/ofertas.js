@@ -1021,6 +1021,12 @@
       btnConfirmarMasivo.addEventListener('click', () => ejecutarCargaMasivaPagos());
     }
 
+    const btnExportarPendientes = document.getElementById('btnExportarPagosPendientesCsv');
+    if (btnExportarPendientes && !btnExportarPendientes.dataset.bound) {
+      btnExportarPendientes.dataset.bound = 'true';
+      btnExportarPendientes.addEventListener('click', () => exportarPagosPendientesCsv());
+    }
+
     const btnRefrescar = document.getElementById('btnRefrescarPagos');
     if (btnRefrescar && !btnRefrescar.dataset.bound) {
       btnRefrescar.dataset.bound = 'true';
@@ -1730,6 +1736,66 @@
         btn.innerHTML = oldHtml;
       }
       if (window.utils && window.utils.hideLoading) window.utils.hideLoading();
+    }
+  }
+
+  /**
+   * Exporta a CSV las declaraciones de pago PENDIENTES por verificación.
+   * Columnas: cedula, nombre_completo, curso_ofertado, referencia, monto, banco_origen, capture, fecha
+   */
+  async function exportarPagosPendientesCsv() {
+    try {
+      // Si aún no se han cargado los datos, cargarlos primero
+      if (!cachedPagos.length) {
+        await cargarTablaPagos();
+      }
+
+      const usuariosMap = Object.fromEntries(cachedUsuarios.map(u => [String(u.id), u]));
+      const pendientes = cachedPagos
+        .filter(p => !isPagoVerificado(p.status))
+        .sort((a, b) => new Date(b.created_at || b.fecha_pago || 0) - new Date(a.created_at || a.fecha_pago || 0));
+
+      if (pendientes.length === 0) {
+        window.utils.showToast('No hay declaraciones de pago pendientes por verificar', 'info');
+        return;
+      }
+
+      const escaparCsv = (valor) => {
+        const s = String(valor ?? '');
+        return /[",\r\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+
+      const resolverUrlCapture = (capture) => {
+        if (!capture) return '';
+        const c = String(capture);
+        if (/^(https?:|data:)/i.test(c)) return c;
+        try { return new URL(c, window.location.origin).href; } catch (e) { return c; }
+      };
+
+      const encabezados = ['cedula', 'nombre_completo', 'curso_ofertado', 'referencia', 'monto', 'banco_origen', 'capture', 'fecha'];
+      const filas = pendientes.map(p => {
+        const usr = usuariosMap[String(p.id_usuario)] || {};
+        const ofr = resolverOferta(p.id_curso_ofertado) || {};
+        const fecha = p.fecha_pago || (p.created_at ? String(p.created_at).slice(0, 10) : '');
+        return [
+          usr.cedula || '',
+          usr.nombre_completo || '',
+          ofr.taller || p.taller || '',
+          p.numero_transferencia || '',
+          (parseFloat(p.monto || 0) || 0).toFixed(2),
+          p.banco_origen || '',
+          resolverUrlCapture(p.capture),
+          fecha
+        ].map(escaparCsv).join(',');
+      });
+
+      const csvContent = [encabezados.join(','), ...filas].join('\r\n');
+      const hoy = new Date().toISOString().slice(0, 10);
+      window.utils.downloadCsvTemplate(`pagos_pendientes_verificacion_${hoy}.csv`, csvContent);
+      window.utils.showToast(`CSV descargado: ${pendientes.length} pago(s) pendiente(s)`, 'success');
+    } catch (err) {
+      console.error('Error exportando pagos pendientes a CSV:', err);
+      window.utils.showToast('Error al generar el CSV de pagos pendientes', 'danger');
     }
   }
 
