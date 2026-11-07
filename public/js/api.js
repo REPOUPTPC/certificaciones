@@ -134,9 +134,10 @@
     async fetchRemoteDirect(action, params = {}) {
       const apiUrl = window.config.getApiUrl();
       if (!apiUrl) throw new Error('No API URL configured');
-      const queryParams = new URLSearchParams({ action, ...params });
+      const queryParams = new URLSearchParams({ action, ...params, _t: String(Date.now()) });
       const response = await fetch(`${apiUrl}?${queryParams.toString()}`, {
-        method: 'GET'
+        method: 'GET',
+        cache: 'no-store'
       });
       if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
       return await response.json();
@@ -269,11 +270,14 @@
         }
         if (action === 'getById' && targetTable && Array.isArray(this._globalCache[targetTable])) {
           const rawId = String(params.id || '').trim();
-          const intId = parseInt(rawId, 10);
-          const found = this._globalCache[targetTable].find(r => 
-            String(r.id).trim() === rawId || 
-            (!isNaN(intId) && parseInt(r.id, 10) === intId)
-          );
+          let found = this._globalCache[targetTable].find(r => String(r.id).trim() === rawId);
+          if (!found && /^\d+(\.0+)?$/.test(rawId)) {
+            const intId = parseInt(rawId, 10);
+            found = this._globalCache[targetTable].find(r => {
+              const rid = String(r.id || '').trim();
+              return /^\d+(\.0+)?$/.test(rid) && parseInt(rid, 10) === intId;
+            });
+          }
           if (found) {
             return { status: 'success', data: found };
           }
@@ -419,6 +423,183 @@
           break;
         }
 
+        case 'bulkCreatePagos': {
+          if (!Array.isArray(this._globalCache.pagos)) this._globalCache.pagos = [];
+          if (!Array.isArray(this._globalCache.usuarios)) this._globalCache.usuarios = [];
+
+          const nuevosUsuarios = (json && Array.isArray(json.usuariosNuevos)) ? json.usuariosNuevos : [];
+          nuevosUsuarios.forEach(u => {
+            if (!this._globalCache.usuarios.some(ex => String(ex.id) === String(u.id))) {
+              this._globalCache.usuarios.push(u);
+            }
+          });
+
+          const reparados = (json && Array.isArray(json.usuariosReparados)) ? json.usuariosReparados : [];
+          reparados.forEach(u => {
+            const idxU = this._globalCache.usuarios.findIndex(ex => String(ex.id) === String(u.id));
+            if (idxU !== -1) {
+              this._globalCache.usuarios[idxU] = { ...this._globalCache.usuarios[idxU], nombre_completo: u.nombre_completo };
+            }
+          });
+
+          const actualizadosPagos = (json && Array.isArray(json.pagosActualizadosList)) ? json.pagosActualizadosList : [];
+          actualizadosPagos.forEach(pa => {
+            const idxP = this._globalCache.pagos.findIndex(ex => String(ex.id) === String(pa.id));
+            if (idxP !== -1) {
+              this._globalCache.pagos[idxP] = { ...this._globalCache.pagos[idxP], fecha_curso: pa.fecha_curso };
+            }
+          });
+
+          const nuevosPagos = (json && Array.isArray(json.data)) ? json.data : [];
+          nuevosPagos.forEach(p => {
+            if (!this._globalCache.pagos.some(ex => String(ex.id) === String(p.id))) {
+              this._globalCache.pagos.push(p);
+            }
+          });
+          break;
+        }
+
+        case 'aprobarPago': {
+          if (!Array.isArray(this._globalCache.pagos)) this._globalCache.pagos = [];
+          const pagoIdx = this._globalCache.pagos.findIndex(p => String(p.id) === String(payload.id));
+          if (pagoIdx !== -1) {
+            this._globalCache.pagos[pagoIdx] = {
+              ...this._globalCache.pagos[pagoIdx],
+              status: 'APROBADO',
+              fecha_curso: (json && json.fecha_curso) || (payload.opciones && payload.opciones.fecha_curso) || this._globalCache.pagos[pagoIdx].fecha_curso || ''
+            };
+          }
+          if (json && json.usuarioNombreActualizado && json.usuarioId && Array.isArray(this._globalCache.usuarios)) {
+            const uIdx = this._globalCache.usuarios.findIndex(u => String(u.id) === String(json.usuarioId));
+            if (uIdx !== -1) {
+              this._globalCache.usuarios[uIdx] = { ...this._globalCache.usuarios[uIdx], nombre_completo: json.usuarioNombre };
+            }
+          }
+          if (json && json.certificadoEmitido && json.certificado) {
+            if (!Array.isArray(this._globalCache.certificados)) this._globalCache.certificados = [];
+            const existsCert = this._globalCache.certificados.some(c => String(c.id) === String(json.certificado.id));
+            if (!existsCert) {
+              this._globalCache.certificados.push(json.certificado);
+            }
+          }
+          break;
+        }
+
+        case 'revertirPago': {
+          if (Array.isArray(this._globalCache.pagos)) {
+            if (json && json.pagoEliminado) {
+              this._globalCache.pagos = this._globalCache.pagos.filter(p => String(p.id) !== String(payload.id));
+            } else {
+              const pIdx = this._globalCache.pagos.findIndex(p => String(p.id) === String(payload.id));
+              if (pIdx !== -1) {
+                this._globalCache.pagos[pIdx] = { ...this._globalCache.pagos[pIdx], status: 'PENDIENTE' };
+              }
+            }
+          }
+          if (json && json.certificadoAnulado) {
+            if (Array.isArray(this._globalCache.certificados)) {
+              this._globalCache.certificados = this._globalCache.certificados.filter(c =>
+                String(c.id) !== String(json.certificadoAnuladoId) &&
+                (!json.codigoAnulado || String(c.codigo).toUpperCase() !== String(json.codigoAnulado).toUpperCase())
+              );
+            }
+            if (json.auditRecord) {
+              if (!Array.isArray(this._globalCache.certificados_eliminados)) this._globalCache.certificados_eliminados = [];
+              const existsAud = this._globalCache.certificados_eliminados.some(a => String(a.id) === String(json.auditRecord.id));
+              if (!existsAud) {
+                this._globalCache.certificados_eliminados.push(json.auditRecord);
+              }
+            }
+          }
+          break;
+        }
+
+        case 'configurarFechaEmisionPagos': {
+          const targetIds = new Set(
+            ((json && Array.isArray(json.pagoIds)) ? json.pagoIds : (Array.isArray(payload.pagoIds) ? payload.pagoIds : []))
+              .map(id => String(id).trim())
+          );
+          const nuevaFecha = (json && json.fecha_curso) ? json.fecha_curso : (payload.fecha_curso || '');
+          if (Array.isArray(this._globalCache.pagos) && nuevaFecha && targetIds.size > 0) {
+            this._globalCache.pagos = this._globalCache.pagos.map(p =>
+              targetIds.has(String(p.id).trim()) ? { ...p, fecha_curso: nuevaFecha } : p
+            );
+          }
+          if (json && Array.isArray(json.certificadosActualizados) && Array.isArray(this._globalCache.certificados)) {
+            const certUpdatesMap = new Map(json.certificadosActualizados.map(cu => [String(cu.id), cu]));
+            this._globalCache.certificados = this._globalCache.certificados.map(c => {
+              const upd = certUpdatesMap.get(String(c.id));
+              return upd ? { ...c, fecha_curso: upd.fecha_curso, lugar: upd.lugar, matricula: upd.matricula } : c;
+            });
+          }
+          break;
+        }
+
+        case 'bulkAprobarPagos': {
+          if (!Array.isArray(this._globalCache.pagos)) this._globalCache.pagos = [];
+          if (!Array.isArray(this._globalCache.usuarios)) this._globalCache.usuarios = [];
+          if (!Array.isArray(this._globalCache.certificados)) this._globalCache.certificados = [];
+
+          const aprobadosMap = new Map(
+            ((json && Array.isArray(json.pagosAprobados)) ? json.pagosAprobados : [])
+              .map(pa => [String(pa.id).trim(), pa])
+          );
+          if (aprobadosMap.size > 0) {
+            this._globalCache.pagos = this._globalCache.pagos.map(p => {
+              const upd = aprobadosMap.get(String(p.id).trim());
+              return upd ? { ...p, status: 'APROBADO', fecha_curso: upd.fecha_curso || p.fecha_curso || '' } : p;
+            });
+          }
+
+          const reparados = (json && Array.isArray(json.usuariosReparados)) ? json.usuariosReparados : [];
+          reparados.forEach(ur => {
+            const idxU = this._globalCache.usuarios.findIndex(u => String(u.id) === String(ur.id));
+            if (idxU !== -1) {
+              this._globalCache.usuarios[idxU] = { ...this._globalCache.usuarios[idxU], nombre_completo: ur.nombre_completo };
+            }
+          });
+
+          const emitidos = (json && Array.isArray(json.certificadosEmitidos)) ? json.certificadosEmitidos : [];
+          emitidos.forEach(nc => {
+            const exists = this._globalCache.certificados.some(c => String(c.id) === String(nc.id));
+            if (!exists) {
+              this._globalCache.certificados.push(nc);
+            }
+          });
+          break;
+        }
+
+        case 'bulkRevertirPagos': {
+          const eliminarPago = Boolean(json && json.eliminarPago !== undefined ? json.eliminarPago : (payload.opciones && payload.opciones.eliminarPago));
+          const idsProc = new Set(
+            ((json && Array.isArray(json.pagoIdsProcesados)) ? json.pagoIdsProcesados : (Array.isArray(payload.pagoIds) ? payload.pagoIds : []))
+              .map(id => String(id).trim())
+          );
+          if (Array.isArray(this._globalCache.pagos) && idsProc.size > 0) {
+            if (eliminarPago) {
+              this._globalCache.pagos = this._globalCache.pagos.filter(p => !idsProc.has(String(p.id).trim()));
+            } else {
+              this._globalCache.pagos = this._globalCache.pagos.map(p =>
+                idsProc.has(String(p.id).trim()) ? { ...p, status: 'PENDIENTE' } : p
+              );
+            }
+          }
+          if (json && Array.isArray(json.certificadosAnuladosIds) && json.certificadosAnuladosIds.length > 0) {
+            const anuladosSet = new Set(json.certificadosAnuladosIds.map(id => String(id)));
+            if (Array.isArray(this._globalCache.certificados)) {
+              this._globalCache.certificados = this._globalCache.certificados.filter(c => !anuladosSet.has(String(c.id)));
+            }
+          }
+          if (json && Array.isArray(json.auditRecords) && json.auditRecords.length > 0) {
+            if (!Array.isArray(this._globalCache.certificados_eliminados)) this._globalCache.certificados_eliminados = [];
+            json.auditRecords.forEach(ar => {
+              const ex = this._globalCache.certificados_eliminados.some(a => String(a.id) === String(ar.id));
+              if (!ex) this._globalCache.certificados_eliminados.push(ar);
+            });
+          }
+          break;
+        }
+
         case 'saveDiseno': {
           if (!Array.isArray(this._globalCache.disenos)) this._globalCache.disenos = [];
           const disenoData = (json && json.data) ? json.data : payload.diseno_data;
@@ -447,10 +628,6 @@
       try {
         sessionStorage.setItem('uptpc_real_drive_cache_v2', JSON.stringify(this._globalCache));
       } catch (e) {}
-
-      try {
-        sessionStorage.setItem('uptpc_real_drive_cache_v2', JSON.stringify(this._globalCache));
-      } catch (e) {}
     },
 
     _inflightPosts: {},
@@ -458,7 +635,7 @@
     // Evita que la misma mutación (doble clic, listeners repetidos, tareas en paralelo) se envíe dos veces
     post(action, payload = {}) {
       let key = null;
-      if (['create', 'update', 'bulkCertificar', 'bulkCreateUsuarios'].includes(action)) {
+      if (['create', 'update', 'bulkCertificar', 'bulkCreateUsuarios', 'bulkCreatePagos', 'aprobarPago', 'revertirPago', 'bulkAprobarPagos', 'bulkRevertirPagos', 'configurarFechaEmisionPagos'].includes(action)) {
         try { key = action + '|' + JSON.stringify(payload); } catch (e) { key = null; }
       }
       if (key && this._inflightPosts[key]) return this._inflightPosts[key];
@@ -552,6 +729,36 @@
     async toggleApiKey(habilitada) { return this.post('toggleApiKey', { habilitada }); },
     async inyectarPago(pagoData) { return this.post('inyectarPago', pagoData); },
     async bulkCreatePagos(pagos, opciones = {}) { return this.post('bulkCreatePagos', { pagos, opciones }); },
+    async aprobarPago(id, opciones = {}) {
+      const ejecutadoPor = (window.authAdmin && window.authAdmin.getSession && window.authAdmin.getSession())
+        ? (window.authAdmin.getSession().usuario || 'ADMIN')
+        : 'ADMIN';
+      return this.post('aprobarPago', { id, opciones, ejecutadoPor });
+    },
+    async revertirPago(id, opciones = {}) {
+      const ejecutadoPor = (window.authAdmin && window.authAdmin.getSession && window.authAdmin.getSession())
+        ? (window.authAdmin.getSession().usuario || 'ADMIN')
+        : 'ADMIN';
+      return this.post('revertirPago', { id, opciones, ejecutadoPor });
+    },
+    async bulkAprobarPagos(pagoIds, opciones = {}) {
+      const ejecutadoPor = (window.authAdmin && window.authAdmin.getSession && window.authAdmin.getSession())
+        ? (window.authAdmin.getSession().usuario || 'ADMIN')
+        : 'ADMIN';
+      return this.post('bulkAprobarPagos', { pagoIds, opciones, ejecutadoPor });
+    },
+    async bulkRevertirPagos(pagoIds, opciones = {}) {
+      const ejecutadoPor = (window.authAdmin && window.authAdmin.getSession && window.authAdmin.getSession())
+        ? (window.authAdmin.getSession().usuario || 'ADMIN')
+        : 'ADMIN';
+      return this.post('bulkRevertirPagos', { pagoIds, opciones, ejecutadoPor });
+    },
+    async configurarFechaEmisionPagos(pagoIds, fecha_curso, opciones = {}) {
+      const ejecutadoPor = (window.authAdmin && window.authAdmin.getSession && window.authAdmin.getSession())
+        ? (window.authAdmin.getSession().usuario || 'ADMIN')
+        : 'ADMIN';
+      return this.post('configurarFechaEmisionPagos', { pagoIds, fecha_curso, opciones, ejecutadoPor });
+    },
     async listFuentesExternas() { return this.get('listFuentesExternas'); },
     async saveFuenteExterna(fuente) { return this.post('saveFuenteExterna', { fuente }); },
     async deleteFuenteExterna(id) { return this.post('deleteFuenteExterna', { id }); },
@@ -906,6 +1113,467 @@
           }
           saveLocalDb(db);
           return { status: 'success', message: 'Configuración actualizada localmente' };
+        }
+
+        case 'bulkCreatePagos': {
+          const list = payload.pagos || [];
+          const opciones = payload.opciones || {};
+          const crearUsuariosNuevos = opciones.crearUsuariosNuevos !== false;
+          if (!db.pagos) db.pagos = [];
+          if (!db.usuarios) db.usuarios = [];
+          const created = [];
+          const usuariosNuevos = [];
+          const usuariosReparados = [];
+          const pagosActualizadosList = [];
+
+          list.forEach(item => {
+            const normCed = window.utils ? window.utils.normalizeCedula(item.cedula) : String(item.cedula || '').trim().toUpperCase();
+            if (!normCed) return;
+            const nombreReal = String(item.nombre_completo || '').trim().toUpperCase();
+            const esGen = !nombreReal || /^PARTICIPANTE(\s|$)/i.test(nombreReal);
+            let usr = db.usuarios.find(u => (window.utils ? window.utils.normalizeCedula(u.cedula) : String(u.cedula)) === normCed);
+            if (usr) {
+              if (!esGen && /^PARTICIPANTE(\s|$)/i.test(String(usr.nombre_completo || '').trim())) {
+                usr.nombre_completo = nombreReal;
+                usuariosReparados.push({ ...usr });
+              }
+            } else if (crearUsuariosNuevos) {
+              usr = {
+                id: window.utils ? window.utils.generateUUID() : 'usr_' + Date.now(),
+                cedula: normCed,
+                nombre_completo: !esGen ? nombreReal : `PARTICIPANTE ${normCed}`,
+                created_at: new Date().toISOString()
+              };
+              db.usuarios.push(usr);
+              usuariosNuevos.push(usr);
+            } else {
+              return;
+            }
+
+            const ref = String(item.numero_transferencia || item.referencia || `CSV-${Date.now().toString().slice(-6)}`).trim();
+            const fechaCurso = String(item.fecha_curso || '').trim();
+            const dup = db.pagos.find(p => String(p.id_usuario) === String(usr.id) && String(p.numero_transferencia || '').toUpperCase() === ref.toUpperCase());
+            if (dup) {
+              if (fechaCurso && dup.fecha_curso !== fechaCurso) {
+                dup.fecha_curso = fechaCurso;
+                pagosActualizadosList.push({ id: dup.id, fecha_curso: fechaCurso });
+              }
+              return;
+            }
+            const nuevoPago = {
+              id: window.utils ? window.utils.generateUUID() : 'pago_' + Date.now(),
+              id_usuario: usr.id,
+              id_curso_ofertado: item.id_curso_ofertado || null,
+              banco_origen: item.banco_origen || 'Pago Móvil / Transferencia',
+              monto: parseFloat(item.monto || 0) || 0,
+              numero_transferencia: ref,
+              fecha_pago: item.fecha_pago || new Date().toISOString().split('T')[0],
+              fecha_curso: fechaCurso,
+              capture: item.capture || '',
+              status: 'PENDIENTE',
+              created_at: new Date().toISOString()
+            };
+            db.pagos.push(nuevoPago);
+            created.push(nuevoPago);
+          });
+          saveLocalDb(db);
+          return {
+            status: 'success',
+            message: `Pagos procesados localmente: ${created.length} nuevos`,
+            count: created.length,
+            usuariosNuevos,
+            usuariosReparados,
+            pagosActualizadosList,
+            data: created
+          };
+        }
+
+        case 'aprobarPago': {
+          if (!db.pagos) db.pagos = [];
+          if (!db.usuarios) db.usuarios = [];
+          if (!db.certificados) db.certificados = [];
+          const pago = db.pagos.find(p => String(p.id) === String(payload.id));
+          if (!pago) return { status: 'error', message: 'Pago no encontrado' };
+          const usr = db.usuarios.find(u => String(u.id) === String(pago.id_usuario));
+          if (!usr) return { status: 'error', message: 'Participante no encontrado' };
+          const opciones = payload.opciones || {};
+          let usuarioNombreActualizado = false;
+          if (opciones.nombre_completo && !/^PARTICIPANTE(\s|$)/i.test(String(opciones.nombre_completo).trim())) {
+            usr.nombre_completo = String(opciones.nombre_completo).trim().toUpperCase();
+            usuarioNombreActualizado = true;
+          }
+          if (!usr.nombre_completo || /^PARTICIPANTE(\s|$)/i.test(String(usr.nombre_completo).trim())) {
+            return { status: 'error', code: 'NOMBRE_GENERICO', message: 'Ingrese el nombre real del participante antes de aprobar.' };
+          }
+          const oferta = (db.curso_ofertado || []).find(o => String(o.id) === String(pago.id_curso_ofertado));
+          const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+          const curso = (db.cursos || []).find(c =>
+            (oferta && oferta.curso_id && String(c.id) === String(oferta.curso_id)) ||
+            (oferta && oferta.taller && norm(c.nombre) === norm(oferta.taller))
+          );
+          const fechaCurso = opciones.fecha_curso || pago.fecha_curso || (curso && curso.fecha_curso) || new Date().toISOString().split('T')[0];
+          pago.status = 'APROBADO';
+          pago.fecha_curso = fechaCurso;
+          if (!curso) {
+            saveLocalDb(db);
+            return {
+              status: 'success',
+              pagoAprobado: true,
+              certificadoEmitido: false,
+              sinCursoVinculado: true,
+              fecha_curso: fechaCurso,
+              usuarioId: usr.id,
+              usuarioNombre: usr.nombre_completo,
+              usuarioNombreActualizado,
+              warning: 'Falta vincular el curso en #cursos para emitir el certificado.',
+              message: 'Pago aprobado localmente (falta vincular curso para emitir certificado).'
+            };
+          }
+          const existente = db.certificados.find(c => String(c.usuario_id) === String(usr.id) && String(c.curso_id) === String(curso.id));
+          if (existente) {
+            saveLocalDb(db);
+            return {
+              status: 'success',
+              pagoAprobado: true,
+              certificadoEmitido: false,
+              yaExistiaCertificado: true,
+              certificado: existente,
+              cursoId: curso.id,
+              cursoNombre: curso.nombre,
+              fecha_curso: fechaCurso,
+              usuarioId: usr.id,
+              usuarioNombre: usr.nombre_completo,
+              usuarioNombreActualizado,
+              message: `Pago aprobado. Certificado previo: ${existente.codigo}`
+            };
+          }
+          const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+          const digits = '0123456789';
+          const codigo = Array.from({ length: 3 }, () => letters[Math.floor(Math.random() * 26)]).join('') +
+            Array.from({ length: 4 }, () => digits[Math.floor(Math.random() * 10)]).join('') +
+            Array.from({ length: 3 }, () => letters[Math.floor(Math.random() * 26)]).join('');
+          const newCert = {
+            id: window.utils ? window.utils.generateUUID() : 'cert_' + Date.now(),
+            usuario_id: usr.id,
+            curso_id: curso.id,
+            codigo,
+            fecha_curso: fechaCurso,
+            lugar: opciones.lugar || 'PUERTO CABELLO, VENEZUELA',
+            tomo: opciones.tomo || '',
+            folio: opciones.folio || '',
+            matricula: window.utils ? window.utils.generarMatricula(curso.matricula_prefijo, fechaCurso, usr.cedula) : '',
+            created_at: new Date().toISOString()
+          };
+          db.certificados.push(newCert);
+          saveLocalDb(db);
+          return {
+            status: 'success',
+            pagoAprobado: true,
+            certificadoEmitido: true,
+            certificado: newCert,
+            cursoId: curso.id,
+            cursoNombre: curso.nombre,
+            fecha_curso: fechaCurso,
+            usuarioId: usr.id,
+            usuarioNombre: usr.nombre_completo,
+            usuarioNombreActualizado,
+            message: `Pago aprobado y certificado ${codigo} emitido.`
+          };
+        }
+
+        case 'revertirPago': {
+          if (!db.pagos) db.pagos = [];
+          const pago = db.pagos.find(p => String(p.id) === String(payload.id));
+          if (!pago) return { status: 'error', message: 'Pago no encontrado' };
+          const opciones = payload.opciones || {};
+          const eliminarPago = Boolean(opciones.eliminarPago);
+          const wasAprob = String(pago.status).toLowerCase() === 'true' || String(pago.status).toUpperCase() === 'APROBADO' || pago.status === true;
+          let certificadoAnulado = false;
+          let codigoAnulado = '';
+          let certificadoAnuladoId = '';
+          let auditRecord = null;
+          if (wasAprob) {
+            const oferta = (db.curso_ofertado || []).find(o => String(o.id) === String(pago.id_curso_ofertado));
+            const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+            const curso = (db.cursos || []).find(c =>
+              (oferta && oferta.curso_id && String(c.id) === String(oferta.curso_id)) ||
+              (oferta && oferta.taller && norm(c.nombre) === norm(oferta.taller))
+            );
+            if (curso && Array.isArray(db.certificados)) {
+              const certIdx = db.certificados.findIndex(c => String(c.usuario_id) === String(pago.id_usuario) && String(c.curso_id) === String(curso.id));
+              if (certIdx !== -1) {
+                const cert = db.certificados[certIdx];
+                const usr = (db.usuarios || []).find(u => String(u.id) === String(pago.id_usuario)) || {};
+                auditRecord = {
+                  id: window.utils ? window.utils.generateUUID() : 'aud_' + Date.now(),
+                  certificado_id: cert.id,
+                  codigo: cert.codigo,
+                  cedula: usr.cedula || '',
+                  nombre_completo: usr.nombre_completo || '',
+                  curso_id: curso.id,
+                  nombre_curso: curso.nombre || '',
+                  motivo_eliminacion: eliminarPago ? 'Eliminación de pago aprobado' : 'Reversión de pago a PENDIENTE',
+                  eliminado_por: payload.ejecutadoPor || 'ADMIN',
+                  fecha_eliminacion: new Date().toISOString(),
+                  created_at: new Date().toISOString()
+                };
+                if (!db.certificados_eliminados) db.certificados_eliminados = [];
+                db.certificados_eliminados.push(auditRecord);
+                db.certificados.splice(certIdx, 1);
+                certificadoAnulado = true;
+                codigoAnulado = cert.codigo;
+                certificadoAnuladoId = cert.id;
+              }
+            }
+          }
+          if (eliminarPago) {
+            db.pagos = db.pagos.filter(p => String(p.id) !== String(payload.id));
+          } else {
+            pago.status = 'PENDIENTE';
+          }
+          saveLocalDb(db);
+          return {
+            status: 'success',
+            pagoRevertido: !eliminarPago,
+            pagoEliminado: eliminarPago,
+            certificadoAnulado,
+            codigoAnulado,
+            certificadoAnuladoId,
+            auditRecord,
+            message: eliminarPago ? 'Pago eliminado localmente.' : 'Pago revertido a PENDIENTE.'
+          };
+        }
+
+        case 'configurarFechaEmisionPagos': {
+          if (!db.pagos) db.pagos = [];
+          const idsSet = new Set((Array.isArray(payload.pagoIds) ? payload.pagoIds : []).map(id => String(id).trim()).filter(Boolean));
+          const fechaCurso = String(payload.fecha_curso || '').trim();
+          if (idsSet.size === 0 || !fechaCurso) {
+            return { status: 'error', message: 'Seleccione al menos un pago e indique una fecha válida.' };
+          }
+          const opciones = payload.opciones || {};
+          const lugar = String(opciones.lugar || '').trim() || 'PUERTO CABELLO, VENEZUELA';
+          const actualizarCerts = opciones.actualizarCertificadosEmitidos !== false;
+          const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+          const certificadosActualizados = [];
+
+          db.pagos.forEach(p => {
+            if (!idsSet.has(String(p.id).trim())) return;
+            p.fecha_curso = fechaCurso;
+            const isOk = String(p.status).toLowerCase() === 'true' || String(p.status).toUpperCase() === 'APROBADO' || p.status === true;
+            if (actualizarCerts && isOk && p.id_usuario && Array.isArray(db.certificados)) {
+              const oferta = (db.curso_ofertado || []).find(o => String(o.id).trim() === String(p.id_curso_ofertado).trim());
+              const curso = (db.cursos || []).find(c =>
+                (oferta && oferta.curso_id && String(c.id) === String(oferta.curso_id)) ||
+                (oferta && oferta.taller && norm(c.nombre) === norm(oferta.taller))
+              );
+              if (curso) {
+                const cert = db.certificados.find(c => String(c.usuario_id) === String(p.id_usuario) && String(c.curso_id) === String(curso.id));
+                if (cert) {
+                  const usr = (db.usuarios || []).find(u => String(u.id) === String(p.id_usuario)) || {};
+                  cert.fecha_curso = fechaCurso;
+                  cert.lugar = lugar;
+                  if (window.utils && window.utils.generarMatricula) {
+                    cert.matricula = window.utils.generarMatricula(curso.matricula_prefijo, fechaCurso, usr.cedula) || cert.matricula || '';
+                  }
+                  certificadosActualizados.push({
+                    id: cert.id,
+                    fecha_curso: cert.fecha_curso,
+                    lugar: cert.lugar,
+                    matricula: cert.matricula
+                  });
+                }
+              }
+            }
+          });
+
+          saveLocalDb(db);
+          return {
+            status: 'success',
+            actualizados: idsSet.size,
+            pagoIds: Array.from(idsSet),
+            fecha_curso: fechaCurso,
+            lugar,
+            certificadosActualizados,
+            message: `Fecha de emisión (${fechaCurso}) configurada en ${idsSet.size} pago(s).`
+          };
+        }
+
+        case 'bulkAprobarPagos': {
+          if (!db.pagos) db.pagos = [];
+          if (!db.usuarios) db.usuarios = [];
+          if (!db.certificados) db.certificados = [];
+          const ids = Array.from(new Set((Array.isArray(payload.pagoIds) ? payload.pagoIds : []).map(id => String(id).trim()).filter(Boolean)));
+          if (ids.length === 0) return { status: 'error', message: 'Seleccione al menos un pago.' };
+          const opciones = payload.opciones || {};
+          const nombresCorregidos = (opciones.nombresCorregidos && typeof opciones.nombresCorregidos === 'object') ? opciones.nombresCorregidos : {};
+          const usuariosReparados = [];
+
+          Object.entries(nombresCorregidos).forEach(([uid, nom]) => {
+            const usr = db.usuarios.find(u => String(u.id) === String(uid));
+            const cleanNom = String(nom || '').replace(/\s+/g, ' ').trim().toUpperCase();
+            if (usr && cleanNom && !/^PARTICIPANTE(\s|$)/i.test(cleanNom)) {
+              usr.nombre_completo = cleanNom;
+              usuariosReparados.push({ id: usr.id, cedula: usr.cedula, nombre_completo: cleanNom });
+            }
+          });
+
+          const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+          const respetarIndividuales = Boolean(opciones.respetarFechasIndividuales);
+          const pagosSeleccionados = ids.map(id => db.pagos.find(p => String(p.id).trim() === id)).filter(Boolean);
+          const pagosAprobados = [];
+          const certificadosEmitidos = [];
+          const talleresSinVincular = new Set();
+          let yaExistianCount = 0;
+          let sinCursoVinculadoCount = 0;
+
+          for (const pago of pagosSeleccionados) {
+            const usr = db.usuarios.find(u => String(u.id) === String(pago.id_usuario));
+            if (!usr || /^PARTICIPANTE(\s|$)/i.test(String(usr.nombre_completo || '').trim())) {
+              return { status: 'error', code: 'NOMBRE_GENERICO_LOTE', message: 'Uno o más participantes tienen nombre genérico.' };
+            }
+            const oferta = (db.curso_ofertado || []).find(o => String(o.id) === String(pago.id_curso_ofertado));
+            const curso = (db.cursos || []).find(c =>
+              (oferta && oferta.curso_id && String(c.id) === String(oferta.curso_id)) ||
+              (oferta && oferta.taller && norm(c.nombre) === norm(oferta.taller))
+            );
+            const fechaFila = respetarIndividuales
+              ? (pago.fecha_curso || (curso && curso.fecha_curso) || opciones.fecha_curso || '')
+              : (opciones.fecha_curso || pago.fecha_curso || (curso && curso.fecha_curso) || '');
+            if (!fechaFila) {
+              return { status: 'error', code: 'SIN_FECHA_EMISION', message: 'Indique la Fecha de Emisión del certificado.' };
+            }
+            pago.status = 'APROBADO';
+            pago.fecha_curso = fechaFila;
+            pagosAprobados.push({ id: pago.id, status: 'APROBADO', fecha_curso: fechaFila });
+
+            if (!curso) {
+              sinCursoVinculadoCount++;
+              talleresSinVincular.add((oferta && oferta.taller) || 'Taller sin vincular');
+              continue;
+            }
+            const existente = db.certificados.find(c => String(c.usuario_id) === String(usr.id) && String(c.curso_id) === String(curso.id));
+            if (existente) {
+              yaExistianCount++;
+              continue;
+            }
+            const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            const digits = '0123456789';
+            const codigo = Array.from({ length: 3 }, () => letters[Math.floor(Math.random() * 26)]).join('') +
+              Array.from({ length: 4 }, () => digits[Math.floor(Math.random() * 10)]).join('') +
+              Array.from({ length: 3 }, () => letters[Math.floor(Math.random() * 26)]).join('');
+            const folioRaw = String(opciones.folio || '').trim();
+            let folioCalc = folioRaw;
+            if (folioRaw && /^\d+$/.test(folioRaw)) {
+              const lim = Math.max(1, parseInt(opciones.limite_por_folio, 10) || 15);
+              folioCalc = String(parseInt(folioRaw, 10) + Math.floor(certificadosEmitidos.length / lim)).padStart(folioRaw.length, '0');
+            }
+            const newCert = {
+              id: window.utils ? window.utils.generateUUID() : 'cert_' + Date.now() + '_' + certificadosEmitidos.length,
+              usuario_id: usr.id,
+              curso_id: curso.id,
+              codigo,
+              fecha_curso: fechaFila,
+              lugar: (!respetarIndividuales && opciones.lugar) ? opciones.lugar : 'PUERTO CABELLO, VENEZUELA',
+              tomo: opciones.tomo || '',
+              folio: folioCalc,
+              matricula: window.utils ? window.utils.generarMatricula(curso.matricula_prefijo, fechaFila, usr.cedula) : '',
+              created_at: new Date().toISOString()
+            };
+            db.certificados.push(newCert);
+            certificadosEmitidos.push(newCert);
+          }
+
+          saveLocalDb(db);
+          return {
+            status: 'success',
+            aprobadosCount: pagosAprobados.length,
+            certificadosEmitidosCount: certificadosEmitidos.length,
+            yaExistianCount,
+            sinCursoVinculadoCount,
+            talleresSinVincular: Array.from(talleresSinVincular),
+            pagosAprobados,
+            certificadosEmitidos,
+            usuariosReparados,
+            message: `${pagosAprobados.length} pago(s) aprobado(s) y ${certificadosEmitidos.length} certificado(s) emitido(s) localmente.`
+          };
+        }
+
+        case 'bulkRevertirPagos': {
+          if (!db.pagos) db.pagos = [];
+          const idsSet = new Set((Array.isArray(payload.pagoIds) ? payload.pagoIds : []).map(id => String(id).trim()).filter(Boolean));
+          if (idsSet.size === 0) return { status: 'error', message: 'Seleccione al menos un pago.' };
+          const opciones = payload.opciones || {};
+          const eliminarPago = Boolean(opciones.eliminarPago);
+          const isOk = p => String(p.status).toLowerCase() === 'true' || String(p.status).toUpperCase() === 'APROBADO' || p.status === true;
+          const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+
+          const selPagos = db.pagos.filter(p => idsSet.has(String(p.id).trim()));
+          const aprobEnSel = selPagos.filter(isOk);
+          if (!eliminarPago && aprobEnSel.length === 0) {
+            return { status: 'error', message: 'Ningún pago seleccionado está APROBADO para revertir.' };
+          }
+          const restantesAprob = db.pagos.filter(p => !idsSet.has(String(p.id).trim()) && isOk(p));
+          const auditRecords = [];
+          const certificadosAnuladosIds = [];
+          const codigosAnulados = [];
+
+          aprobEnSel.forEach(pago => {
+            const oferta = (db.curso_ofertado || []).find(o => String(o.id) === String(pago.id_curso_ofertado));
+            const curso = (db.cursos || []).find(c =>
+              (oferta && oferta.curso_id && String(c.id) === String(oferta.curso_id)) ||
+              (oferta && oferta.taller && norm(c.nombre) === norm(oferta.taller))
+            );
+            if (!curso || !Array.isArray(db.certificados)) return;
+            const otroActivo = restantesAprob.some(op => String(op.id_usuario) === String(pago.id_usuario) && String(op.id_curso_ofertado) === String(pago.id_curso_ofertado));
+            if (otroActivo) return;
+            const certIdx = db.certificados.findIndex(c => String(c.usuario_id) === String(pago.id_usuario) && String(c.curso_id) === String(curso.id));
+            if (certIdx !== -1) {
+              const cert = db.certificados[certIdx];
+              const usr = (db.usuarios || []).find(u => String(u.id) === String(pago.id_usuario)) || {};
+              const aud = {
+                id: window.utils ? window.utils.generateUUID() : 'aud_' + Date.now() + '_' + auditRecords.length,
+                certificado_id: cert.id,
+                codigo: cert.codigo,
+                cedula: usr.cedula || '',
+                nombre_completo: usr.nombre_completo || '',
+                curso_id: curso.id,
+                nombre_curso: curso.nombre || '',
+                motivo_eliminacion: eliminarPago ? 'Eliminación masiva de pago aprobado' : 'Anulación masiva de verificación de pago',
+                eliminado_por: payload.ejecutadoPor || 'ADMIN',
+                fecha_eliminacion: new Date().toISOString(),
+                created_at: new Date().toISOString()
+              };
+              if (!db.certificados_eliminados) db.certificados_eliminados = [];
+              db.certificados_eliminados.push(aud);
+              auditRecords.push(aud);
+              certificadosAnuladosIds.push(cert.id);
+              codigosAnulados.push(cert.codigo);
+              db.certificados.splice(certIdx, 1);
+            }
+          });
+
+          const pagoIdsProcesados = (eliminarPago ? selPagos : aprobEnSel).map(p => String(p.id));
+          if (eliminarPago) {
+            db.pagos = db.pagos.filter(p => !idsSet.has(String(p.id).trim()));
+          } else {
+            aprobEnSel.forEach(p => { p.status = 'PENDIENTE'; });
+          }
+
+          saveLocalDb(db);
+          return {
+            status: 'success',
+            eliminarPago,
+            procesadosCount: pagoIdsProcesados.length,
+            revertidosCount: eliminarPago ? 0 : pagoIdsProcesados.length,
+            eliminadosCount: eliminarPago ? pagoIdsProcesados.length : 0,
+            certificadosAnuladosCount: auditRecords.length,
+            pagoIdsProcesados,
+            certificadosAnuladosIds,
+            codigosAnulados,
+            auditRecords,
+            message: eliminarPago ? `${pagoIdsProcesados.length} pago(s) eliminado(s) localmente.` : `${pagoIdsProcesados.length} pago(s) revertido(s) localmente.`
+          };
         }
 
         case 'uploadImage': {

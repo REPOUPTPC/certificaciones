@@ -141,6 +141,7 @@ module.exports = async function handler(req, res) {
       }
 
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
       res.status(200).json(result);
       return;
     }
@@ -152,7 +153,7 @@ module.exports = async function handler(req, res) {
       const userRole = String(req.headers['x-user-role'] || body._userRole || body.userRole || '').toUpperCase();
 
       // Validación estricta para perfil AUDITOR: no puede crear, modificar ni eliminar registros
-      const mutationActions = ['create', 'update', 'delete', 'bulkCreateUsuarios', 'bulkCreatePagos', 'bulkCertificar', 'saveDiseno', 'setDisenoActivo', 'updateConfiguracion', 'regenerateApiKey', 'toggleApiKey', 'saveFuenteExterna', 'deleteFuenteExterna', 'importarFuenteExterna'];
+      const mutationActions = ['create', 'update', 'delete', 'bulkCreateUsuarios', 'bulkCreatePagos', 'aprobarPago', 'revertirPago', 'bulkAprobarPagos', 'bulkRevertirPagos', 'configurarFechaEmisionPagos', 'bulkCertificar', 'saveDiseno', 'setDisenoActivo', 'updateConfiguracion', 'regenerateApiKey', 'toggleApiKey', 'saveFuenteExterna', 'deleteFuenteExterna', 'importarFuenteExterna'];
       if (userRole === 'AUDITOR' && mutationActions.includes(postAction)) {
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.status(403).json({
@@ -183,6 +184,26 @@ module.exports = async function handler(req, res) {
 
         case 'bulkCreatePagos':
           result = await services.bulkCreatePagos(body.pagos || [], body.opciones || {});
+          break;
+
+        case 'aprobarPago':
+          result = await services.aprobarPago(body.id, body.opciones || {}, body.ejecutadoPor || userRole || 'ADMIN');
+          break;
+
+        case 'revertirPago':
+          result = await services.revertirPago(body.id, body.opciones || {}, body.ejecutadoPor || userRole || 'ADMIN');
+          break;
+
+        case 'bulkAprobarPagos':
+          result = await services.bulkAprobarPagos(body.pagoIds || [], body.opciones || {}, body.ejecutadoPor || userRole || 'ADMIN');
+          break;
+
+        case 'bulkRevertirPagos':
+          result = await services.bulkRevertirPagos(body.pagoIds || [], body.opciones || {}, body.ejecutadoPor || userRole || 'ADMIN');
+          break;
+
+        case 'configurarFechaEmisionPagos':
+          result = await services.configurarFechaEmisionPagos(body.pagoIds || [], body.fecha_curso || '', body.opciones || {}, body.ejecutadoPor || userRole || 'ADMIN');
           break;
 
         case 'listFuentesExternas':

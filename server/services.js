@@ -20,12 +20,21 @@ const TABLE_COLUMNS = {
   consulta: ['id', 'certificado_id', 'direccion_ip', 'fecha', 'created_at'],
   visita_admin: ['id', 'usuario', 'ip', 'sitio', 'fecha_hora', 'created_at'],
   certificados_eliminados: ['id', 'certificado_id', 'codigo', 'cedula', 'nombre_completo', 'curso_id', 'nombre_curso', 'motivo_eliminacion', 'eliminado_por', 'fecha_eliminacion', 'created_at'],
-  curso_ofertado: ['id', 'taller', 'descripcion', 'valor_estudiante', 'valor_foraneo', 'flayer', 'created_at'],
+  curso_ofertado: ['id', 'taller', 'descripcion', 'valor_estudiante', 'valor_foraneo', 'flayer', 'curso_id', 'created_at'],
   banco: ['id', 'banco', 'created_at'],
-  pagos: ['id', 'id_usuario', 'id_curso_ofertado', 'banco_origen', 'monto', 'numero_transferencia', 'fecha_pago', 'capture', 'status', 'created_at'],
+  pagos: ['id', 'id_usuario', 'id_curso_ofertado', 'banco_origen', 'monto', 'numero_transferencia', 'fecha_pago', 'fecha_curso', 'capture', 'status', 'created_at'],
   configuracion: ['id', 'clave', 'valor', 'descripcion', 'categoria', 'updated_at'],
   presets_imagenes: ['id', 'nombre', 'categoria', 'url', 'descripcion', 'ancho_sugerido', 'alto_sugerido', 'created_at']
 };
+
+let ofertasPagosColumnsReady = false;
+
+async function ensureOfertasPagosColumns() {
+  if (ofertasPagosColumnsReady) return;
+  try { await db.execute("ALTER TABLE curso_ofertado ADD COLUMN curso_id TEXT;"); } catch (e) {}
+  try { await db.execute("ALTER TABLE pagos ADD COLUMN fecha_curso TEXT;"); } catch (e) {}
+  ofertasPagosColumnsReady = true;
+}
 
 function checkTable(table) {
   if (!ALLOWED_TABLES.includes(table)) {
@@ -73,6 +82,172 @@ function normalizeCedula(str) {
   return digits ? `${prefix}-${digits}` : '';
 }
 
+function normalizeCursoOfertadoId(val) {
+  if (val === undefined || val === null) return null;
+  const str = String(val).trim();
+  if (!str) return null;
+  if (/^\d+(\.0+)?$/.test(str)) {
+    return String(parseInt(str, 10));
+  }
+  return str;
+}
+
+function normalizarTextoComparacion(str) {
+  return String(str || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase();
+}
+
+function isNombreGenericoParticipante(nombre) {
+  const n = String(nombre || '').trim();
+  if (!n) return true;
+  return /^PARTICIPANTE(\s|$)/i.test(n);
+}
+
+function extraerNombreParticipante(obj) {
+  if (!obj || typeof obj !== 'object') return '';
+  const candidatos = [
+    obj.nombre_completo,
+    obj.nombre_del_participante,
+    obj.nombre_participante,
+    obj.nombres_y_apellidos,
+    obj.nombre_apellido,
+    obj.participante,
+    obj.nombre,
+    obj.usuario
+  ];
+  for (const c of candidatos) {
+    if (c !== undefined && c !== null) {
+      const limpio = String(c).replace(/\s+/g, ' ').trim().toUpperCase();
+      if (limpio && !isNombreGenericoParticipante(limpio)) {
+        return limpio;
+      }
+    }
+  }
+  const nombres = String(obj.nombres || obj.primer_nombre || '').replace(/\s+/g, ' ').trim();
+  const apellidos = String(obj.apellidos || obj.apellido || obj.primer_apellido || '').replace(/\s+/g, ' ').trim();
+  const combinado = [nombres, apellidos].filter(Boolean).join(' ').toUpperCase();
+  if (combinado && !isNombreGenericoParticipante(combinado)) {
+    return combinado;
+  }
+  return '';
+}
+
+function normalizarFechaIso(val) {
+  if (val === undefined || val === null) return '';
+  const str = String(val).trim();
+  if (!str) return '';
+
+  const buildIso = (y, m, d) => {
+    let year = parseInt(y, 10);
+    let month = parseInt(m, 10);
+    let day = parseInt(d, 10);
+    if (isNaN(year) || isNaN(month) || isNaN(day)) return '';
+    if (year < 100) year += 2000;
+    if (month > 12 && day <= 12) {
+      const tmp = month;
+      month = day;
+      day = tmp;
+    }
+    if (year < 1900 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) return '';
+    return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  };
+
+  // Formato ISO: YYYY-MM-DD o YYYY/MM/DD (con o sin hora)
+  const mIso = str.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})(?:\D|$)/);
+  if (mIso) {
+    return buildIso(mIso[1], mIso[2], mIso[3]);
+  }
+
+  // Formato Latino / Excel (4 o 2 dígitos de año, con o sin hora): DD/MM/YYYY, DD-MM-YY, etc.
+  const mLat = str.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2}|\d{4})(?:\D|$)/);
+  if (mLat) {
+    return buildIso(mLat[3], mLat[2], mLat[1]);
+  }
+
+  // Formato con nombre de mes en español: "30-oct-2026", "30 de octubre de 2026"
+  const mesesMap = {
+    ene: 1, enero: 1, feb: 2, febrero: 2, mar: 3, marzo: 3, abr: 4, abril: 4,
+    may: 5, mayo: 5, jun: 6, junio: 6, jul: 7, julio: 7, ago: 8, agosto: 8,
+    sep: 9, sept: 9, septiembre: 9, setiembre: 9, oct: 10, octubre: 10,
+    nov: 11, noviembre: 11, dic: 12, diciembre: 12
+  };
+  const mTxt = str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .match(/^(\d{1,2})[\s\/\-.]+(?:de\s+)?([a-z]+)[\s\/\-.]+(?:de\s+|del\s+)?(\d{2}|\d{4})\b/);
+  if (mTxt && mesesMap[mTxt[2]]) {
+    return buildIso(mTxt[3], mesesMap[mTxt[2]], mTxt[1]);
+  }
+
+  return '';
+}
+
+function generarTextoLugar(fechaStr) {
+  const meses = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
+  const norm = normalizarFechaIso(fechaStr);
+  let d;
+  if (norm) {
+    const partes = norm.split('-');
+    d = new Date(parseInt(partes[0], 10), parseInt(partes[1], 10) - 1, parseInt(partes[2], 10));
+  } else {
+    d = new Date();
+  }
+  if (isNaN(d.getTime())) d = new Date();
+  return `PUERTO CABELLO ${String(d.getDate()).padStart(2, '0')} DE ${meses[d.getMonth()]} DE ${d.getFullYear()}`;
+}
+
+function isPagoAprobado(status) {
+  if (status === true || status === 1) return true;
+  const s = String(status || '').trim().toLowerCase();
+  return s === 'true' || s === '1' || s === 'aprobado' || s === 'confirmado';
+}
+
+async function resolverOfertaYCursoAcademico(idCursoOfertado) {
+  await ensureOfertasPagosColumns();
+  const [ofertasRes, cursosRes] = await Promise.all([
+    db.execute("SELECT * FROM curso_ofertado;"),
+    db.execute("SELECT * FROM cursos;")
+  ]);
+  const ofertas = ofertasRes.rows || [];
+  const cursos = cursosRes.rows || [];
+
+  let oferta = null;
+  const rawStr = idCursoOfertado !== undefined && idCursoOfertado !== null ? String(idCursoOfertado).trim() : '';
+
+  if (rawStr) {
+    oferta = ofertas.find(o => String(o.id).trim() === rawStr) || null;
+    if (!oferta && /^\d+(\.0+)?$/.test(rawStr)) {
+      const intVal = parseInt(rawStr, 10);
+      oferta = ofertas.find(o => {
+        const oid = String(o.id || '').trim();
+        return (/^\d+(\.0+)?$/.test(oid) && parseInt(oid, 10) === intVal) || parseInt(oid, 10) === intVal;
+      }) || null;
+    }
+  }
+
+  let curso = null;
+  if (oferta && oferta.curso_id) {
+    const targetCursoId = String(oferta.curso_id).trim();
+    curso = cursos.find(c => String(c.id).trim() === targetCursoId) || null;
+  }
+  if (!curso && oferta && oferta.taller) {
+    const normTaller = normalizarTextoComparacion(oferta.taller);
+    if (normTaller) {
+      curso = cursos.find(c => normalizarTextoComparacion(c.nombre) === normTaller) || null;
+    }
+  }
+  if (!oferta && !curso && rawStr) {
+    curso = cursos.find(c => String(c.id).trim() === rawStr) || null;
+  }
+
+  return { oferta, curso };
+}
+
 /**
  * Servicio unificado de datos
  */
@@ -87,11 +262,15 @@ const services = {
 
   async getAll(table) {
     checkTable(table);
+    if (table === 'curso_ofertado' || table === 'pagos') {
+      await ensureOfertasPagosColumns();
+    }
     const res = await db.execute(`SELECT * FROM ${table};`);
     return { status: 'success', data: res.rows };
   },
 
   async getAllData() {
+    await ensureOfertasPagosColumns();
     const data = {};
     for (const tbl of ALLOWED_TABLES) {
       try {
@@ -106,6 +285,9 @@ const services = {
 
   async getById(table, id) {
     checkTable(table);
+    if (table === 'curso_ofertado' || table === 'pagos') {
+      await ensureOfertasPagosColumns();
+    }
     const res = await db.execute({
       sql: `SELECT * FROM ${table} WHERE id = ? LIMIT 1;`,
       args: [String(id)]
@@ -339,6 +521,9 @@ const services = {
 
   async createRecord(table, recordData) {
     checkTable(table);
+    if (table === 'curso_ofertado' || table === 'pagos') {
+      await ensureOfertasPagosColumns();
+    }
     const validCols = new Set(TABLE_COLUMNS[table] || []);
     const data = {};
 
@@ -352,10 +537,10 @@ const services = {
     // Normalizaciones específicas para pagos
     if (table === 'pagos') {
       if (data.id_curso_ofertado !== undefined && data.id_curso_ofertado !== null) {
-        const parsedCurso = parseInt(data.id_curso_ofertado, 10);
-        if (!isNaN(parsedCurso)) {
-          data.id_curso_ofertado = String(parsedCurso);
-        }
+        data.id_curso_ofertado = normalizeCursoOfertadoId(data.id_curso_ofertado);
+      }
+      if (data.fecha_curso !== undefined && data.fecha_curso !== null) {
+        data.fecha_curso = normalizarFechaIso(data.fecha_curso);
       }
       if (data.status === undefined || data.status === false || String(data.status).toLowerCase() === 'false' || String(data.status) === '0') {
         data.status = 'PENDIENTE';
@@ -398,6 +583,9 @@ const services = {
 
   async updateRecord(table, id, recordData) {
     checkTable(table);
+    if (table === 'curso_ofertado' || table === 'pagos') {
+      await ensureOfertasPagosColumns();
+    }
     const validCols = new Set(TABLE_COLUMNS[table] || []);
     const data = {};
 
@@ -411,10 +599,10 @@ const services = {
     // Normalizaciones específicas para pagos
     if (table === 'pagos') {
       if (data.id_curso_ofertado !== undefined && data.id_curso_ofertado !== null) {
-        const parsedCurso = parseInt(data.id_curso_ofertado, 10);
-        if (!isNaN(parsedCurso)) {
-          data.id_curso_ofertado = String(parsedCurso);
-        }
+        data.id_curso_ofertado = normalizeCursoOfertadoId(data.id_curso_ofertado);
+      }
+      if (data.fecha_curso !== undefined && data.fecha_curso !== null) {
+        data.fecha_curso = normalizarFechaIso(data.fecha_curso);
       }
       if (data.status !== undefined && data.status !== null) {
         if (data.status === true || String(data.status).toLowerCase() === 'true' || String(data.status) === '1' || String(data.status).toLowerCase() === 'aprobado') {
@@ -693,6 +881,7 @@ const services = {
   },
 
   async inyectarPago(pagoData = {}, providedApiKey = '', isInternalAdmin = false) {
+    await ensureOfertasPagosColumns();
     if (!isInternalAdmin) {
       const resConfig = await db.execute("SELECT clave, valor FROM configuracion WHERE UPPER(clave) IN ('API_KEY_SECRET', 'API_KEY_HABILITADA');");
       const map = {};
@@ -715,6 +904,8 @@ const services = {
       return { status: 'error', message: 'El campo "cedula" es obligatorio para la inyección de datos (ej: V-12345678).' };
     }
 
+    const nombreRealRecibido = extraerNombreParticipante(pagoData);
+
     // Buscar o registrar usuario automáticamente por cédula
     const userRes = await db.execute({
       sql: "SELECT * FROM usuarios WHERE UPPER(REPLACE(REPLACE(cedula, '-', ''), ' ', '')) = UPPER(REPLACE(?, '-', '')) LIMIT 1;",
@@ -726,9 +917,16 @@ const services = {
     if (userRes.rows.length > 0) {
       usuarioId = userRes.rows[0].id;
       nombreUsuario = userRes.rows[0].nombre_completo;
+      if (nombreRealRecibido && isNombreGenericoParticipante(nombreUsuario)) {
+        await db.execute({
+          sql: "UPDATE usuarios SET nombre_completo = ? WHERE id = ?;",
+          args: [nombreRealRecibido, usuarioId]
+        });
+        nombreUsuario = nombreRealRecibido;
+      }
     } else {
       usuarioId = generateUUID();
-      nombreUsuario = String(pagoData.nombre_completo || pagoData.nombre || `PARTICIPANTE ${cedulaNorm}`).trim().toUpperCase();
+      nombreUsuario = nombreRealRecibido || `PARTICIPANTE ${cedulaNorm}`;
       const correo = String(pagoData.correo || pagoData.email || '').trim().toLowerCase();
       const telefono = String(pagoData.telefono || pagoData.celular || '').trim();
       const createdAt = new Date().toISOString();
@@ -740,11 +938,7 @@ const services = {
     }
 
     // Resolver curso_ofertado
-    let cursoId = pagoData.id_curso_ofertado || pagoData.curso_id || null;
-    if (cursoId) {
-      const pInt = parseInt(cursoId, 10);
-      if (!isNaN(pInt)) cursoId = String(pInt);
-    }
+    let cursoId = normalizeCursoOfertadoId(pagoData.id_curso_ofertado || pagoData.curso_id || null);
     if (!cursoId && pagoData.taller) {
       const cRes = await db.execute({
         sql: "SELECT id FROM curso_ofertado WHERE UPPER(taller) LIKE UPPER(?) LIMIT 1;",
@@ -760,15 +954,16 @@ const services = {
     const monto = parseFloat(pagoData.monto || pagoData.monto_bs || 0) || 0;
     const numRef = String(pagoData.numero_transferencia || pagoData.referencia || pagoData.ref || `API-${Date.now().toString().slice(-8)}`).trim();
     const banco = String(pagoData.banco_origen || pagoData.banco || 'Inyección API Externa').trim();
-    const fechaPago = String(pagoData.fecha_pago || pagoData.fecha || new Date().toISOString().split('T')[0]).trim();
+    const fechaPago = normalizarFechaIso(pagoData.fecha_pago || pagoData.fecha) || new Date().toISOString().split('T')[0];
+    const fechaCurso = normalizarFechaIso(pagoData.fecha_curso || pagoData.fecha_emision || '');
     const capture = String(pagoData.capture || pagoData.comprobante_url || '').trim();
     const nuevoPagoId = generateUUID();
     const now = new Date().toISOString();
 
     // Guardar pago con status 'false' (PENDIENTE)
     await db.execute({
-      sql: "INSERT INTO pagos (id, id_usuario, id_curso_ofertado, banco_origen, monto, numero_transferencia, fecha_pago, capture, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-      args: [nuevoPagoId, usuarioId, cursoId, banco, monto, numRef, fechaPago, capture, 'false', now]
+      sql: "INSERT INTO pagos (id, id_usuario, id_curso_ofertado, banco_origen, monto, numero_transferencia, fecha_pago, fecha_curso, capture, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+      args: [nuevoPagoId, usuarioId, cursoId, banco, monto, numRef, fechaPago, fechaCurso, capture, 'false', now]
     });
 
     // Registrar última fecha de uso del API
@@ -787,6 +982,7 @@ const services = {
         numero_transferencia: numRef,
         banco_origen: banco,
         fecha_pago: fechaPago,
+        fecha_curso: fechaCurso,
         status: 'PENDIENTE',
         created_at: now
       }
@@ -872,31 +1068,44 @@ const services = {
   },
 
   async bulkCreatePagos(pagosArray, opciones = {}) {
+    await ensureOfertasPagosColumns();
     if (!Array.isArray(pagosArray) || pagosArray.length === 0) {
       return { status: 'error', message: 'No se recibieron pagos para procesar en lote' };
     }
     // Por defecto, los participantes inexistentes se registran automáticamente con su cédula y nombre
     const crearUsuariosNuevos = opciones.crearUsuariosNuevos !== false && String(opciones.crearUsuariosNuevos).toLowerCase() !== 'false';
+    const evitarDuplicados = opciones.evitarDuplicados !== false && String(opciones.evitarDuplicados).toLowerCase() !== 'false';
     const omitidos = [];
     let usuariosActualizados = 0;
+    let pagosActualizados = 0;
+    let duplicadosOmitidos = 0;
 
-    const existingUsersRes = await db.execute("SELECT id, cedula, nombre_completo FROM usuarios;");
+    const [existingUsersRes, ofertasRes, existingPagosRes] = await Promise.all([
+      db.execute("SELECT id, cedula, nombre_completo, correo, telefono FROM usuarios;"),
+      db.execute("SELECT id, taller FROM curso_ofertado;"),
+      db.execute("SELECT id, id_usuario, id_curso_ofertado, monto, numero_transferencia, fecha_pago, fecha_curso, status FROM pagos;")
+    ]);
+
     const usersByCedula = new Map();
     for (const u of existingUsersRes.rows) {
       const norm = normalizeCedula(u.cedula);
       if (norm) usersByCedula.set(norm, u);
     }
 
-    const ofertasRes = await db.execute("SELECT id, taller FROM curso_ofertado;");
     const ofertasList = ofertasRes.rows;
     const primerCursoId = ofertasList[0]?.id || null;
 
+    const pagosExistentes = (existingPagosRes.rows || []).map(p => ({ ...p }));
+
     const stmts = [];
     const created = [];
+    const usuariosNuevosList = [];
+    const usuariosReparadosList = [];
+    const pagosActualizadosList = [];
     const usuariosNuevosStmts = [];
 
     for (const item of pagosArray) {
-      const rawCed = item.cedula || item.ci || '';
+      const rawCed = item.cedula || item.ci || item.documento || '';
       const normCed = normalizeCedula(rawCed);
       if (!normCed) continue;
 
@@ -904,19 +1113,21 @@ const services = {
       let usrId = '';
       let usrNombre = '';
 
-      const nombreRecibido = String(item.nombre_completo || item.nombre || '').trim().toUpperCase();
+      const nombreReal = extraerNombreParticipante(item);
 
       if (usr) {
         usrId = usr.id;
         usrNombre = usr.nombre_completo;
-        // Si el participante fue creado antes con un nombre genérico, se completa con el nombre real recibido
-        if (nombreRecibido && /^PARTICIPANTE\s/i.test(String(usrNombre || ''))) {
+        // Si el participante fue creado antes con un nombre genérico (PARTICIPANTE V-...), se repara con el nombre real del CSV
+        if (nombreReal && isNombreGenericoParticipante(usrNombre)) {
           usuariosNuevosStmts.push({
             sql: "UPDATE usuarios SET nombre_completo = ? WHERE id = ?;",
-            args: [nombreRecibido, usrId]
+            args: [nombreReal, usrId]
           });
-          usersByCedula.set(normCed, { id: usrId, cedula: normCed, nombre_completo: nombreRecibido });
-          usrNombre = nombreRecibido;
+          const updatedUsr = { ...usr, id: usrId, cedula: normCed, nombre_completo: nombreReal };
+          usersByCedula.set(normCed, updatedUsr);
+          usuariosReparadosList.push(updatedUsr);
+          usrNombre = nombreReal;
           usuariosActualizados++;
         }
       } else if (!crearUsuariosNuevos) {
@@ -924,7 +1135,7 @@ const services = {
         continue;
       } else {
         usrId = generateUUID();
-        usrNombre = nombreRecibido || `PARTICIPANTE ${normCed}`;
+        usrNombre = nombreReal || `PARTICIPANTE ${normCed}`;
         const nuevoUsrObj = {
           id: usrId,
           cedula: normCed,
@@ -938,16 +1149,13 @@ const services = {
           args: [nuevoUsrObj.id, nuevoUsrObj.cedula, nuevoUsrObj.nombre_completo, nuevoUsrObj.correo, nuevoUsrObj.telefono, nuevoUsrObj.created_at]
         });
         usersByCedula.set(normCed, nuevoUsrObj);
+        usuariosNuevosList.push(nuevoUsrObj);
       }
 
-      let cursoId = item.id_curso_ofertado || item.curso_id || null;
-      if (cursoId) {
-        const pInt = parseInt(cursoId, 10);
-        if (!isNaN(pInt)) cursoId = String(pInt);
-      }
+      let cursoId = normalizeCursoOfertadoId(item.id_curso_ofertado || item.curso_id || null);
       if (!cursoId && item.curso_ofertado) {
-        const match = ofertasList.find(o => 
-          String(o.taller).toUpperCase().includes(String(item.curso_ofertado).toUpperCase()) ||
+        const match = ofertasList.find(o =>
+          normalizarTextoComparacion(o.taller).includes(normalizarTextoComparacion(item.curso_ofertado)) ||
           String(o.id) === String(item.curso_ofertado)
         );
         if (match) cursoId = String(match.id);
@@ -955,28 +1163,77 @@ const services = {
       if (!cursoId) cursoId = primerCursoId ? String(primerCursoId) : null;
 
       const monto = parseFloat(item.monto || 0) || 0;
-      const ref = String(item.numero_transferencia || item.referencia || `CSV-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 900 + 100)}`).trim();
+      const rawRefInput = String(item.numero_transferencia || item.referencia || '').trim();
+      const tieneRefExplicita = Boolean(rawRefInput) && !/^CSV-/i.test(rawRefInput);
+      const ref = rawRefInput || `CSV-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 900 + 100)}`;
       const banco = String(item.banco_origen || item.banco || 'Pago Móvil / Transferencia').trim();
-      const fecha = String(item.fecha_pago || item.fecha || new Date().toISOString().split('T')[0]).trim();
+      const fecha = normalizarFechaIso(item.fecha_pago || item.fecha) || new Date().toISOString().split('T')[0];
+      const fechaCurso = normalizarFechaIso(item.fecha_curso || item.fecha_emision || '');
       const capture = String(item.capture || item.comprobante || item.comprobante_url || '').trim();
+
+      if (evitarDuplicados) {
+        const refNorm = ref.toUpperCase();
+        const refSinCeros = /^\d{4,}$/.test(refNorm) ? refNorm.replace(/^0+/, '') : '';
+        const cursoIdNorm = normalizeCursoOfertadoId(cursoId);
+        const pagoDuplicado = pagosExistentes.find(p => {
+          if (String(p.id_usuario) !== String(usrId)) return false;
+          const pCursoNorm = normalizeCursoOfertadoId(p.id_curso_ofertado);
+          const mismoCurso = !cursoIdNorm || !pCursoNorm || String(pCursoNorm) === String(cursoIdNorm);
+          if (!mismoCurso) return false;
+
+          const pRefNorm = String(p.numero_transferencia || '').trim().toUpperCase();
+          const pRefSinCeros = /^\d{4,}$/.test(pRefNorm) ? pRefNorm.replace(/^0+/, '') : '';
+          if (tieneRefExplicita && pRefNorm) {
+            if (pRefNorm === refNorm) return true;
+            if (refSinCeros && pRefSinCeros && refSinCeros === pRefSinCeros) return true;
+          }
+          if (!tieneRefExplicita && Math.abs((parseFloat(p.monto || 0) || 0) - monto) < 0.01) {
+            if (String(p.fecha_pago || '').slice(0, 10) === fecha) return true;
+            if (/^CSV-/i.test(pRefNorm) && !isPagoAprobado(p.status)) return true;
+          }
+          return false;
+        });
+
+        if (pagoDuplicado) {
+          duplicadosOmitidos++;
+          if (fechaCurso && String(pagoDuplicado.fecha_curso || '').trim() !== fechaCurso) {
+            stmts.push({
+              sql: "UPDATE pagos SET fecha_curso = ? WHERE id = ?;",
+              args: [fechaCurso, pagoDuplicado.id]
+            });
+            pagoDuplicado.fecha_curso = fechaCurso;
+            pagosActualizados++;
+            pagosActualizadosList.push({ id: pagoDuplicado.id, fecha_curso: fechaCurso });
+          }
+          continue;
+        }
+      }
+
       const pagoId = generateUUID();
       const createdAt = new Date().toISOString();
 
       stmts.push({
-        sql: "INSERT INTO pagos (id, id_usuario, id_curso_ofertado, banco_origen, monto, numero_transferencia, fecha_pago, capture, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-        args: [pagoId, usrId, cursoId, banco, monto, ref, fecha, capture, 'false', createdAt]
+        sql: "INSERT INTO pagos (id, id_usuario, id_curso_ofertado, banco_origen, monto, numero_transferencia, fecha_pago, fecha_curso, capture, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+        args: [pagoId, usrId, cursoId, banco, monto, ref, fecha, fechaCurso, capture, 'false', createdAt]
       });
 
-      created.push({
+      const nuevoPago = {
         id: pagoId,
         id_usuario: usrId,
         cedula: normCed,
         nombre_completo: usrNombre,
         id_curso_ofertado: cursoId,
+        banco_origen: banco,
         monto,
         numero_transferencia: ref,
-        status: 'PENDIENTE'
-      });
+        fecha_pago: fecha,
+        fecha_curso: fechaCurso,
+        capture,
+        status: 'PENDIENTE',
+        created_at: createdAt
+      };
+      created.push(nuevoPago);
+      pagosExistentes.push(nuevoPago);
     }
 
     if (usuariosNuevosStmts.length > 0) {
@@ -993,20 +1250,922 @@ const services = {
       }
     }
 
-    const usuariosCreados = usuariosNuevosStmts.filter(s => s.sql.startsWith('INSERT')).length;
-    let message = `Se han registrado exitosamente ${created.length} pagos masivos en estado PENDIENTE.`;
-    if (usuariosCreados > 0) message += ` Participantes nuevos registrados: ${usuariosCreados}.`;
-    if (usuariosActualizados > 0) message += ` Nombres completados: ${usuariosActualizados}.`;
-    if (omitidos.length > 0) message += ` Omitidos (participante inexistente): ${omitidos.length}.`;
+    const usuariosCreados = usuariosNuevosList.length;
+    const partesMsg = [];
+    if (created.length > 0) {
+      partesMsg.push(`Pagos nuevos registrados (PENDIENTE): ${created.length}`);
+    }
+    if (usuariosCreados > 0) {
+      partesMsg.push(`Participantes nuevos creados: ${usuariosCreados}`);
+    }
+    if (usuariosActualizados > 0) {
+      partesMsg.push(`Nombres genéricos reparados con nombre real: ${usuariosActualizados}`);
+    }
+    if (pagosActualizados > 0) {
+      partesMsg.push(`Fechas de curso actualizadas en pagos previos: ${pagosActualizados}`);
+    }
+    if (duplicadosOmitidos > 0) {
+      partesMsg.push(`Pagos ya existentes no duplicados: ${duplicadosOmitidos}`);
+    }
+    if (omitidos.length > 0) {
+      partesMsg.push(`Omitidos (participante inexistente): ${omitidos.length}`);
+    }
+
+    const message = partesMsg.length > 0
+      ? `Proceso completado. ${partesMsg.join(' | ')}.`
+      : 'Proceso completado sin cambios nuevos.';
 
     return {
       status: 'success',
       message,
       count: created.length,
+      pagosActualizados,
+      duplicadosOmitidos,
       usuariosCreados,
       usuariosActualizados,
+      usuariosNuevos: usuariosNuevosList,
+      usuariosReparados: usuariosReparadosList,
+      pagosActualizadosList,
       omitidos,
       data: created
+    };
+  },
+
+  async aprobarPago(pagoId, opciones = {}, ejecutadoPor = 'ADMIN') {
+    await ensureOfertasPagosColumns();
+    if (!pagoId) {
+      return { status: 'error', message: 'ID de pago no especificado.' };
+    }
+
+    const pagoRes = await db.execute({
+      sql: "SELECT * FROM pagos WHERE id = ? LIMIT 1;",
+      args: [String(pagoId)]
+    });
+    if (pagoRes.rows.length === 0) {
+      return { status: 'error', message: 'No se encontró el registro de pago.' };
+    }
+    const pago = pagoRes.rows[0];
+
+    const userRes = await db.execute({
+      sql: "SELECT * FROM usuarios WHERE id = ? LIMIT 1;",
+      args: [String(pago.id_usuario || '')]
+    });
+    if (userRes.rows.length === 0) {
+      return { status: 'error', message: 'No se encontró el participante asociado a este pago.' };
+    }
+
+    const usuarioActual = { ...userRes.rows[0] };
+    const nombreCorregido = extraerNombreParticipante(opciones);
+    let usuarioNombreActualizado = false;
+
+    if (nombreCorregido && nombreCorregido !== String(usuarioActual.nombre_completo || '').trim().toUpperCase()) {
+      await db.execute({
+        sql: "UPDATE usuarios SET nombre_completo = ? WHERE id = ?;",
+        args: [nombreCorregido, String(usuarioActual.id)]
+      });
+      usuarioActual.nombre_completo = nombreCorregido;
+      usuarioNombreActualizado = true;
+    }
+
+    // Candado de seguridad: impedir aprobar/certificar con nombre genérico PARTICIPANTE V-...
+    if (isNombreGenericoParticipante(usuarioActual.nombre_completo)) {
+      return {
+        status: 'error',
+        code: 'NOMBRE_GENERICO',
+        message: `El participante (${usuarioActual.cedula}) aún tiene asignado un nombre genérico ("${usuarioActual.nombre_completo}"). Ingrese su nombre completo real para aprobar el pago y liberar el certificado.`
+      };
+    }
+
+    const { oferta, curso } = await resolverOfertaYCursoAcademico(pago.id_curso_ofertado);
+
+    const fechaCurso = normalizarFechaIso(opciones.fecha_curso) ||
+      normalizarFechaIso(pago.fecha_curso) ||
+      normalizarFechaIso(curso?.fecha_curso) ||
+      new Date().toISOString().split('T')[0];
+
+    await db.execute({
+      sql: "UPDATE pagos SET status = 'APROBADO', fecha_curso = ? WHERE id = ?;",
+      args: [fechaCurso, String(pagoId)]
+    });
+
+    if (!curso) {
+      const nombreTallerRef = oferta?.taller || 'Taller sin vincular';
+      return {
+        status: 'success',
+        pagoAprobado: true,
+        certificadoEmitido: false,
+        sinCursoVinculado: true,
+        fecha_curso: fechaCurso,
+        usuarioId: usuarioActual.id,
+        usuarioNombre: usuarioActual.nombre_completo,
+        usuarioCedula: usuarioActual.cedula,
+        usuarioNombreActualizado,
+        warning: `El pago fue aprobado, pero el taller "${nombreTallerRef}" aún no está vinculado a un Curso Académico en #cursos. Vincúlelo en Talleres Ofertados o cree el curso en #cursos para emitir el certificado.`,
+        message: `Pago aprobado correctamente. Aviso: falta vincular el curso "${nombreTallerRef}" en Gestión de Cursos (#cursos) para emitir el certificado.`
+      };
+    }
+
+    const existingCertRes = await db.execute({
+      sql: "SELECT * FROM certificados WHERE usuario_id = ? AND curso_id = ? LIMIT 1;",
+      args: [String(usuarioActual.id), String(curso.id)]
+    });
+
+    if (existingCertRes.rows.length > 0) {
+      const certExistente = existingCertRes.rows[0];
+      return {
+        status: 'success',
+        pagoAprobado: true,
+        certificadoEmitido: false,
+        yaExistiaCertificado: true,
+        certificado: certExistente,
+        cursoId: curso.id,
+        cursoNombre: curso.nombre,
+        fecha_curso: fechaCurso,
+        usuarioId: usuarioActual.id,
+        usuarioNombre: usuarioActual.nombre_completo,
+        usuarioCedula: usuarioActual.cedula,
+        usuarioNombreActualizado,
+        message: `Pago aprobado. El participante ${usuarioActual.nombre_completo} ya poseía el certificado emitido (${certExistente.codigo}) para "${curso.nombre}".`
+      };
+    }
+
+    const existingCodesRes = await db.execute("SELECT codigo FROM certificados;");
+    const existingCodes = new Set((existingCodesRes.rows || []).map(r => String(r.codigo || '').trim().toUpperCase()));
+    const codigo = generateUniqueCode(existingCodes);
+
+    const lugar = String(opciones.lugar || '').trim() || generarTextoLugar(fechaCurso);
+    const tomo = String(opciones.tomo || '').trim();
+    const folio = String(opciones.folio || '').trim();
+    const prefijoCurso = curso.matricula_prefijo || '';
+    const matricula = generarMatricula(prefijoCurso, fechaCurso, usuarioActual.cedula) || '';
+    const createdAt = new Date().toISOString();
+
+    const newCert = {
+      id: generateUUID(),
+      usuario_id: String(usuarioActual.id),
+      curso_id: String(curso.id),
+      codigo,
+      fecha_curso: fechaCurso,
+      lugar,
+      tomo,
+      folio,
+      matricula,
+      created_at: createdAt
+    };
+
+    await db.execute({
+      sql: "INSERT INTO certificados (id, usuario_id, curso_id, codigo, fecha_curso, lugar, tomo, folio, matricula, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+      args: [
+        newCert.id,
+        newCert.usuario_id,
+        newCert.curso_id,
+        newCert.codigo,
+        newCert.fecha_curso,
+        newCert.lugar,
+        newCert.tomo,
+        newCert.folio,
+        newCert.matricula,
+        newCert.created_at
+      ]
+    });
+
+    return {
+      status: 'success',
+      pagoAprobado: true,
+      certificadoEmitido: true,
+      certificado: newCert,
+      cursoId: curso.id,
+      cursoNombre: curso.nombre,
+      fecha_curso: fechaCurso,
+      usuarioId: usuarioActual.id,
+      usuarioNombre: usuarioActual.nombre_completo,
+      usuarioCedula: usuarioActual.cedula,
+      usuarioNombreActualizado,
+      ejecutadoPor: String(ejecutadoPor || 'ADMIN'),
+      message: `Pago aprobado y certificado ${newCert.codigo} liberado automáticamente para ${usuarioActual.nombre_completo}.`
+    };
+  },
+
+  async revertirPago(pagoId, opciones = {}, ejecutadoPor = 'ADMIN') {
+    await ensureOfertasPagosColumns();
+    if (!pagoId) {
+      return { status: 'error', message: 'ID de pago no especificado.' };
+    }
+
+    const pagoRes = await db.execute({
+      sql: "SELECT * FROM pagos WHERE id = ? LIMIT 1;",
+      args: [String(pagoId)]
+    });
+    if (pagoRes.rows.length === 0) {
+      return { status: 'error', message: 'No se encontró el registro de pago.' };
+    }
+    const pago = pagoRes.rows[0];
+    const wasAprobado = isPagoAprobado(pago.status);
+    const eliminarPago = Boolean(opciones.eliminarPago);
+
+    let certificadoAnulado = false;
+    let codigoAnulado = '';
+    let certificadoAnuladoId = '';
+    let auditRecord = null;
+
+    if (wasAprobado && pago.id_usuario) {
+      const { oferta, curso } = await resolverOfertaYCursoAcademico(pago.id_curso_ofertado);
+      if (curso) {
+        // Verificar si el participante tiene otro pago APROBADO distinto para el mismo taller/curso
+        const otrosPagosRes = await db.execute({
+          sql: "SELECT id, id_curso_ofertado, status FROM pagos WHERE id_usuario = ? AND id != ?;",
+          args: [String(pago.id_usuario), String(pagoId)]
+        });
+        let tieneOtroPagoAprobadoMismoCurso = false;
+        for (const op of (otrosPagosRes.rows || [])) {
+          if (!isPagoAprobado(op.status)) continue;
+          if (String(op.id_curso_ofertado || '') === String(pago.id_curso_ofertado || '')) {
+            tieneOtroPagoAprobadoMismoCurso = true;
+            break;
+          }
+          const relOp = await resolverOfertaYCursoAcademico(op.id_curso_ofertado);
+          if (relOp.curso && String(relOp.curso.id) === String(curso.id)) {
+            tieneOtroPagoAprobadoMismoCurso = true;
+            break;
+          }
+        }
+
+        if (!tieneOtroPagoAprobadoMismoCurso) {
+          const certRes = await db.execute({
+            sql: "SELECT * FROM certificados WHERE usuario_id = ? AND curso_id = ? LIMIT 1;",
+            args: [String(pago.id_usuario), String(curso.id)]
+          });
+          if (certRes.rows.length > 0) {
+            const cert = certRes.rows[0];
+            const userRes = await db.execute({
+              sql: "SELECT cedula, nombre_completo FROM usuarios WHERE id = ? LIMIT 1;",
+              args: [String(pago.id_usuario)]
+            });
+            const usr = userRes.rows[0] || {};
+            const nowIso = new Date().toISOString();
+            const motivo = String(opciones.motivo || '').trim() ||
+              (eliminarPago
+                ? `Eliminación de pago aprobado (Ref: ${pago.numero_transferencia || 'S/R'})`
+                : `Reversión de pago aprobado a estado PENDIENTE (Ref: ${pago.numero_transferencia || 'S/R'})`);
+
+            auditRecord = {
+              id: generateUUID(),
+              certificado_id: String(cert.id),
+              codigo: String(cert.codigo || ''),
+              cedula: String(usr.cedula || ''),
+              nombre_completo: String(usr.nombre_completo || ''),
+              curso_id: String(curso.id),
+              nombre_curso: String(curso.nombre || oferta?.taller || ''),
+              motivo_eliminacion: motivo,
+              eliminado_por: String(ejecutadoPor || 'ADMIN'),
+              fecha_eliminacion: nowIso,
+              created_at: nowIso
+            };
+
+            await db.execute({
+              sql: `INSERT INTO certificados_eliminados (id, certificado_id, codigo, cedula, nombre_completo, curso_id, nombre_curso, motivo_eliminacion, eliminado_por, fecha_eliminacion, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+              args: [
+                auditRecord.id,
+                auditRecord.certificado_id,
+                auditRecord.codigo,
+                auditRecord.cedula,
+                auditRecord.nombre_completo,
+                auditRecord.curso_id,
+                auditRecord.nombre_curso,
+                auditRecord.motivo_eliminacion,
+                auditRecord.eliminado_por,
+                auditRecord.fecha_eliminacion,
+                auditRecord.created_at
+              ]
+            });
+
+            await db.execute({
+              sql: "DELETE FROM certificados WHERE id = ?;",
+              args: [String(cert.id)]
+            });
+
+            certificadoAnulado = true;
+            codigoAnulado = auditRecord.codigo;
+            certificadoAnuladoId = String(cert.id);
+          }
+        }
+      }
+    }
+
+    if (eliminarPago) {
+      await db.execute({
+        sql: "DELETE FROM pagos WHERE id = ?;",
+        args: [String(pagoId)]
+      });
+    } else {
+      await db.execute({
+        sql: "UPDATE pagos SET status = 'PENDIENTE' WHERE id = ?;",
+        args: [String(pagoId)]
+      });
+    }
+
+    let message = eliminarPago
+      ? 'Declaración de pago eliminada correctamente.'
+      : 'El pago ha sido revertido a estado PENDIENTE.';
+    if (certificadoAnulado) {
+      message += ` Se anuló automáticamente el certificado ${codigoAnulado} (registrado en certificados_eliminados).`;
+    }
+
+    return {
+      status: 'success',
+      pagoId: String(pagoId),
+      pagoRevertido: !eliminarPago,
+      pagoEliminado: eliminarPago,
+      certificadoAnulado,
+      codigoAnulado,
+      certificadoAnuladoId,
+      auditRecord,
+      message
+    };
+  },
+
+  async configurarFechaEmisionPagos(pagoIds, fechaCurso, opciones = {}, ejecutadoPor = 'ADMIN') {
+    await ensureOfertasPagosColumns();
+    const idsLimpios = Array.from(new Set(
+      (Array.isArray(pagoIds) ? pagoIds : [])
+        .map(id => String(id || '').trim())
+        .filter(Boolean)
+    ));
+
+    if (idsLimpios.length === 0) {
+      return { status: 'error', message: 'Debe seleccionar al menos un pago para configurar la fecha de emisión.' };
+    }
+
+    const fechaNorm = normalizarFechaIso(fechaCurso);
+    if (!fechaNorm) {
+      return { status: 'error', message: 'Por favor indique una Fecha de Emisión válida.' };
+    }
+
+    const lugarTexto = String(opciones.lugar || '').trim() || generarTextoLugar(fechaNorm);
+    const actualizarCertificadosEmitidos = opciones.actualizarCertificadosEmitidos !== false;
+
+    const updateStmts = idsLimpios.map(id => ({
+      sql: "UPDATE pagos SET fecha_curso = ? WHERE id = ?;",
+      args: [fechaNorm, id]
+    }));
+
+    const chunkSize = 50;
+    for (let i = 0; i < updateStmts.length; i += chunkSize) {
+      await db.batch(updateStmts.slice(i, i + chunkSize), 'write');
+    }
+
+    const certificadosActualizados = [];
+    if (actualizarCertificadosEmitidos) {
+      const placeholders = idsLimpios.map(() => '?').join(',');
+      const pagosRes = await db.execute({
+        sql: `SELECT id, id_usuario, id_curso_ofertado, status FROM pagos WHERE id IN (${placeholders});`,
+        args: idsLimpios
+      });
+      const pagosAprobados = (pagosRes.rows || []).filter(p => isPagoAprobado(p.status) && p.id_usuario);
+
+      if (pagosAprobados.length > 0) {
+        const [ofertasRes, cursosRes, certsRes, usersRes] = await Promise.all([
+          db.execute("SELECT * FROM curso_ofertado;"),
+          db.execute("SELECT * FROM cursos;"),
+          db.execute("SELECT * FROM certificados;"),
+          db.execute("SELECT id, cedula FROM usuarios;")
+        ]);
+        const ofertas = ofertasRes.rows || [];
+        const cursos = cursosRes.rows || [];
+        const certs = certsRes.rows || [];
+        const usersMap = new Map((usersRes.rows || []).map(u => [String(u.id), u]));
+
+        const certStmts = [];
+        const certsVistos = new Set();
+
+        for (const p of pagosAprobados) {
+          const rawOfrId = String(p.id_curso_ofertado || '').trim();
+          let ofr = ofertas.find(o => String(o.id).trim() === rawOfrId) || null;
+          if (!ofr && /^\d+(\.0+)?$/.test(rawOfrId)) {
+            const intId = parseInt(rawOfrId, 10);
+            ofr = ofertas.find(o => /^\d+(\.0+)?$/.test(String(o.id || '').trim()) && parseInt(o.id, 10) === intId) || null;
+          }
+          let cur = null;
+          if (ofr && ofr.curso_id) {
+            cur = cursos.find(c => String(c.id).trim() === String(ofr.curso_id).trim()) || null;
+          }
+          if (!cur && ofr && ofr.taller) {
+            const normT = normalizarTextoComparacion(ofr.taller);
+            cur = cursos.find(c => normalizarTextoComparacion(c.nombre) === normT) || null;
+          }
+          if (!cur) continue;
+
+          const cert = certs.find(c => String(c.usuario_id) === String(p.id_usuario) && String(c.curso_id) === String(cur.id));
+          if (!cert || certsVistos.has(String(cert.id))) continue;
+          certsVistos.add(String(cert.id));
+
+          const usr = usersMap.get(String(p.id_usuario));
+          const prefCurso = cur.matricula_prefijo || '';
+          const autoPrev = generarMatricula(prefCurso, cert.fecha_curso, usr?.cedula || '');
+          const autoNew = generarMatricula(prefCurso, fechaNorm, usr?.cedula || '');
+          const nuevaMatricula = (!cert.matricula || cert.matricula === autoPrev)
+            ? (autoNew || cert.matricula || '')
+            : cert.matricula;
+
+          certStmts.push({
+            sql: "UPDATE certificados SET fecha_curso = ?, lugar = ?, matricula = ? WHERE id = ?;",
+            args: [fechaNorm, lugarTexto, nuevaMatricula, String(cert.id)]
+          });
+          certificadosActualizados.push({
+            id: String(cert.id),
+            fecha_curso: fechaNorm,
+            lugar: lugarTexto,
+            matricula: nuevaMatricula
+          });
+        }
+
+        if (certStmts.length > 0) {
+          for (let i = 0; i < certStmts.length; i += chunkSize) {
+            await db.batch(certStmts.slice(i, i + chunkSize), 'write');
+          }
+        }
+      }
+    }
+
+    const extraMsg = certificadosActualizados.length > 0
+      ? ` También se actualizó la fecha en ${certificadosActualizados.length} certificado(s) ya emitido(s).`
+      : '';
+
+    return {
+      status: 'success',
+      actualizados: idsLimpios.length,
+      pagoIds: idsLimpios,
+      fecha_curso: fechaNorm,
+      lugar: lugarTexto,
+      certificadosActualizados,
+      ejecutadoPor: String(ejecutadoPor || 'ADMIN'),
+      message: `Fecha de emisión (${fechaNorm}) configurada y registrada en ${idsLimpios.length} pago(s).${extraMsg}`
+    };
+  },
+
+  async bulkAprobarPagos(pagoIds, opciones = {}, ejecutadoPor = 'ADMIN') {
+    await ensureOfertasPagosColumns();
+    const idsLimpios = Array.from(new Set(
+      (Array.isArray(pagoIds) ? pagoIds : [])
+        .map(id => String(id || '').trim())
+        .filter(Boolean)
+    ));
+
+    if (idsLimpios.length === 0) {
+      return { status: 'error', message: 'Debe seleccionar al menos un pago para aprobar.' };
+    }
+
+    const placeholders = idsLimpios.map(() => '?').join(',');
+    const [pagosRes, usuariosRes, ofertasRes, cursosRes, certsRes] = await Promise.all([
+      db.execute({ sql: `SELECT * FROM pagos WHERE id IN (${placeholders});`, args: idsLimpios }),
+      db.execute("SELECT * FROM usuarios;"),
+      db.execute("SELECT * FROM curso_ofertado;"),
+      db.execute("SELECT * FROM cursos;"),
+      db.execute("SELECT * FROM certificados;")
+    ]);
+
+    const pagosMap = new Map((pagosRes.rows || []).map(p => [String(p.id).trim(), { ...p }]));
+    const pagosSeleccionados = idsLimpios.map(id => pagosMap.get(id)).filter(Boolean);
+
+    if (pagosSeleccionados.length === 0) {
+      return { status: 'error', message: 'No se encontraron los registros de pago seleccionados.' };
+    }
+
+    const usuariosMap = new Map((usuariosRes.rows || []).map(u => [String(u.id).trim(), { ...u }]));
+    const ofertas = ofertasRes.rows || [];
+    const cursos = cursosRes.rows || [];
+    const certs = certsRes.rows || [];
+
+    const resolverOfertaYCursoMem = (idCursoOfertado) => {
+      const rawId = String(idCursoOfertado ?? '').trim();
+      let oferta = null;
+      if (rawId) {
+        oferta = ofertas.find(o => String(o.id).trim() === rawId) || null;
+        if (!oferta && /^\d+(\.0+)?$/.test(rawId)) {
+          const intId = parseInt(rawId, 10);
+          oferta = ofertas.find(o => {
+            const oid = String(o.id || '').trim();
+            return /^\d+(\.0+)?$/.test(oid) && parseInt(oid, 10) === intId;
+          }) || null;
+        }
+      }
+      let curso = null;
+      if (oferta && oferta.curso_id) {
+        const cid = String(oferta.curso_id).trim();
+        curso = cursos.find(c => String(c.id).trim() === cid) || null;
+      }
+      if (!curso && oferta && oferta.taller) {
+        const normTaller = normalizarTextoComparacion(oferta.taller);
+        if (normTaller) {
+          curso = cursos.find(c => normalizarTextoComparacion(c.nombre) === normTaller) || null;
+        }
+      }
+      return { oferta, curso };
+    };
+
+    const stmts = [];
+    const usuariosReparados = [];
+    const nombresCorregidos = (opciones && opciones.nombresCorregidos && typeof opciones.nombresCorregidos === 'object')
+      ? opciones.nombresCorregidos
+      : {};
+
+    // 1. Aplicar correcciones de nombres suministradas en el modal masivo
+    for (const [uidRaw, nomRaw] of Object.entries(nombresCorregidos)) {
+      const uid = String(uidRaw || '').trim();
+      const usr = usuariosMap.get(uid);
+      if (!usr) continue;
+      const limpio = extraerNombreParticipante({ nombre_completo: nomRaw });
+      if (limpio && limpio !== String(usr.nombre_completo || '').trim().toUpperCase()) {
+        usr.nombre_completo = limpio;
+        stmts.push({
+          sql: "UPDATE usuarios SET nombre_completo = ? WHERE id = ?;",
+          args: [limpio, uid]
+        });
+        usuariosReparados.push({ id: uid, cedula: usr.cedula, nombre_completo: limpio });
+      }
+    }
+
+    // 2. Validar candado NOMBRE_GENERICO y fechas de emisión en todos los pagos seleccionados
+    const pendientesNombre = [];
+    const usuariosGenVistos = new Set();
+    const respetarIndividuales = Boolean(opciones.respetarFechasIndividuales);
+    const fechaGlobalOpt = normalizarFechaIso(opciones.fecha_curso);
+    const pagosSinFecha = [];
+
+    for (const p of pagosSeleccionados) {
+      const usr = usuariosMap.get(String(p.id_usuario || '').trim());
+      if (!usr) {
+        return { status: 'error', message: `No se encontró el participante asociado al pago Ref. ${p.numero_transferencia || p.id}.` };
+      }
+      if (isNombreGenericoParticipante(usr.nombre_completo)) {
+        if (!usuariosGenVistos.has(String(usr.id))) {
+          usuariosGenVistos.add(String(usr.id));
+          pendientesNombre.push({
+            usuario_id: String(usr.id),
+            cedula: String(usr.cedula || ''),
+            nombre_actual: String(usr.nombre_completo || '')
+          });
+        }
+      }
+
+      const { oferta, curso } = resolverOfertaYCursoMem(p.id_curso_ofertado);
+      const fechaFila = respetarIndividuales
+        ? (normalizarFechaIso(p.fecha_curso) || normalizarFechaIso(curso?.fecha_curso) || fechaGlobalOpt)
+        : (fechaGlobalOpt || normalizarFechaIso(p.fecha_curso) || normalizarFechaIso(curso?.fecha_curso));
+
+      if (!fechaFila) {
+        pagosSinFecha.push({
+          pago_id: String(p.id),
+          cedula: String(usr.cedula || ''),
+          taller: oferta?.taller || 'Taller'
+        });
+      }
+    }
+
+    if (pendientesNombre.length > 0) {
+      return {
+        status: 'error',
+        code: 'NOMBRE_GENERICO_LOTE',
+        pendientesNombre,
+        message: `Hay ${pendientesNombre.length} participante(s) con nombre genérico ("PARTICIPANTE ..."). Ingrese su nombre completo real para aprobar y emitir sus certificados.`
+      };
+    }
+
+    if (pagosSinFecha.length > 0) {
+      return {
+        status: 'error',
+        code: 'SIN_FECHA_EMISION',
+        pagosSinFecha,
+        message: `Hay ${pagosSinFecha.length} pago(s) sin Fecha de Emisión configurada. Seleccione la fecha de emisión del taller para continuar.`
+      };
+    }
+
+    // 3. Aprobar pagos y generar certificados en lote
+    const existingCodes = new Set(certs.map(c => String(c.codigo || '').trim().toUpperCase()).filter(Boolean));
+    const certPorUsuarioCurso = new Map(
+      certs.map(c => [`${String(c.usuario_id).trim()}|${String(c.curso_id).trim()}`, c])
+    );
+
+    const lugarCustom = String(opciones.lugar || '').trim();
+    const tomo = String(opciones.tomo || '').trim();
+    const folioRaw = String(opciones.folio || '').trim();
+    const limitePorFolio = Math.max(1, parseInt(opciones.limite_por_folio, 10) || 15);
+
+    const pagosAprobados = [];
+    const certificadosEmitidos = [];
+    const talleresSinVincular = new Set();
+    let nuevosAprobadosCount = 0;
+    let yaExistianCount = 0;
+    let sinCursoVinculadoCount = 0;
+
+    for (const p of pagosSeleccionados) {
+      const usr = usuariosMap.get(String(p.id_usuario || '').trim());
+      const { oferta, curso } = resolverOfertaYCursoMem(p.id_curso_ofertado);
+      const wasAprob = isPagoAprobado(p.status);
+      if (!wasAprob) nuevosAprobadosCount++;
+
+      const fechaFila = respetarIndividuales
+        ? (normalizarFechaIso(p.fecha_curso) || normalizarFechaIso(curso?.fecha_curso) || fechaGlobalOpt)
+        : (fechaGlobalOpt || normalizarFechaIso(p.fecha_curso) || normalizarFechaIso(curso?.fecha_curso));
+
+      stmts.push({
+        sql: "UPDATE pagos SET status = 'APROBADO', fecha_curso = ? WHERE id = ?;",
+        args: [fechaFila, String(p.id)]
+      });
+      pagosAprobados.push({
+        id: String(p.id),
+        status: 'APROBADO',
+        fecha_curso: fechaFila
+      });
+
+      if (!curso) {
+        sinCursoVinculadoCount++;
+        talleresSinVincular.add(oferta?.taller || 'Taller sin vincular');
+        continue;
+      }
+
+      const keyCert = `${String(usr.id).trim()}|${String(curso.id).trim()}`;
+      if (certPorUsuarioCurso.has(keyCert)) {
+        yaExistianCount++;
+        continue;
+      }
+
+      const codigo = generateUniqueCode(existingCodes);
+      existingCodes.add(codigo);
+
+      let folioCalculado = folioRaw;
+      if (folioRaw && /^\d+$/.test(folioRaw)) {
+        const folioBase = parseInt(folioRaw, 10);
+        const incremento = Math.floor(certificadosEmitidos.length / limitePorFolio);
+        folioCalculado = String(folioBase + incremento).padStart(folioRaw.length, '0');
+      }
+
+      const lugarFila = (!respetarIndividuales && lugarCustom)
+        ? lugarCustom
+        : generarTextoLugar(fechaFila);
+      const matricula = generarMatricula(curso.matricula_prefijo || '', fechaFila, usr.cedula) || '';
+      const createdAt = new Date().toISOString();
+
+      const newCert = {
+        id: generateUUID(),
+        usuario_id: String(usr.id),
+        curso_id: String(curso.id),
+        codigo,
+        fecha_curso: fechaFila,
+        lugar: lugarFila,
+        tomo,
+        folio: folioCalculado,
+        matricula,
+        created_at: createdAt
+      };
+
+      certPorUsuarioCurso.set(keyCert, newCert);
+      certificadosEmitidos.push(newCert);
+      stmts.push({
+        sql: "INSERT INTO certificados (id, usuario_id, curso_id, codigo, fecha_curso, lugar, tomo, folio, matricula, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+        args: [
+          newCert.id,
+          newCert.usuario_id,
+          newCert.curso_id,
+          newCert.codigo,
+          newCert.fecha_curso,
+          newCert.lugar,
+          newCert.tomo,
+          newCert.folio,
+          newCert.matricula,
+          newCert.created_at
+        ]
+      });
+    }
+
+    const chunkSize = 50;
+    for (let i = 0; i < stmts.length; i += chunkSize) {
+      await db.batch(stmts.slice(i, i + chunkSize), 'write');
+    }
+
+    const partesMsg = [`${pagosAprobados.length} pago(s) aprobado(s)`];
+    if (certificadosEmitidos.length > 0) {
+      partesMsg.push(`${certificadosEmitidos.length} certificado(s) liberado(s) automáticamente`);
+    }
+    if (yaExistianCount > 0) {
+      partesMsg.push(`${yaExistianCount} ya poseía(n) certificado previo`);
+    }
+    if (sinCursoVinculadoCount > 0) {
+      partesMsg.push(`${sinCursoVinculadoCount} pendiente(s) por vincular curso en #cursos`);
+    }
+
+    const warning = sinCursoVinculadoCount > 0
+      ? `Aviso: ${sinCursoVinculadoCount} pago(s) fueron aprobados, pero su taller (${Array.from(talleresSinVincular).join(', ')}) aún no está vinculado a #cursos para emitir el certificado.`
+      : '';
+
+    return {
+      status: 'success',
+      aprobadosCount: pagosAprobados.length,
+      nuevosAprobadosCount,
+      certificadosEmitidosCount: certificadosEmitidos.length,
+      yaExistianCount,
+      sinCursoVinculadoCount,
+      talleresSinVincular: Array.from(talleresSinVincular),
+      pagosAprobados,
+      certificadosEmitidos,
+      usuariosReparados,
+      ejecutadoPor: String(ejecutadoPor || 'ADMIN'),
+      warning,
+      message: partesMsg.join(' • ') + '.'
+    };
+  },
+
+  async bulkRevertirPagos(pagoIds, opciones = {}, ejecutadoPor = 'ADMIN') {
+    await ensureOfertasPagosColumns();
+    const idsLimpios = Array.from(new Set(
+      (Array.isArray(pagoIds) ? pagoIds : [])
+        .map(id => String(id || '').trim())
+        .filter(Boolean)
+    ));
+
+    if (idsLimpios.length === 0) {
+      return { status: 'error', message: 'Debe seleccionar al menos un pago.' };
+    }
+
+    const eliminarPago = Boolean(opciones.eliminarPago);
+    const idsSet = new Set(idsLimpios);
+
+    const [allPagosRes, usuariosRes, ofertasRes, cursosRes, certsRes] = await Promise.all([
+      db.execute("SELECT * FROM pagos;"),
+      db.execute("SELECT id, cedula, nombre_completo FROM usuarios;"),
+      db.execute("SELECT * FROM curso_ofertado;"),
+      db.execute("SELECT * FROM cursos;"),
+      db.execute("SELECT * FROM certificados;")
+    ]);
+
+    const allPagos = allPagosRes.rows || [];
+    const pagosSeleccionados = allPagos.filter(p => idsSet.has(String(p.id).trim()));
+
+    if (pagosSeleccionados.length === 0) {
+      return { status: 'error', message: 'No se encontraron los registros de pago seleccionados.' };
+    }
+
+    const pagosAprobadosEnSeleccion = pagosSeleccionados.filter(p => isPagoAprobado(p.status));
+    if (!eliminarPago && pagosAprobadosEnSeleccion.length === 0) {
+      return {
+        status: 'error',
+        message: 'Ninguno de los pagos seleccionados se encuentra APROBADO para anular su verificación.'
+      };
+    }
+
+    const usuariosMap = new Map((usuariosRes.rows || []).map(u => [String(u.id).trim(), u]));
+    const ofertas = ofertasRes.rows || [];
+    const cursos = cursosRes.rows || [];
+    const certs = certsRes.rows || [];
+
+    const resolverOfertaYCursoMem = (idCursoOfertado) => {
+      const rawId = String(idCursoOfertado ?? '').trim();
+      let oferta = null;
+      if (rawId) {
+        oferta = ofertas.find(o => String(o.id).trim() === rawId) || null;
+        if (!oferta && /^\d+(\.0+)?$/.test(rawId)) {
+          const intId = parseInt(rawId, 10);
+          oferta = ofertas.find(o => {
+            const oid = String(o.id || '').trim();
+            return /^\d+(\.0+)?$/.test(oid) && parseInt(oid, 10) === intId;
+          }) || null;
+        }
+      }
+      let curso = null;
+      if (oferta && oferta.curso_id) {
+        const cid = String(oferta.curso_id).trim();
+        curso = cursos.find(c => String(c.id).trim() === cid) || null;
+      }
+      if (!curso && oferta && oferta.taller) {
+        const normTaller = normalizarTextoComparacion(oferta.taller);
+        if (normTaller) {
+          curso = cursos.find(c => normalizarTextoComparacion(c.nombre) === normTaller) || null;
+        }
+      }
+      return { oferta, curso };
+    };
+
+    // Pagos APROBADOS que permanecerán activos fuera de la selección actual
+    const pagosAprobadosRestantes = allPagos.filter(p =>
+      !idsSet.has(String(p.id).trim()) && isPagoAprobado(p.status)
+    );
+
+    const stmts = [];
+    const auditRecords = [];
+    const certificadosAnuladosIds = [];
+    const codigosAnulados = [];
+    const certsYaAnuladosSet = new Set();
+    const nowIso = new Date().toISOString();
+
+    for (const p of pagosAprobadosEnSeleccion) {
+      if (!p.id_usuario) continue;
+      const { curso } = resolverOfertaYCursoMem(p.id_curso_ofertado);
+      if (!curso) continue;
+
+      const tieneOtroPagoActivoMismoCurso = pagosAprobadosRestantes.some(op => {
+        if (String(op.id_usuario) !== String(p.id_usuario)) return false;
+        if (String(op.id_curso_ofertado || '') === String(p.id_curso_ofertado || '')) return true;
+        const relOp = resolverOfertaYCursoMem(op.id_curso_ofertado);
+        return Boolean(relOp.curso && String(relOp.curso.id) === String(curso.id));
+      });
+
+      if (tieneOtroPagoActivoMismoCurso) continue;
+
+      const cert = certs.find(c =>
+        String(c.usuario_id) === String(p.id_usuario) && String(c.curso_id) === String(curso.id)
+      );
+      if (!cert || certsYaAnuladosSet.has(String(cert.id))) continue;
+
+      certsYaAnuladosSet.add(String(cert.id));
+      const usr = usuariosMap.get(String(p.id_usuario).trim()) || {};
+      const motivo = String(opciones.motivo || '').trim() ||
+        (eliminarPago
+          ? `Eliminación masiva de pago aprobado (Ref: ${p.numero_transferencia || 'S/R'})`
+          : `Anulación masiva de verificación de pago a PENDIENTE (Ref: ${p.numero_transferencia || 'S/R'})`);
+
+      const auditRecord = {
+        id: generateUUID(),
+        certificado_id: String(cert.id),
+        codigo: String(cert.codigo || ''),
+        cedula: String(usr.cedula || ''),
+        nombre_completo: String(usr.nombre_completo || ''),
+        curso_id: String(curso.id),
+        nombre_curso: String(curso.nombre || ''),
+        motivo_eliminacion: motivo,
+        eliminado_por: String(ejecutadoPor || 'ADMIN'),
+        fecha_eliminacion: nowIso,
+        created_at: nowIso
+      };
+
+      auditRecords.push(auditRecord);
+      certificadosAnuladosIds.push(String(cert.id));
+      codigosAnulados.push(String(cert.codigo || ''));
+
+      stmts.push({
+        sql: "INSERT INTO certificados_eliminados (id, certificado_id, codigo, cedula, nombre_completo, curso_id, nombre_curso, motivo_eliminacion, eliminado_por, fecha_eliminacion, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+        args: [
+          auditRecord.id,
+          auditRecord.certificado_id,
+          auditRecord.codigo,
+          auditRecord.cedula,
+          auditRecord.nombre_completo,
+          auditRecord.curso_id,
+          auditRecord.nombre_curso,
+          auditRecord.motivo_eliminacion,
+          auditRecord.eliminado_por,
+          auditRecord.fecha_eliminacion,
+          auditRecord.created_at
+        ]
+      });
+      stmts.push({
+        sql: "DELETE FROM certificados WHERE id = ?;",
+        args: [String(cert.id)]
+      });
+    }
+
+    const pagosObjetivosMutacion = eliminarPago ? pagosSeleccionados : pagosAprobadosEnSeleccion;
+    const pagoIdsProcesados = pagosObjetivosMutacion.map(p => String(p.id));
+
+    for (const p of pagosObjetivosMutacion) {
+      if (eliminarPago) {
+        stmts.push({
+          sql: "DELETE FROM pagos WHERE id = ?;",
+          args: [String(p.id)]
+        });
+      } else {
+        stmts.push({
+          sql: "UPDATE pagos SET status = 'PENDIENTE' WHERE id = ?;",
+          args: [String(p.id)]
+        });
+      }
+    }
+
+    const chunkSize = 50;
+    for (let i = 0; i < stmts.length; i += chunkSize) {
+      await db.batch(stmts.slice(i, i + chunkSize), 'write');
+    }
+
+    const accionTxt = eliminarPago
+      ? `${pagoIdsProcesados.length} pago(s) eliminado(s)`
+      : `${pagoIdsProcesados.length} verificación(es) de pago revertida(s) a PENDIENTE`;
+    const certTxt = auditRecords.length > 0
+      ? ` y ${auditRecords.length} certificado(s) anulado(s) (registrados en certificados_eliminados)`
+      : '';
+
+    return {
+      status: 'success',
+      eliminarPago,
+      procesadosCount: pagoIdsProcesados.length,
+      revertidosCount: eliminarPago ? 0 : pagoIdsProcesados.length,
+      eliminadosCount: eliminarPago ? pagoIdsProcesados.length : 0,
+      certificadosAnuladosCount: auditRecords.length,
+      pagoIdsProcesados,
+      certificadosAnuladosIds,
+      codigosAnulados,
+      auditRecords,
+      ejecutadoPor: String(ejecutadoPor || 'ADMIN'),
+      message: `${accionTxt}${certTxt}.`
     };
   },
 

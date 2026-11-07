@@ -421,32 +421,85 @@
               </div>
             </div>
 
-            <!-- Barra de Herramientas y Búsqueda -->
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 bg-white p-3 rounded border">
-              <div class="d-flex align-items-center flex-grow-1 flex-wrap gap-2" style="max-width: 600px;">
-                <div class="input-group" style="min-width: 280px; flex: 1;">
-                  <span class="input-group-text bg-light"><i class="fa-solid fa-magnifying-glass"></i></span>
-                  <input type="text" class="form-control" id="inputBuscarPago" placeholder="Buscar por cédula, usuario o referencia...">
+            <!-- Barra de Herramientas, Filtro en Tiempo Real por Curso y Acciones en Lote -->
+            <div class="bg-white p-3 rounded border mb-3">
+              <div class="row g-2 align-items-center">
+                <div class="col-lg-4 col-md-6">
+                  <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="fa-solid fa-magnifying-glass"></i></span>
+                    <input type="text" class="form-control" id="inputBuscarPago" placeholder="Buscar por cédula, nombre, referencia o fecha...">
+                  </div>
                 </div>
-                <select class="form-select" id="selectFiltroEstatusPago" style="width: auto;">
-                  <option value="todos">Todos los Estados</option>
-                  <option value="pendientes">Pendientes por Validar</option>
-                  <option value="aprobados">Aprobados / Confirmados</option>
-                </select>
+                <div class="col-lg-4 col-md-6">
+                  <div class="input-group">
+                    <span class="input-group-text bg-light text-primary" title="Filtrar en tiempo real por Curso / Taller"><i class="fa-solid fa-graduation-cap"></i></span>
+                    <select class="form-select fw-semibold" id="selectFiltroCursoPago">
+                      <option value="todos">Todos los Cursos / Talleres</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="col-lg-4 col-md-12">
+                  <select class="form-select" id="selectFiltroEstatusPago">
+                    <option value="todos">Todos los Estados</option>
+                    <option value="pendientes">Pendientes por Validar</option>
+                    <option value="aprobados">Aprobados / Confirmados</option>
+                  </select>
+                </div>
               </div>
 
-              <div class="d-flex align-items-center gap-2">
-                <button class="btn btn-outline-secondary" id="btnRefrescarPagos" title="Refrescar pagos">
-                  <i class="fa-solid fa-arrows-rotate me-1"></i> Actualizar
+              <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3 pt-2 border-top">
+                <div class="d-flex align-items-center flex-wrap gap-2">
+                  <button class="btn btn-outline-secondary btn-sm" id="btnRefrescarPagos" title="Sincronizar pagos desde base de datos">
+                    <i class="fa-solid fa-arrows-rotate me-1"></i> Actualizar
+                  </button>
+                  <button class="btn btn-success btn-sm fw-bold" id="btnAprobarSeleccionadosToolbar" disabled title="Aprobar los pagos seleccionados y liberar automáticamente sus certificados">
+                    <i class="fa-solid fa-check-double me-1"></i> Aprobar Seleccionados
+                    <span class="badge bg-white text-success ms-1" id="badgeCountAprobarToolbar">0</span>
+                  </button>
+                  <button class="btn btn-indigo btn-primary btn-sm fw-bold" id="btnAbrirConfigurarFechaLote" disabled title="Seleccione 1 o varios pagos para configurar su Fecha de Emisión del Certificado">
+                    <i class="fa-solid fa-calendar-days me-1"></i> Configurar Fecha Emisión
+                    <span class="badge bg-white text-primary ms-1" id="badgeCountSeleccionadosToolbar">0</span>
+                  </button>
+                </div>
+
+                <div class="d-flex align-items-center flex-wrap gap-2">
+                  <button class="btn btn-outline-success btn-sm fw-bold" id="btnExportarPagosPendientesCsv" title="Descargar CSV de las declaraciones de pago PENDIENTES por verificar">
+                    <i class="fa-solid fa-file-arrow-down me-1"></i> Descargar Pendientes (CSV)
+                  </button>
+                  <button class="btn btn-primary btn-sm fw-bold" id="btnCargaMasivaPagos" title="Subir pagos masivos desde archivo CSV o texto">
+                    <i class="fa-solid fa-file-csv me-1"></i> Subir Datos Masivos (CSV)
+                  </button>
+                  <button class="btn btn-success btn-sm fw-bold" id="btnNuevoPagoManual">
+                    <i class="fa-solid fa-plus-circle me-1"></i> Registrar Pago Manual
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Barra Contextual de Acciones Masivas sobre Pagos Seleccionados -->
+            <div id="barraSeleccionPagosLote" class="alert alert-primary d-flex justify-content-between align-items-center flex-wrap gap-2 py-2 px-3 mb-3 shadow-sm border-primary" style="display: none;">
+              <div class="d-flex align-items-center flex-wrap gap-2">
+                <span class="badge bg-primary fs-6"><i class="fa-solid fa-check-square me-1"></i><span id="lblCountPagosSeleccionadosBarra">0</span></span>
+                <span class="fw-semibold text-dark small" id="lblResumenSeleccionPagos">pagos seleccionados</span>
+                <button type="button" class="btn btn-sm btn-outline-primary bg-white fw-semibold py-0 px-2" id="btnSeleccionarTodosFiltradosPagos">
+                  <i class="fa-solid fa-list-check me-1"></i> Seleccionar todos los filtrados
                 </button>
-                <button class="btn btn-outline-success fw-bold" id="btnExportarPagosPendientesCsv" title="Descargar CSV de las declaraciones de pago PENDIENTES por verificar">
-                  <i class="fa-solid fa-file-arrow-down me-1"></i> Descargar Pendientes (CSV)
+                <button type="button" class="btn btn-sm btn-outline-secondary bg-white py-0 px-2" id="btnLimpiarSeleccionPagos" title="Quitar selección">
+                  <i class="fa-solid fa-xmark me-1"></i> Limpiar
                 </button>
-                <button class="btn btn-primary fw-bold" id="btnCargaMasivaPagos" title="Subir pagos masivos desde archivo CSV o texto">
-                  <i class="fa-solid fa-file-csv me-1"></i> Subir Datos Masivos (CSV)
+              </div>
+              <div class="d-flex align-items-center flex-wrap gap-2">
+                <button type="button" class="btn btn-sm btn-success fw-bold shadow-sm" id="btnAprobarSeleccionadosBarra" title="Aprobar pagos seleccionados y liberar sus certificados">
+                  <i class="fa-solid fa-certificate me-1"></i> Aprobar y Certificar (<span id="lblCountAprobarBarra">0</span>)
                 </button>
-                <button class="btn btn-success" id="btnNuevoPagoManual">
-                  <i class="fa-solid fa-plus-circle me-1"></i> Registrar Pago Manual
+                <button type="button" class="btn btn-sm btn-primary fw-bold shadow-sm" id="btnConfigurarFechaDesdeBarra" title="Asignar fecha de emisión a los seleccionados">
+                  <i class="fa-solid fa-calendar-check me-1"></i> Fecha de Emisión
+                </button>
+                <button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-sm" id="btnRevertirSeleccionadosBarra" title="Anular verificación de pagos aprobados y anular sus certificados emitidos">
+                  <i class="fa-solid fa-rotate-left me-1"></i> Anular Verificación (<span id="lblCountRevertirBarra">0</span>)
+                </button>
+                <button type="button" class="btn btn-sm btn-danger fw-bold shadow-sm" id="btnEliminarSeleccionadosBarra" title="Eliminar permanentemente los pagos seleccionados">
+                  <i class="fa-solid fa-trash me-1"></i> Eliminar (<span id="lblCountEliminarBarra">0</span>)
                 </button>
               </div>
             </div>
@@ -455,9 +508,13 @@
               <table class="table table-hover align-middle">
                 <thead class="table-light">
                   <tr>
-                    <th>Fecha</th>
+                    <th class="text-center" style="width: 42px;">
+                      <input type="checkbox" class="form-check-input cursor-pointer" id="checkSeleccionarTodosPagos" title="Seleccionar o deseleccionar todos los pagos mostrados en el filtro actual">
+                    </th>
+                    <th>Fecha Pago</th>
                     <th>Usuario / Participante</th>
                     <th>Curso Ofertado</th>
+                    <th class="text-center" style="min-width: 155px;">Fecha Emisión<br><small class="text-muted fw-normal">(Certificado)</small></th>
                     <th>Banco Origen</th>
                     <th class="text-center">Monto (Bs.)</th>
                     <th class="text-center">N° Referencia</th>
@@ -467,7 +524,7 @@
                   </tr>
                 </thead>
                 <tbody id="tbodyPagosAdministracion">
-                  <tr><td colspan="9" class="text-center text-muted py-4">Cargando declaraciones de pagos...</td></tr>
+                  <tr><td colspan="11" class="text-center text-muted py-4">Cargando declaraciones de pagos...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -2496,6 +2553,16 @@ if (!empty($data['cursos'])) {
             </div>
 
             <div class="mb-3">
+              <label for="inputOfertaCursoId" class="form-label fw-bold text-primary">
+                <i class="fa-solid fa-graduation-cap me-1"></i>Curso Académico Vinculado para Liberación Automática de Certificado
+              </label>
+              <select class="form-select" id="inputOfertaCursoId">
+                <option value="">-- Vincular automáticamente por nombre exacto (o vincular luego en #cursos) --</option>
+              </select>
+              <small class="text-muted">Al aprobar el pago de un participante en este taller, se emitirá automáticamente su certificado en el curso académico seleccionado.</small>
+            </div>
+
+            <div class="mb-3">
               <label for="inputOfertaDescripcion" class="form-label fw-bold">Descripción del Contenido / Programa</label>
               <textarea class="form-control" id="inputOfertaDescripcion" rows="3" placeholder="Resumen del taller, módulos, contenido y objetivos..."></textarea>
             </div>
@@ -2601,6 +2668,12 @@ if (!empty($data['cursos'])) {
                       <span class="text-muted"><i class="fa-solid fa-phone me-1 text-primary"></i>Teléfono:</span>
                       <span id="lblInfoModalTelefono"></span>
                     </div>
+                    <div id="boxCorregirNombreGenericoManual" class="mt-2 pt-2 border-top" style="display: none;">
+                      <label for="inputPagoNombreRealManual" class="form-label small fw-bold text-danger mb-1">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i>Nombre Completo Real (Requerido para Certificar):
+                      </label>
+                      <input type="text" class="form-control form-control-sm text-uppercase" id="inputPagoNombreRealManual" placeholder="Ej: PEDRO ANTONIO PÉREZ">
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2621,6 +2694,7 @@ if (!empty($data['cursos'])) {
                       <span>Costo Foráneo / Público:</span>
                       <strong class="text-info" id="lblInfoModalCostoFor"></strong>
                     </div>
+                    <div class="mt-1 pt-1 border-top" id="lblInfoModalCursoVinculado"></div>
                   </div>
                 </div>
               </div>
@@ -2652,14 +2726,19 @@ if (!empty($data['cursos'])) {
             </div>
 
             <div class="row g-3 mb-3">
-              <div class="col-md-6">
+              <div class="col-md-4">
                 <label class="form-label fw-bold">Fecha del Pago:</label>
                 <input type="date" class="form-control" id="inputPagoFecha">
               </div>
-              <div class="col-md-6">
-                <label class="form-label fw-bold">Estatus Inicial del Pago:</label>
+              <div class="col-md-4">
+                <label class="form-label fw-bold text-primary">Fecha del Curso / Emisión:</label>
+                <input type="date" class="form-control" id="inputPagoFechaCurso">
+                <small class="text-muted">Fecha impresa en el certificado al aprobar.</small>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-bold">Estatus del Pago:</label>
                 <select class="form-select" id="inputPagoStatus">
-                  <option value="true">APROBADO (Pago Confirmado y Validado)</option>
+                  <option value="true">APROBADO (Confirmar y Liberar Certificado)</option>
                   <option value="false" selected>PENDIENTE (En Proceso de Verificación)</option>
                 </select>
               </div>
@@ -2708,17 +2787,22 @@ if (!empty($data['cursos'])) {
           </div>
 
           <div class="row g-3 mb-3">
-            <div class="col-md-6">
+            <div class="col-md-4">
               <label class="form-label small fw-bold">1. Subir Archivo CSV o TXT:</label>
               <input type="file" class="form-control" id="fileCsvPagos" accept=".csv, .txt">
-              <small class="text-muted">Formatos admitidos: <code>.csv</code> o <code>.txt</code> delimitados por coma o punto y coma.</small>
+              <small class="text-muted">Admite <code>.csv</code> o <code>.txt</code> (coma, punto y coma o tabulador).</small>
             </div>
-            <div class="col-md-4">
-              <label class="form-label small fw-bold">2. Taller / Curso por Defecto (Fallback):</label>
+            <div class="col-md-3">
+              <label class="form-label small fw-bold">2. Taller por Defecto (Fallback):</label>
               <select class="form-select" id="selectCursoDefaultPagosMasivos">
                 <option value="">-- Asignar automáticamente --</option>
               </select>
-              <small class="text-muted">Se aplicará a las filas que no especifiquen curso.</small>
+              <small class="text-muted">Para filas que no indiquen curso.</small>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-bold text-primary">3. Fecha del Curso / Emisión (Fallback):</label>
+              <input type="date" class="form-control" id="inputFechaCursoDefaultPagosMasivos">
+              <small class="text-muted">Se aplica si el CSV no trae <code>fecha_curso</code>.</small>
             </div>
             <div class="col-md-2 d-flex align-items-end">
               <button type="button" class="btn btn-outline-primary w-100 btn-sm py-2" id="btnDescargarPlantillaCsvPagos">
@@ -2728,11 +2812,11 @@ if (!empty($data['cursos'])) {
           </div>
 
           <div class="mb-3">
-            <div class="d-flex justify-content-between align-items-center mb-1">
-              <label class="form-label small fw-bold mb-0">O Pegar Registros Directamente (Formato oficial: <code>cedula, nombre_completo, curso_ofertado, referencia, monto, banco_origen, capture, fecha</code>):</label>
-              <span class="badge bg-secondary-subtle text-secondary small">Admite tabulaciones, comas o punto y coma</span>
+            <div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-1">
+              <label class="form-label small fw-bold mb-0">O Pegar Registros Directamente (Formato oficial: <code>cedula, nombre_completo, curso_ofertado, referencia, monto, banco_origen, capture, fecha_pago, fecha_curso</code>):</label>
+              <span class="badge bg-secondary-subtle text-secondary small">Detecta encabezados como Nº CEDULA, NOMBRE DEL PARTICIPANTE, FECHA DEL CURSO</span>
             </div>
-            <textarea class="form-control font-monospace small" id="textareaCargaMasivaPagos" rows="3" placeholder="V-12345678, PEDRO PÉREZ, Taller de Inteligencia Artificial, 00984572, 350.50, Banco de Venezuela (0102), https://ejemplo.com/capture1.jpg, 2026-10-25&#10;V-87654321, MARÍA GÓMEZ, Desarrollo Web Fullstack, 00451278, 500.00, Pago Móvil Interbancario, , 2026-10-25"></textarea>
+            <textarea class="form-control font-monospace small" id="textareaCargaMasivaPagos" rows="3" placeholder="V-12345678, PEDRO PÉREZ, Taller de Inteligencia Artificial, 00984572, 350.50, Banco de Venezuela (0102), https://ejemplo.com/capture1.jpg, 2026-10-25, 2026-10-30&#10;V-87654321, MARÍA GÓMEZ, Desarrollo Web Fullstack, 00451278, 500.00, Pago Móvil Interbancario, , 2026-10-25, 2026-10-30"></textarea>
           </div>
 
           <div class="form-check form-switch mb-3 bg-light p-2 ps-5 rounded border">
@@ -2740,7 +2824,7 @@ if (!empty($data['cursos'])) {
             <label class="form-check-label small fw-bold text-dark" for="checkCrearUsuariosInexistentesPagos">
               <i class="fa-solid fa-user-plus text-primary me-1"></i>Registrar automáticamente al participante si la cédula no existe en el sistema (con su nombre completo)
             </label>
-            <small class="text-muted d-block">Si el participante ya existe en Turso DB, el pago se vinculará a su cuenta sin duplicarlo.</small>
+            <small class="text-muted d-block">Si el participante ya existe con nombre genérico (<code>PARTICIPANTE V-...</code>), al volver a subir el CSV se reparará su nombre real y se actualizará la fecha del curso sin duplicar pagos.</small>
           </div>
 
           <!-- Contenedor de Previsualización -->
@@ -2757,6 +2841,293 @@ if (!empty($data['cursos'])) {
             <i class="fa-solid fa-cloud-arrow-up me-2"></i>Subir Pagos al Sistema (Quedan Pendientes)
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Aprobar Pago y Liberar Certificado Automáticamente -->
+  <div class="modal fade" id="modalAprobarPagoCertificado" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content shadow-lg border-0">
+        <form id="formAprobarPagoCertificado">
+          <div class="modal-header bg-success text-white">
+            <h5 class="modal-title fw-bold">
+              <i class="fa-solid fa-certificate me-2"></i>Aprobar Pago y Liberación Automática de Certificado
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body p-4">
+            <input type="hidden" id="inputAprobarPagoId">
+
+            <!-- Resumen del Participante y Pago -->
+            <div class="card bg-light border p-3 mb-3 rounded-3">
+              <div class="row g-2 align-items-center">
+                <div class="col-md-7">
+                  <small class="text-muted text-uppercase fw-bold d-block">Participante</small>
+                  <div class="d-flex align-items-center flex-wrap gap-2">
+                    <span class="badge bg-dark font-monospace" id="lblAprobarPagoCedula">V-00000000</span>
+                    <strong class="text-primary fs-6" id="lblAprobarPagoNombreActual">-</strong>
+                    <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" id="btnToggleCorregirNombreAprobar" title="Editar nombre del participante">
+                      <i class="fa-solid fa-pen-to-square me-1"></i>Editar nombre
+                    </button>
+                  </div>
+                </div>
+                <div class="col-md-5 text-md-end">
+                  <small class="text-muted text-uppercase fw-bold d-block">Declaración de Pago</small>
+                  <strong class="text-success" id="lblAprobarPagoMontoRef">0,00 Bs.</strong>
+                  <div class="small text-muted" id="lblAprobarPagoTaller">-</div>
+                </div>
+              </div>
+
+              <!-- Candado / Corrección de Nombre Genérico PARTICIPANTE V-... -->
+              <div id="boxCorregirNombreAprobar" class="mt-3 pt-2 border-top" style="display: none;">
+                <div id="alertaNombreGenericoAprobar" class="alert alert-danger py-2 px-3 small mb-2" style="display: none;">
+                  <i class="fa-solid fa-shield-halved me-1"></i>
+                  <strong>Candado de Seguridad Activo:</strong> Este participante figura con un nombre genérico (<code>PARTICIPANTE ...</code>). Ingrese su <strong>Nombre Completo Real</strong> para actualizar su ficha y emitir el certificado correctamente.
+                </div>
+                <label for="inputAprobarPagoNombreReal" class="form-label small fw-bold mb-1">Nombre Completo del Participante <span class="text-danger">*</span></label>
+                <input type="text" class="form-control text-uppercase fw-semibold" id="inputAprobarPagoNombreReal" placeholder="Ej: JUAN CARLOS PÉREZ GÓMEZ">
+              </div>
+            </div>
+
+            <!-- Estado del Curso Académico Vinculado (#cursos) -->
+            <div id="boxEstadoCursoVinculadoAprobar" class="mb-3"></div>
+
+            <!-- Parámetros de Emisión del Certificado (Homólogo a Emisión de Certificados por Taller) -->
+            <div class="card border p-3 bg-white shadow-sm">
+              <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-1 border-bottom pb-2">
+                <h6 class="fw-bold mb-0 text-dark">
+                  <i class="fa-solid fa-calendar-check text-primary me-2"></i>Datos de Emisión del Certificado
+                </h6>
+                <span class="badge bg-info-subtle text-dark border" id="badgeOrigenFechaAprobarPago">Fecha precargada</span>
+              </div>
+
+              <div class="row g-3 mb-3">
+                <div class="col-md-5">
+                  <label for="inputAprobarPagoFechaEmision" class="form-label fw-bold">
+                    Fecha de Emisión / Curso: <span class="text-danger">*</span>
+                  </label>
+                  <input type="date" class="form-control form-control-lg" id="inputAprobarPagoFechaEmision" required>
+                </div>
+                <div class="col-md-7">
+                  <label for="inputAprobarPagoLugarEmision" class="form-label fw-bold">Lugar y Fecha Impresa:</label>
+                  <input type="text" class="form-control form-control-lg" id="inputAprobarPagoLugarEmision" placeholder="PUERTO CABELLO ...">
+                </div>
+              </div>
+
+              <div class="card bg-light border p-2">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div class="form-check form-switch mb-0">
+                    <input class="form-check-input cursor-pointer" type="checkbox" id="checkAprobarPagoTomoFolio">
+                    <label class="form-check-label fw-bold small cursor-pointer text-dark" for="checkAprobarPagoTomoFolio">
+                      <i class="fa-solid fa-book me-1"></i> Asignar Registro de Tomo y Folio (Opcional)
+                    </label>
+                  </div>
+                  <small class="text-muted fw-bold" id="lblStateTomoFolioAprobar">Desactivado</small>
+                </div>
+                <div class="row g-2 mt-1" id="containerAprobarPagoTomoFolio" style="display: none;">
+                  <div class="col-md-6">
+                    <label for="inputAprobarPagoTomo" class="form-label small fw-bold text-dark mb-1">Tomo / Libro:</label>
+                    <input type="text" class="form-control form-control-sm" id="inputAprobarPagoTomo" placeholder="Ej: 005">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="inputAprobarPagoFolio" class="form-label small fw-bold text-dark mb-1">Folio:</label>
+                    <input type="text" class="form-control form-control-sm" id="inputAprobarPagoFolio" placeholder="Ej: 101">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer bg-light">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-success fw-bold px-4" id="btnSubmitAprobarPagoCertificado">
+              <i class="fa-solid fa-certificate me-2"></i> Aprobar Pago y Liberar Certificado
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Configurar Fecha de Emisión de Certificados (1 o Varios Pagos Seleccionados) -->
+  <div class="modal fade" id="modalConfigurarFechaEmisionPagos" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content shadow-lg border-0 rounded-4">
+        <form id="formConfigurarFechaEmisionPagos">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title fw-bold">
+              <i class="fa-solid fa-calendar-check me-2"></i>Configurar Fecha de Emisión del Certificado
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="alert alert-info py-2 px-3 small mb-3">
+              <i class="fa-solid fa-circle-info me-1"></i>
+              Aunque cada participante haya realizado su transferencia en días distintos (<strong>Fecha Pago</strong>), aquí puede asignar una única <strong>Fecha de Emisión del Certificado</strong> al taller o grupo seleccionado. Quedará registrada en la base de datos y se aplicará automáticamente al aprobar el pago.
+            </div>
+
+            <div class="card bg-light border-0 p-3 mb-3">
+              <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                  <span class="text-muted small fw-bold text-uppercase d-block">Registros Seleccionados</span>
+                  <h5 class="fw-bold text-primary mb-0" id="lblConfigFechaCantidadPagos">0 pago(s) seleccionado(s)</h5>
+                </div>
+                <div class="text-end">
+                  <span class="text-muted small fw-bold text-uppercase d-block">Curso(s) / Taller(es) en Selección</span>
+                  <div class="fw-semibold text-dark small" id="lblConfigFechaTalleresResumen">-</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-5">
+                <label for="inputConfigLoteFechaEmision" class="form-label fw-bold">
+                  Fecha de Emisión del Certificado: <span class="text-danger">*</span>
+                </label>
+                <input type="date" class="form-control form-control-lg" id="inputConfigLoteFechaEmision" required>
+              </div>
+              <div class="col-md-7">
+                <label for="inputConfigLoteLugarPreview" class="form-label fw-bold">
+                  Vista Previa Lugar y Fecha Impresa:
+                </label>
+                <input type="text" class="form-control form-control-lg" id="inputConfigLoteLugarPreview" placeholder="PUERTO CABELLO ...">
+              </div>
+            </div>
+
+            <div id="boxConfigLoteActualizarEmitidos" class="card border-warning bg-warning-subtle p-3" style="display: none;">
+              <div class="form-check form-switch mb-0">
+                <input class="form-check-input cursor-pointer" type="checkbox" id="checkConfigLoteActualizarEmitidos" checked>
+                <label class="form-check-label fw-bold small text-dark cursor-pointer" for="checkConfigLoteActualizarEmitidos">
+                  <i class="fa-solid fa-graduation-cap me-1 text-primary"></i>
+                  Actualizar también la fecha de emisión en <span id="lblCountYaEmitidosLote">0</span> certificado(s) que ya fueron emitidos dentro de esta selección.
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer bg-light">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary fw-bold px-4" id="btnGuardarConfigFechaEmisionLote">
+              <i class="fa-solid fa-floppy-disk me-2"></i> Guardar Fecha de Emisión
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Aprobar Pagos Seleccionados en Lote y Liberar Certificados -->
+  <div class="modal fade" id="modalAprobarPagosLote" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content shadow-lg border-0 rounded-4">
+        <form id="formAprobarPagosLote">
+          <div class="modal-header bg-success text-white">
+            <h5 class="modal-title fw-bold">
+              <i class="fa-solid fa-certificate me-2"></i>Aprobar Pagos Seleccionados y Liberar Certificados
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="row g-2 mb-3">
+              <div class="col-md-4">
+                <div class="card bg-light border-0 p-3 h-100">
+                  <span class="text-muted small fw-bold text-uppercase d-block">Pagos a Procesar</span>
+                  <h5 class="fw-bold text-success mb-0" id="lblAprobarLoteTotalPagos">0 pagos</h5>
+                  <small class="text-muted" id="lblAprobarLoteSubPagos">-</small>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="card bg-light border-0 p-3 h-100">
+                  <span class="text-muted small fw-bold text-uppercase d-block">Certificados a Liberar</span>
+                  <h5 class="fw-bold text-primary mb-0" id="lblAprobarLoteTotalCerts">0 nuevos</h5>
+                  <small class="text-muted" id="lblAprobarLoteSubCerts">-</small>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="card bg-light border-0 p-3 h-100">
+                  <span class="text-muted small fw-bold text-uppercase d-block">Curso(s) / Taller(es)</span>
+                  <div class="fw-semibold text-dark small" id="lblAprobarLoteTalleres">-</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Candado de Seguridad en Lote: Corrección de Nombres Genéricos PARTICIPANTE V-... -->
+            <div id="boxNombresGenericosLote" class="alert alert-danger py-2 px-3 mb-3" style="display: none;">
+              <div class="fw-bold small mb-2">
+                <i class="fa-solid fa-shield-halved me-1"></i>
+                Candado de Seguridad Activo: Los siguientes participantes tienen nombre genérico (<code>PARTICIPANTE ...</code>). Ingrese su nombre completo real para aprobarlos y emitir su certificado:
+              </div>
+              <div id="listaInputsNombresGenericosLote" class="d-flex flex-column gap-2"></div>
+            </div>
+
+            <!-- Aviso Opción 1(a) si algún taller aún no está vinculado a #cursos -->
+            <div id="boxAvisoSinCursoLote" class="alert alert-warning py-2 px-3 small mb-3" style="display: none;"></div>
+
+            <!-- Parámetros de Emisión del Certificado en Lote -->
+            <div class="card border p-3 bg-white shadow-sm">
+              <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-1 border-bottom pb-2">
+                <h6 class="fw-bold mb-0 text-dark">
+                  <i class="fa-solid fa-calendar-check text-success me-2"></i>Parámetros de Emisión Masiva
+                </h6>
+                <span class="badge bg-info-subtle text-dark border" id="badgeOrigenFechaAprobarLote">Fecha de emisión</span>
+              </div>
+
+              <!-- Opción cuando existen múltiples fechas individuales ya configuradas -->
+              <div id="boxModoFechasMultiplesLote" class="alert alert-info py-2 px-3 small mb-3" style="display: none;">
+                <div class="form-check form-switch mb-0">
+                  <input class="form-check-input cursor-pointer" type="checkbox" id="checkRespetarFechasIndividualesLote" checked>
+                  <label class="form-check-label fw-bold text-dark cursor-pointer" for="checkRespetarFechasIndividualesLote" id="lblRespetarFechasIndividualesLote">
+                    Respetar la fecha de emisión ya configurada individualmente en cada pago
+                  </label>
+                </div>
+              </div>
+
+              <div class="row g-3 mb-3" id="rowInputsFechaUnicaLote">
+                <div class="col-md-5">
+                  <label for="inputAprobarLoteFechaEmision" class="form-label fw-bold">
+                    Fecha de Emisión / Curso: <span class="text-danger" id="astFechaLoteReq">*</span>
+                  </label>
+                  <input type="date" class="form-control form-control-lg" id="inputAprobarLoteFechaEmision" required>
+                </div>
+                <div class="col-md-7">
+                  <label for="inputAprobarLoteLugarEmision" class="form-label fw-bold">Lugar y Fecha Impresa:</label>
+                  <input type="text" class="form-control form-control-lg" id="inputAprobarLoteLugarEmision" placeholder="Se generará automáticamente al elegir la fecha...">
+                </div>
+              </div>
+
+              <div class="card bg-light border p-2">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div class="form-check form-switch mb-0">
+                    <input class="form-check-input cursor-pointer" type="checkbox" id="checkAprobarLoteTomoFolio">
+                    <label class="form-check-label fw-bold small cursor-pointer text-dark" for="checkAprobarLoteTomoFolio">
+                      <i class="fa-solid fa-book me-1"></i> Asignar Registro de Tomo y Folio Correlativo (Opcional)
+                    </label>
+                  </div>
+                  <small class="text-muted fw-bold" id="lblStateTomoFolioLote">Desactivado</small>
+                </div>
+                <div class="row g-2 mt-1" id="containerAprobarLoteTomoFolio" style="display: none;">
+                  <div class="col-md-4">
+                    <label for="inputAprobarLoteTomo" class="form-label small fw-bold text-dark mb-1">Tomo / Libro:</label>
+                    <input type="text" class="form-control form-control-sm" id="inputAprobarLoteTomo" placeholder="Ej: 005">
+                  </div>
+                  <div class="col-md-4">
+                    <label for="inputAprobarLoteFolio" class="form-label small fw-bold text-dark mb-1">Folio Inicial:</label>
+                    <input type="text" class="form-control form-control-sm" id="inputAprobarLoteFolio" placeholder="Ej: 101">
+                  </div>
+                  <div class="col-md-4">
+                    <label for="inputAprobarLoteLimiteFolio" class="form-label small fw-bold text-dark mb-1">Certificados por Folio:</label>
+                    <input type="number" min="1" max="500" class="form-control form-control-sm" id="inputAprobarLoteLimiteFolio" value="15">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer bg-light">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-success fw-bold px-4" id="btnSubmitAprobarPagosLote">
+              <i class="fa-solid fa-certificate me-2"></i> Aprobar Seleccionados y Liberar Certificados
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
