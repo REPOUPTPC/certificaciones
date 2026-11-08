@@ -19,6 +19,8 @@
   let pagosMasivosParsed = [];
   let pagosSeleccionadosIds = new Set();
   let pagosFiltradosActuales = [];
+  let pagosAprobadosSeleccionadosIds = new Set();
+  let pagosAprobadosFiltradosActuales = [];
   let idsConfigurandoFechaModal = [];
   let idsAprobandoLoteModal = [];
 
@@ -494,13 +496,24 @@
           pagosSeleccionadosIds.delete(selId);
         }
       });
+      pagosAprobadosSeleccionadosIds.forEach(selId => {
+        if (!validIds.has(String(selId))) {
+          pagosAprobadosSeleccionadosIds.delete(selId);
+        }
+      });
 
       actualizarOpcionesFiltroCursoPago();
+      actualizarOpcionesFiltroCursoPagoAprobado();
       actualizarMetricasPagos();
       renderTablaPagosFiltrada();
+      renderTablaPagosAprobadosFiltrada();
     } catch (err) {
       console.error('Error cargando tabla de pagos:', err);
       tbody.innerHTML = '<tr><td colspan="11" class="text-center text-danger py-3"><i class="fa-solid fa-circle-exclamation me-2"></i>Error al cargar los pagos registrados.</td></tr>';
+      const tbodyAprob = document.getElementById('tbodyPagosAprobados');
+      if (tbodyAprob) {
+        tbodyAprob.innerHTML = '<tr><td colspan="11" class="text-center text-danger py-3"><i class="fa-solid fa-circle-exclamation me-2"></i>Error al cargar los pagos aprobados.</td></tr>';
+      }
     }
   }
 
@@ -560,7 +573,9 @@
     const conteoCursos = new Map();
     let sinFechaCount = 0;
 
-    cachedPagos.forEach(p => {
+    const pendientes = cachedPagos.filter(p => !isPagoVerificado(p.status));
+
+    pendientes.forEach(p => {
       const clave = obtenerClaveCursoDePago(p);
       const nombre = obtenerNombreCursoDePago(p);
       if (!conteoCursos.has(clave)) {
@@ -576,10 +591,41 @@
 
     const listaCursos = Array.from(conteoCursos.values()).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
 
-    let html = `<option value="todos">Todos los Cursos / Talleres (${cachedPagos.length})</option>`;
+    let html = `<option value="todos">Todos los Cursos / Talleres (${pendientes.length})</option>`;
     if (sinFechaCount > 0) {
       html += `<option value="__SIN_FECHA__">Sin Fecha de Emisión configurada (${sinFechaCount})</option>`;
     }
+    listaCursos.forEach(item => {
+      const val = `CURSO:${item.clave}`;
+      html += `<option value="${window.utils.escapeHtml(val)}">${window.utils.escapeHtml(item.nombre)} (${item.total})</option>`;
+    });
+
+    sel.innerHTML = html;
+    const existePrev = Array.from(sel.options).some(opt => opt.value === prevVal);
+    sel.value = existePrev ? prevVal : 'todos';
+  }
+
+  function actualizarOpcionesFiltroCursoPagoAprobado() {
+    const sel = document.getElementById('selectFiltroCursoPagoAprobado');
+    if (!sel) return;
+
+    const prevVal = sel.value || 'todos';
+    const conteoCursos = new Map();
+
+    const aprobados = cachedPagos.filter(p => isPagoVerificado(p.status));
+
+    aprobados.forEach(p => {
+      const clave = obtenerClaveCursoDePago(p);
+      const nombre = obtenerNombreCursoDePago(p);
+      if (!conteoCursos.has(clave)) {
+        conteoCursos.set(clave, { clave, nombre, total: 0 });
+      }
+      conteoCursos.get(clave).total++;
+    });
+
+    const listaCursos = Array.from(conteoCursos.values()).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+
+    let html = `<option value="todos">Todos los Cursos / Talleres (${aprobados.length})</option>`;
     listaCursos.forEach(item => {
       const val = `CURSO:${item.clave}`;
       html += `<option value="${window.utils.escapeHtml(val)}">${window.utils.escapeHtml(item.nombre)} (${item.total})</option>`;
@@ -595,17 +641,28 @@
     let pendientes = 0;
     let aprobados = 0;
     let montoTotalAprobadoBs = 0;
+    let certificadosEmitidosCount = 0;
 
     cachedPagos.forEach(p => {
       const isOk = isPagoVerificado(p.status);
       if (isOk) {
         aprobados++;
         montoTotalAprobadoBs += parseFloat(p.monto || 0);
+
+        const ofr = resolverOferta(p.id_curso_ofertado);
+        const cursoAcad = resolverCursoAcademicoDeOferta(ofr);
+        if (cursoAcad && p.id_usuario) {
+          const tieneCert = cachedCertificados.some(c =>
+            String(c.usuario_id) === String(p.id_usuario) && String(c.curso_id) === String(cursoAcad.id)
+          );
+          if (tieneCert) certificadosEmitidosCount++;
+        }
       } else {
         pendientes++;
       }
     });
 
+    // Tarjetas métricas en pestaña de Verificación de Pagos (Pendientes)
     const elTotal = document.getElementById('cardTotalPagos');
     const elPend = document.getElementById('cardPagosPendientes');
     const elAprob = document.getElementById('cardPagosAprobados');
@@ -620,6 +677,27 @@
       const dolares = tasaDolarActual > 0 ? (montoTotalAprobadoBs / tasaDolarActual) : 0;
       elMontoUsd.textContent = `($${dolares.toFixed(2)} USD)`;
     }
+
+    // Tarjetas métricas en pestaña de Pagos Aprobados
+    const elAprobCount = document.getElementById('cardAprobadosCount');
+    const elAprobCert = document.getElementById('cardAprobadosCertificadosCount');
+    const elAprobMontoBs = document.getElementById('cardAprobadosMontoRecaudado');
+    const elAprobMontoUsd = document.getElementById('cardAprobadosMontoDolares');
+
+    if (elAprobCount) elAprobCount.textContent = aprobados;
+    if (elAprobCert) elAprobCert.textContent = certificadosEmitidosCount;
+    if (elAprobMontoBs) elAprobMontoBs.textContent = `${montoTotalAprobadoBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs.`;
+    if (elAprobMontoUsd) {
+      const dolares = tasaDolarActual > 0 ? (montoTotalAprobadoBs / tasaDolarActual) : 0;
+      elAprobMontoUsd.textContent = `($${dolares.toFixed(2)} USD)`;
+    }
+
+    // Badges en las pestañas
+    const badgePend = document.getElementById('badgeCountTabPagosPendientes');
+    if (badgePend) badgePend.textContent = pendientes;
+
+    const badgeAprob = document.getElementById('badgeCountTabPagosAprobados');
+    if (badgeAprob) badgeAprob.textContent = aprobados;
   }
 
   function renderTablaPagosFiltrada() {
@@ -638,8 +716,14 @@
     let filtrados = cachedPagos.filter(p => {
       const isVerificado = isPagoVerificado(p.status);
       
-      if (filtroVal === 'pendientes' && isVerificado) return false;
-      if (filtroVal === 'aprobados' && !isVerificado) return false;
+      // REGLA CRÍTICA: En esta pestaña de Verificación sólo se muestran los pagos pendientes por validar
+      if (isVerificado) return false;
+
+      if (filtroVal === 'sin_fecha') {
+        if (obtenerInfoFechaEmisionPago(p).fecha) return false;
+      } else if (filtroVal === 'con_fecha') {
+        if (!obtenerInfoFechaEmisionPago(p).fecha) return false;
+      }
 
       if (filtroCursoVal === '__SIN_FECHA__') {
         if (obtenerInfoFechaEmisionPago(p).fecha) return false;
@@ -669,7 +753,7 @@
     pagosFiltradosActuales = filtrados;
 
     if (filtrados.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-4"><i class="fa-solid fa-receipt fa-2x mb-2 d-block"></i>No se encontraron pagos con los criterios seleccionados.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-4"><i class="fa-solid fa-clock-rotate-left fa-2x mb-2 text-warning d-block"></i>No se encontraron pagos pendientes por validar con los criterios seleccionados.</td></tr>';
       actualizarEstadoSeleccionPagosUI();
       return;
     }
@@ -681,27 +765,9 @@
       const pagoIdStr = String(p.id);
       const estaSeleccionado = pagosSeleccionadosIds.has(pagoIdStr);
       const usr = usuariosMap[String(p.id_usuario)] || {};
-      const ofr = resolverOferta(p.id_curso_ofertado) || {};
-      const cursoAcad = resolverCursoAcademicoDeOferta(ofr);
       const nombreTaller = obtenerNombreCursoDePago(p);
 
-      const isVerificado = isPagoVerificado(p.status);
-      const certEmitido = (cursoAcad && p.id_usuario)
-        ? cachedCertificados.find(c => String(c.usuario_id) === String(p.id_usuario) && String(c.curso_id) === String(cursoAcad.id))
-        : null;
-
-      let extraCertBadge = '';
-      if (isVerificado) {
-        if (certEmitido) {
-          extraCertBadge = `<div class="mt-1"><button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 font-monospace" style="font-size: 0.75rem;" onclick="window.ofertasModule.verCertificadoEmitido('${window.utils.escapeHtml(certEmitido.id)}')" title="Ver Certificado Liberado"><i class="fa-solid fa-graduation-cap me-1"></i>${window.utils.escapeHtml(certEmitido.codigo)}</button></div>`;
-        } else if (!cursoAcad) {
-          extraCertBadge = `<div class="mt-1"><span class="badge bg-warning-subtle text-dark border border-warning-subtle" style="font-size: 0.7rem;" title="Vincule este taller con su curso en #cursos para liberar el certificado"><i class="fa-solid fa-link-slash me-1"></i>Falta vincular curso</span></div>`;
-        }
-      }
-
-      const statusBadge = isVerificado 
-        ? `<span class="badge bg-success py-2 px-3 fw-bold"><i class="fa-solid fa-circle-check me-1"></i>APROBADO</span>${extraCertBadge}`
-        : '<span class="badge bg-warning text-dark py-2 px-3 fw-bold"><i class="fa-solid fa-clock me-1"></i>PENDIENTE</span>';
+      const statusBadge = '<span class="badge bg-warning text-dark py-2 px-3 fw-bold"><i class="fa-solid fa-clock me-1"></i>PENDIENTE</span>';
 
       const captureTag = p.capture 
         ? `<button class="btn btn-sm btn-outline-info" onclick="window.ofertasModule.verCaptureFull('${window.utils.escapeHtml(p.capture)}', '${window.utils.escapeHtml(usr.nombre_completo || 'Pago')}')" title="Ver Comprobante"><i class="fa-solid fa-image me-1"></i>Capture</button>`
@@ -709,19 +775,11 @@
 
       let botonAprobacion = '';
       if (!esAuditor) {
-        if (!isVerificado) {
-          botonAprobacion = `
-            <button class="btn btn-sm btn-success fw-bold" onclick="window.ofertasModule.aprobarPago('${window.utils.escapeHtml(pagoIdStr)}')" title="Aprobar Pago y Liberar Certificado">
-              <i class="fa-solid fa-check-double me-1"></i>Aprobar
-            </button>
-          `;
-        } else {
-          botonAprobacion = `
-            <button class="btn btn-sm btn-outline-warning" onclick="window.ofertasModule.revertirPago('${window.utils.escapeHtml(pagoIdStr)}')" title="Revertir a Pendiente y Anular Certificado">
-              <i class="fa-solid fa-rotate-left me-1"></i>Revertir
-            </button>
-          `;
-        }
+        botonAprobacion = `
+          <button class="btn btn-sm btn-success fw-bold" onclick="window.ofertasModule.aprobarPago('${window.utils.escapeHtml(pagoIdStr)}')" title="Aprobar Pago y Liberar Certificado">
+            <i class="fa-solid fa-check-double me-1"></i>Aprobar
+          </button>
+        `;
       }
 
       const accionesHtml = esAuditor 
@@ -939,6 +997,343 @@
     renderTablaPagosFiltrada();
   }
 
+  // ═════════════════════════════════════════════════════════════════
+  // SECCIÓN 2.1: TABLA Y GESTIÓN DE PAGOS APROBADOS
+  // ═════════════════════════════════════════════════════════════════
+
+  function renderTablaPagosAprobadosFiltrada() {
+    const tbody = document.getElementById('tbodyPagosAprobados');
+    if (!tbody) return;
+
+    const inputBuscar = document.getElementById('inputBuscarPagoAprobado');
+    const selectCurso = document.getElementById('selectFiltroCursoPagoAprobado');
+    const searchVal = inputBuscar ? inputBuscar.value.trim().toUpperCase() : '';
+    const filtroCursoVal = selectCurso ? selectCurso.value : 'todos';
+
+    const usuariosMap = Object.fromEntries(cachedUsuarios.map(u => [String(u.id), u]));
+
+    let filtrados = cachedPagos.filter(p => {
+      const isVerificado = isPagoVerificado(p.status);
+      
+      // REGLA FUNDAMENTAL: En esta pestaña sólo se muestran los pagos que fueron APROBADOS
+      if (!isVerificado) return false;
+
+      if (filtroCursoVal && filtroCursoVal !== 'todos' && filtroCursoVal.startsWith('CURSO:')) {
+        const claveBuscada = filtroCursoVal.slice(6);
+        if (obtenerClaveCursoDePago(p) !== claveBuscada) return false;
+      }
+
+      if (!searchVal) return true;
+
+      const usr = usuariosMap[String(p.id_usuario)] || {};
+      const ofr = resolverOferta(p.id_curso_ofertado) || {};
+      const cursoAcad = resolverCursoAcademicoDeOferta(ofr);
+      const certEmitido = (cursoAcad && p.id_usuario)
+        ? cachedCertificados.find(c => String(c.usuario_id) === String(p.id_usuario) && String(c.curso_id) === String(cursoAcad.id))
+        : null;
+      const nombreTaller = obtenerNombreCursoDePago(p);
+      const infoFecha = obtenerInfoFechaEmisionPago(p);
+
+      const matchUsuario = String(usr.nombre_completo || '').toUpperCase().includes(searchVal);
+      const matchCedula = String(usr.cedula || '').toUpperCase().includes(searchVal);
+      const matchRef = String(p.numero_transferencia || '').toUpperCase().includes(searchVal);
+      const matchBanco = String(p.banco_origen || '').toUpperCase().includes(searchVal);
+      const matchTaller = String(nombreTaller).toUpperCase().includes(searchVal);
+      const matchFechaPago = String(p.fecha_pago || '').toUpperCase().includes(searchVal);
+      const matchFechaEmision = String(infoFecha.fecha || '').toUpperCase().includes(searchVal);
+      const matchCertCodigo = certEmitido ? String(certEmitido.codigo || '').toUpperCase().includes(searchVal) : false;
+
+      return matchUsuario || matchCedula || matchRef || matchBanco || matchTaller || matchFechaPago || matchFechaEmision || matchCertCodigo;
+    });
+
+    filtrados.sort((a, b) => new Date(b.created_at || b.fecha_pago || 0) - new Date(a.created_at || a.fecha_pago || 0));
+    pagosAprobadosFiltradosActuales = filtrados;
+
+    if (filtrados.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-4"><i class="fa-solid fa-circle-check fa-2x mb-2 text-success d-block"></i>No se encontraron pagos aprobados con los criterios seleccionados.</td></tr>';
+      actualizarEstadoSeleccionPagosAprobadosUI();
+      return;
+    }
+
+    const esAuditor = window.authAdmin && window.authAdmin.isAuditor();
+
+    let html = '';
+    filtrados.forEach(p => {
+      const pagoIdStr = String(p.id);
+      const estaSeleccionado = pagosAprobadosSeleccionadosIds.has(pagoIdStr);
+      const usr = usuariosMap[String(p.id_usuario)] || {};
+      const ofr = resolverOferta(p.id_curso_ofertado) || {};
+      const cursoAcad = resolverCursoAcademicoDeOferta(ofr);
+      const nombreTaller = obtenerNombreCursoDePago(p);
+
+      const certEmitido = (cursoAcad && p.id_usuario)
+        ? cachedCertificados.find(c => String(c.usuario_id) === String(p.id_usuario) && String(c.curso_id) === String(cursoAcad.id))
+        : null;
+
+      let extraCertBadge = '';
+      if (certEmitido) {
+        extraCertBadge = `<div class="mt-1"><button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 font-monospace" style="font-size: 0.75rem;" onclick="window.ofertasModule.verCertificadoEmitido('${window.utils.escapeHtml(certEmitido.id)}')" title="Ver Certificado Liberado"><i class="fa-solid fa-graduation-cap me-1"></i>${window.utils.escapeHtml(certEmitido.codigo)}</button></div>`;
+      } else if (!cursoAcad) {
+        extraCertBadge = `<div class="mt-1"><span class="badge bg-warning-subtle text-dark border border-warning-subtle" style="font-size: 0.7rem;" title="Vincule este taller con su curso en #cursos para liberar el certificado"><i class="fa-solid fa-link-slash me-1"></i>Falta vincular curso</span></div>`;
+      }
+
+      const statusBadge = `<span class="badge bg-success py-2 px-3 fw-bold"><i class="fa-solid fa-circle-check me-1"></i>APROBADO</span>${extraCertBadge}`;
+
+      const captureTag = p.capture 
+        ? `<button class="btn btn-sm btn-outline-info" onclick="window.ofertasModule.verCaptureFull('${window.utils.escapeHtml(p.capture)}', '${window.utils.escapeHtml(usr.nombre_completo || 'Pago')}')" title="Ver Comprobante"><i class="fa-solid fa-image me-1"></i>Capture</button>`
+        : '<span class="text-muted small">Sin Capture</span>';
+
+      const accionesHtml = esAuditor 
+        ? '<span class="badge bg-light text-muted border"><i class="fa-solid fa-lock me-1"></i>Solo Lectura</span>'
+        : `
+          <div class="d-flex align-items-center justify-content-center gap-1">
+            <button class="btn btn-sm btn-outline-warning" onclick="window.ofertasModule.revertirPago('${window.utils.escapeHtml(pagoIdStr)}')" title="Revertir a Pendiente y Anular Certificado">
+              <i class="fa-solid fa-rotate-left me-1"></i>Revertir
+            </button>
+            <button class="btn btn-sm btn-outline-primary" onclick="window.ofertasModule.abrirModalPago('${window.utils.escapeHtml(pagoIdStr)}')" title="Editar Pago">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger" onclick="window.ofertasModule.eliminarPago('${window.utils.escapeHtml(pagoIdStr)}')" title="Eliminar Pago">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        `;
+
+      const infoFecha = obtenerInfoFechaEmisionPago(p);
+      let fechaEmisionColHtml = '';
+      if (infoFecha.fecha) {
+        const claseBadgeFecha = infoFecha.origen === 'certificado'
+          ? 'bg-success-subtle text-success border-success-subtle'
+          : (infoFecha.origen === 'pago' ? 'bg-primary-subtle text-primary border-primary-subtle' : 'bg-info-subtle text-dark border-info-subtle');
+        const btnEditarFechaFila = !esAuditor
+          ? `<button type="button" class="btn btn-link btn-sm p-0 ms-1 text-secondary" onclick="window.ofertasModule.abrirModalConfigurarFechaEmision(['${window.utils.escapeHtml(pagoIdStr)}'])" title="Modificar fecha de emisión de este participante"><i class="fa-solid fa-pen-to-square" style="font-size: 0.78rem;"></i></button>`
+          : '';
+        fechaEmisionColHtml = `
+          <div class="d-inline-flex align-items-center justify-content-center">
+            <span class="badge ${claseBadgeFecha} border px-2 py-1 font-monospace">
+              <i class="fa-solid fa-calendar-check me-1"></i>${window.utils.escapeHtml(infoFecha.fecha)}
+            </span>${btnEditarFechaFila}
+          </div>
+          <div class="text-muted" style="font-size: 0.68rem;">${window.utils.escapeHtml(infoFecha.labelOrigen)}</div>
+        `;
+      } else {
+        fechaEmisionColHtml = esAuditor
+          ? '<span class="badge bg-light text-muted border">Sin asignar</span>'
+          : `<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size: 0.75rem;" onclick="window.ofertasModule.abrirModalConfigurarFechaEmision(['${window.utils.escapeHtml(pagoIdStr)}'])" title="Configurar la fecha de emisión que tendrá este certificado"><i class="fa-solid fa-calendar-plus text-warning me-1"></i>Asignar fecha</button>`;
+      }
+
+      const checkboxColHtml = esAuditor
+        ? '<input type="checkbox" class="form-check-input" disabled>'
+        : `<input type="checkbox" class="form-check-input cursor-pointer check-pago-aprobado-seleccion" data-pago-id="${window.utils.escapeHtml(pagoIdStr)}" ${estaSeleccionado ? 'checked' : ''} title="Seleccionar este pago aprobado">`;
+
+      html += `
+        <tr class="${estaSeleccionado ? 'table-success' : ''}">
+          <td class="align-middle text-center">${checkboxColHtml}</td>
+          <td class="align-middle fw-bold text-dark small font-monospace">${window.utils.escapeHtml(p.fecha_pago || window.utils.formatDate(p.created_at))}</td>
+          <td class="align-middle">
+            <strong class="text-success">${window.utils.escapeHtml(usr.nombre_completo || 'Participante Desconocido')}</strong>
+            <br><small class="text-muted"><i class="fa-solid fa-id-card me-1"></i>${window.utils.escapeHtml(usr.cedula || 'N/A')}</small>
+            ${usr.telefono ? `<br><small><a href="https://wa.me/${usr.telefono.replace(/[^0-9]/g, '')}" target="_blank" class="text-success text-decoration-none fw-semibold" title="Contactar vía WhatsApp"><i class="fa-brands fa-whatsapp me-1"></i>${window.utils.escapeHtml(usr.telefono)}</a></small>` : '<br><small class="text-muted"><i class="fa-solid fa-phone-slash me-1"></i>Sin registrar</small>'}
+          </td>
+          <td class="align-middle font-weight-bold text-wrap small" style="max-width: 200px;">${window.utils.escapeHtml(nombreTaller)}</td>
+          <td class="align-middle text-center">${fechaEmisionColHtml}</td>
+          <td class="align-middle small">${window.utils.escapeHtml(p.banco_origen || 'N/A')}</td>
+          <td class="align-middle text-center font-weight-bold text-success">${parseFloat(p.monto || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.</td>
+          <td class="align-middle text-center"><code>${window.utils.escapeHtml(p.numero_transferencia || 'S/R')}</code></td>
+          <td class="align-middle text-center">${captureTag}</td>
+          <td class="align-middle text-center">${statusBadge}</td>
+          <td class="align-middle text-center">${accionesHtml}</td>
+        </tr>
+      `;
+    });
+
+    tbody.innerHTML = html;
+    actualizarEstadoSeleccionPagosAprobadosUI();
+  }
+
+  function actualizarEstadoSeleccionPagosAprobadosUI() {
+    const totalSel = pagosAprobadosSeleccionadosIds.size;
+    const filtradosCount = pagosAprobadosFiltradosActuales.length;
+    const filtradosSeleccionadosCount = pagosAprobadosFiltradosActuales.filter(p => pagosAprobadosSeleccionadosIds.has(String(p.id))).length;
+    const esAuditor = Boolean(window.authAdmin && window.authAdmin.isAuditor());
+
+    const pagosSelObjs = cachedPagos.filter(p => pagosAprobadosSeleccionadosIds.has(String(p.id)));
+
+    const chkHeader = document.getElementById('checkSeleccionarTodosPagosAprobados');
+    if (chkHeader) {
+      chkHeader.disabled = esAuditor || filtradosCount === 0;
+      chkHeader.checked = filtradosCount > 0 && filtradosSeleccionadosCount === filtradosCount;
+      chkHeader.indeterminate = filtradosSeleccionadosCount > 0 && filtradosSeleccionadosCount < filtradosCount;
+    }
+
+    const badgeToolbarFecha = document.getElementById('badgeCountSeleccionadosToolbarAprobados');
+    if (badgeToolbarFecha) badgeToolbarFecha.textContent = String(totalSel);
+
+    const btnToolbarFecha = document.getElementById('btnAbrirConfigurarFechaLoteAprobados');
+    if (btnToolbarFecha) {
+      btnToolbarFecha.disabled = esAuditor || totalSel === 0;
+    }
+
+    const badgeRevToolbar = document.getElementById('badgeCountRevertirToolbarAprobados');
+    if (badgeRevToolbar) badgeRevToolbar.textContent = String(totalSel);
+
+    const btnRevToolbar = document.getElementById('btnRevertirSeleccionadosToolbarAprobados');
+    if (btnRevToolbar) {
+      btnRevToolbar.disabled = esAuditor || totalSel === 0;
+    }
+
+    const barra = document.getElementById('barraSeleccionPagosAprobadosLote');
+    if (!barra) return;
+
+    if (totalSel === 0) {
+      barra.style.display = 'none';
+      return;
+    }
+
+    barra.style.display = 'flex';
+    const lblCount = document.getElementById('lblCountPagosAprobadosSeleccionadosBarra');
+    if (lblCount) lblCount.textContent = String(totalSel);
+
+    const lblCountRev = document.getElementById('lblCountRevertirBarraAprobados');
+    if (lblCountRev) lblCountRev.textContent = String(totalSel);
+
+    const lblCountElim = document.getElementById('lblCountEliminarBarraAprobados');
+    if (lblCountElim) lblCountEliminarBarraAprobados.textContent = String(totalSel);
+
+    const btnRevBarra = document.getElementById('btnRevertirSeleccionadosBarraAprobados');
+    if (btnRevBarra) btnRevBarra.disabled = esAuditor || totalSel === 0;
+
+    const btnElimBarra = document.getElementById('btnEliminarSeleccionadosBarraAprobados');
+    if (btnElimBarra) btnElimBarra.disabled = esAuditor || totalSel === 0;
+
+    const btnFechaBarra = document.getElementById('btnConfigurarFechaDesdeBarraAprobados');
+    if (btnFechaBarra) btnFechaBarra.disabled = esAuditor || totalSel === 0;
+
+    const talleresUnicos = Array.from(new Set(pagosSelObjs.map(p => obtenerNombreCursoDePago(p))));
+    const resumenTaller = talleresUnicos.length === 1
+      ? ` — ${talleresUnicos[0]}`
+      : (talleresUnicos.length > 1 ? ` — ${talleresUnicos.length} talleres seleccionados` : '');
+
+    const lblResumen = document.getElementById('lblResumenSeleccionPagosAprobados');
+    if (lblResumen) {
+      lblResumen.textContent = `${totalSel === 1 ? 'pago aprobado seleccionado' : 'pagos aprobados seleccionados'}${resumenTaller}`;
+    }
+
+    const btnSelTodosFiltrados = document.getElementById('btnSeleccionarTodosFiltradosPagosAprobados');
+    if (btnSelTodosFiltrados) {
+      if (filtradosCount > 0 && filtradosSeleccionadosCount < filtradosCount) {
+        btnSelTodosFiltrados.style.display = 'inline-block';
+        btnSelTodosFiltrados.innerHTML = `<i class="fa-solid fa-list-check me-1"></i> Seleccionar los ${filtradosCount} filtrados`;
+      } else {
+        btnSelTodosFiltrados.style.display = 'none';
+      }
+    }
+  }
+
+  function toggleSeleccionPagoAprobado(pagoId, checked) {
+    const idStr = String(pagoId || '').trim();
+    if (!idStr) return;
+    if (checked) {
+      pagosAprobadosSeleccionadosIds.add(idStr);
+    } else {
+      pagosAprobadosSeleccionadosIds.delete(idStr);
+    }
+    actualizarEstadoSeleccionPagosAprobadosUI();
+  }
+
+  function toggleSeleccionarTodosAprobadosFiltrados(checked) {
+    pagosAprobadosFiltradosActuales.forEach(p => {
+      const idStr = String(p.id);
+      if (checked) {
+        pagosAprobadosSeleccionadosIds.add(idStr);
+      } else {
+        pagosAprobadosSeleccionadosIds.delete(idStr);
+      }
+    });
+    renderTablaPagosAprobadosFiltrada();
+  }
+
+  function seleccionarTodosFiltradosPagosAprobados() {
+    toggleSeleccionarTodosAprobadosFiltrados(true);
+  }
+
+  function limpiarSeleccionPagosAprobados() {
+    pagosAprobadosSeleccionadosIds.clear();
+    renderTablaPagosAprobadosFiltrada();
+  }
+
+  async function exportarPagosAprobadosCsv() {
+    try {
+      if (!cachedPagos.length) {
+        await cargarTablaPagos();
+      }
+
+      const usuariosMap = Object.fromEntries(cachedUsuarios.map(u => [String(u.id), u]));
+      const aprobados = cachedPagos
+        .filter(p => isPagoVerificado(p.status))
+        .sort((a, b) => new Date(b.created_at || b.fecha_pago || 0) - new Date(a.created_at || a.fecha_pago || 0));
+
+      if (aprobados.length === 0) {
+        window.utils.showToast('No hay declaraciones de pagos aprobados para exportar', 'info');
+        return;
+      }
+
+      const escaparCsv = (valor) => {
+        const s = String(valor ?? '');
+        return /[",\r\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+
+      const resolverUrlCapture = (capture) => {
+        if (!capture) return '';
+        const c = String(capture);
+        if (/^(https?:|data:)/i.test(c)) return c;
+        try { return new URL(c, window.location.origin).href; } catch (e) { return c; }
+      };
+
+      const encabezados = ['cedula', 'nombre_completo', 'curso_ofertado', 'referencia', 'monto', 'banco_origen', 'capture', 'fecha_pago', 'fecha_emision', 'codigo_certificado'];
+      const filas = aprobados.map(p => {
+        const usr = usuariosMap[String(p.id_usuario)] || {};
+        const ofr = resolverOferta(p.id_curso_ofertado) || {};
+        const cursoAcad = resolverCursoAcademicoDeOferta(ofr);
+        const certEmitido = (cursoAcad && p.id_usuario)
+          ? cachedCertificados.find(c => String(c.usuario_id) === String(p.id_usuario) && String(c.curso_id) === String(cursoAcad.id))
+          : null;
+        const nombreTaller = (ofr && ofr.taller) ? ofr.taller : (p.taller || p.curso_ofertado || '');
+        const infoFecha = obtenerInfoFechaEmisionPago(p);
+
+        return [
+          escaparCsv(usr.cedula || ''),
+          escaparCsv(usr.nombre_completo || ''),
+          escaparCsv(nombreTaller),
+          escaparCsv(p.numero_transferencia || ''),
+          escaparCsv(p.monto ?? ''),
+          escaparCsv(p.banco_origen || ''),
+          escaparCsv(resolverUrlCapture(p.capture)),
+          escaparCsv(p.fecha_pago || ''),
+          escaparCsv(infoFecha.fecha || ''),
+          escaparCsv(certEmitido ? certEmitido.codigo : '')
+        ].join(',');
+      });
+
+      const csvContent = '\uFEFF' + [encabezados.join(','), ...filas].join('\r\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const stamp = new Date().toISOString().slice(0, 10);
+      link.download = `pagos_aprobados_uptpc_${stamp}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      window.utils.showToast(`CSV descargado con ${aprobados.length} pagos aprobados`, 'success');
+    } catch (err) {
+      console.error('Error al exportar pagos aprobados a CSV:', err);
+      window.utils.showToast('No se pudo generar el archivo CSV de pagos aprobados', 'danger');
+    }
+  }
+
   function abrirModalConfigurarFechaEmision(idsEspecificos = null) {
     if (window.authAdmin && window.authAdmin.isAuditor()) {
       window.utils.showToast('Acceso restringido: Perfil AUDITOR es de solo lectura.', 'warning');
@@ -1062,6 +1457,8 @@
         if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).hide();
 
         window.utils.showToast(res.message || `Fecha de emisión (${fechaNorm}) configurada en ${idsConfigurandoFechaModal.length} pago(s).`, 'success');
+        pagosSeleccionadosIds.clear();
+        pagosAprobadosSeleccionadosIds.clear();
         await cargarTablaPagos();
         if (res.certificadosActualizados && res.certificadosActualizados.length > 0) {
           sincronizarModulosRelacionados();
@@ -1418,6 +1815,7 @@
         if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).hide();
 
         pagosSeleccionadosIds.clear();
+        pagosAprobadosSeleccionadosIds.clear();
 
         if (res.sinCursoVinculadoCount > 0) {
           window.utils.showToast(res.warning || res.message, 'warning');
@@ -1496,6 +1894,7 @@
           const res = await window.api.bulkRevertirPagos(idsRevertir, { eliminarPago: false });
           if (res && res.status === 'success') {
             pagosSeleccionadosIds.clear();
+        pagosAprobadosSeleccionadosIds.clear();
             window.utils.showToast(res.message || 'Verificación anulada exitosamente.', 'info');
             await cargarTablaPagos();
             sincronizarModulosRelacionados();
@@ -1575,6 +1974,7 @@
           });
           if (res && res.status === 'success') {
             pagosSeleccionadosIds.clear();
+        pagosAprobadosSeleccionadosIds.clear();
             window.utils.showToast(res.message || 'Pagos seleccionados eliminados correctamente.', 'success');
             await cargarTablaPagos();
             if (aprobadosCount > 0 || (res.certificadosAnuladosCount && res.certificadosAnuladosCount > 0)) {
@@ -2735,6 +3135,115 @@
     if (btnEliminarBarra && !btnEliminarBarra.dataset.bound) {
       btnEliminarBarra.dataset.bound = 'true';
       btnEliminarBarra.addEventListener('click', () => eliminarPagosSeleccionados());
+    }
+
+    // Eventos específicos para la pestaña de Pagos Aprobados
+    const btnRefrescarAprob = document.getElementById('btnRefrescarPagosAprobados');
+    if (btnRefrescarAprob && !btnRefrescarAprob.dataset.bound) {
+      btnRefrescarAprob.dataset.bound = 'true';
+      btnRefrescarAprob.addEventListener('click', async () => {
+        if (window.api && typeof window.api.refreshData === 'function') {
+          try { await window.api.refreshData(); } catch (e) {}
+        }
+        await cargarTablaPagos();
+      });
+    }
+
+    const inputBuscarAprob = document.getElementById('inputBuscarPagoAprobado');
+    if (inputBuscarAprob && !inputBuscarAprob.dataset.bound) {
+      inputBuscarAprob.dataset.bound = 'true';
+      inputBuscarAprob.addEventListener('input', () => renderTablaPagosAprobadosFiltrada());
+    }
+
+    const selectFiltroCursoAprob = document.getElementById('selectFiltroCursoPagoAprobado');
+    if (selectFiltroCursoAprob && !selectFiltroCursoAprob.dataset.bound) {
+      selectFiltroCursoAprob.dataset.bound = 'true';
+      selectFiltroCursoAprob.addEventListener('change', () => renderTablaPagosAprobadosFiltrada());
+    }
+
+    const btnExportarAprob = document.getElementById('btnExportarPagosAprobadosCsv');
+    if (btnExportarAprob && !btnExportarAprob.dataset.bound) {
+      btnExportarAprob.dataset.bound = 'true';
+      btnExportarAprob.addEventListener('click', () => exportarPagosAprobadosCsv());
+    }
+
+    const chkTodosPagosAprob = document.getElementById('checkSeleccionarTodosPagosAprobados');
+    if (chkTodosPagosAprob && !chkTodosPagosAprob.dataset.bound) {
+      chkTodosPagosAprob.dataset.bound = 'true';
+      chkTodosPagosAprob.addEventListener('change', (e) => {
+        toggleSeleccionarTodosAprobadosFiltrados(Boolean(e.target.checked));
+      });
+    }
+
+    const tbodyPagosAprobEl = document.getElementById('tbodyPagosAprobados');
+    if (tbodyPagosAprobEl && !tbodyPagosAprobEl.dataset.boundSelection) {
+      tbodyPagosAprobEl.dataset.boundSelection = 'true';
+      tbodyPagosAprobEl.addEventListener('change', (e) => {
+        const chk = e.target.closest('.check-pago-aprobado-seleccion');
+        if (!chk) return;
+        const pagoId = chk.dataset.pagoId;
+        const tr = chk.closest('tr');
+        if (tr) tr.classList.toggle('table-success', Boolean(chk.checked));
+        toggleSeleccionPagoAprobado(pagoId, Boolean(chk.checked));
+      });
+    }
+
+    const btnRevToolbarAprob = document.getElementById('btnRevertirSeleccionadosToolbarAprobados');
+    if (btnRevToolbarAprob && !btnRevToolbarAprob.dataset.bound) {
+      btnRevToolbarAprob.dataset.bound = 'true';
+      btnRevToolbarAprob.addEventListener('click', () => revertirPagosSeleccionados(Array.from(pagosAprobadosSeleccionadosIds)));
+    }
+
+    const btnConfigToolbarAprob = document.getElementById('btnAbrirConfigurarFechaLoteAprobados');
+    if (btnConfigToolbarAprob && !btnConfigToolbarAprob.dataset.bound) {
+      btnConfigToolbarAprob.dataset.bound = 'true';
+      btnConfigToolbarAprob.addEventListener('click', () => abrirModalConfigurarFechaEmision(Array.from(pagosAprobadosSeleccionadosIds)));
+    }
+
+    const btnSelFiltradosAprob = document.getElementById('btnSeleccionarTodosFiltradosPagosAprobados');
+    if (btnSelFiltradosAprob && !btnSelFiltradosAprob.dataset.bound) {
+      btnSelFiltradosAprob.dataset.bound = 'true';
+      btnSelFiltradosAprob.addEventListener('click', () => seleccionarTodosFiltradosPagosAprobados());
+    }
+
+    const btnLimpiarSelAprob = document.getElementById('btnLimpiarSeleccionPagosAprobados');
+    if (btnLimpiarSelAprob && !btnLimpiarSelAprob.dataset.bound) {
+      btnLimpiarSelAprob.dataset.bound = 'true';
+      btnLimpiarSelAprob.addEventListener('click', () => limpiarSeleccionPagosAprobados());
+    }
+
+    const btnRevBarraAprob = document.getElementById('btnRevertirSeleccionadosBarraAprobados');
+    if (btnRevBarraAprob && !btnRevBarraAprob.dataset.bound) {
+      btnRevBarraAprob.dataset.bound = 'true';
+      btnRevBarraAprob.addEventListener('click', () => revertirPagosSeleccionados(Array.from(pagosAprobadosSeleccionadosIds)));
+    }
+
+    const btnConfigDesdeBarraAprob = document.getElementById('btnConfigurarFechaDesdeBarraAprobados');
+    if (btnConfigDesdeBarraAprob && !btnConfigDesdeBarraAprob.dataset.bound) {
+      btnConfigDesdeBarraAprob.dataset.bound = 'true';
+      btnConfigDesdeBarraAprob.addEventListener('click', () => abrirModalConfigurarFechaEmision(Array.from(pagosAprobadosSeleccionadosIds)));
+    }
+
+    const btnElimBarraAprob = document.getElementById('btnEliminarSeleccionadosBarraAprobados');
+    if (btnElimBarraAprob && !btnElimBarraAprob.dataset.bound) {
+      btnElimBarraAprob.dataset.bound = 'true';
+      btnElimBarraAprob.addEventListener('click', () => eliminarPagosSeleccionados(Array.from(pagosAprobadosSeleccionadosIds)));
+    }
+
+    const tabAprobBtn = document.getElementById('tab-pagos-aprobados-tab');
+    if (tabAprobBtn && !tabAprobBtn.dataset.boundTab) {
+      tabAprobBtn.dataset.boundTab = 'true';
+      tabAprobBtn.addEventListener('shown.bs.tab', () => {
+        renderTablaPagosAprobadosFiltrada();
+      });
+    }
+
+    const tabPendBtn = document.getElementById('tab-pagos-tab');
+    if (tabPendBtn && !tabPendBtn.dataset.boundTab) {
+      tabPendBtn.dataset.boundTab = 'true';
+      tabPendBtn.addEventListener('shown.bs.tab', () => {
+        renderTablaPagosFiltrada();
+      });
     }
 
     const formAprobarLote = document.getElementById('formAprobarPagosLote');
@@ -3946,6 +4455,8 @@
     init,
     cargarTablaOfertas,
     cargarTablaPagos,
+    renderTablaPagosFiltrada,
+    renderTablaPagosAprobadosFiltrada,
     aprobarPago,
     revertirPago,
     abrirModalAprobarPagosLote,
@@ -3957,6 +4468,11 @@
     toggleSeleccionPago,
     toggleSeleccionarTodosFiltrados,
     limpiarSeleccionPagos,
+    toggleSeleccionPagoAprobado,
+    toggleSeleccionarTodosAprobadosFiltrados,
+    seleccionarTodosFiltradosPagosAprobados,
+    limpiarSeleccionPagosAprobados,
+    exportarPagosAprobadosCsv,
     abrirModalPago,
     guardarPagoManual,
     eliminarPago,

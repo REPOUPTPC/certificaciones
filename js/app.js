@@ -109,6 +109,7 @@
     const hashMap = {
       '#dashboard': 'secDashboard',
       '#ofertas': 'secOfertas',
+      '#pagos-aprobados': 'secOfertas',
       '#usuarios': 'secUsuarios',
       '#unidades': 'secUnidades',
       '#firmas': 'secFirmas',
@@ -173,7 +174,14 @@
             break;
           case 'secOfertas':
             if (window.ofertasModule) await window.ofertasModule.init();
-            if (window.authAdmin && window.authAdmin.isAdministradora && window.authAdmin.isAdministradora()) {
+            if (window.location.hash === '#pagos-aprobados') {
+              setTimeout(() => {
+                const tabAprobadosBtn = document.getElementById('tab-pagos-aprobados-tab');
+                if (tabAprobadosBtn && typeof bootstrap !== 'undefined') {
+                  bootstrap.Tab.getOrCreateInstance(tabAprobadosBtn).show();
+                }
+              }, 100);
+            } else if (window.authAdmin && window.authAdmin.isAdministradora && window.authAdmin.isAdministradora()) {
               setTimeout(() => {
                 const tabPagosBtn = document.getElementById('tab-pagos-tab');
                 if (tabPagosBtn && typeof bootstrap !== 'undefined') {
@@ -304,7 +312,14 @@
             break;
           case 'secOfertas':
             if (window.ofertasModule) await window.ofertasModule.init();
-            if (window.authAdmin && window.authAdmin.isAdministradora && window.authAdmin.isAdministradora()) {
+            if (window.location.hash === '#pagos-aprobados') {
+              setTimeout(() => {
+                const tabAprobadosBtn = document.getElementById('tab-pagos-aprobados-tab');
+                if (tabAprobadosBtn && typeof bootstrap !== 'undefined') {
+                  bootstrap.Tab.getOrCreateInstance(tabAprobadosBtn).show();
+                }
+              }, 100);
+            } else if (window.authAdmin && window.authAdmin.isAdministradora && window.authAdmin.isAdministradora()) {
               setTimeout(() => {
                 const tabPagosBtn = document.getElementById('tab-pagos-tab');
                 if (tabPagosBtn && typeof bootstrap !== 'undefined') {

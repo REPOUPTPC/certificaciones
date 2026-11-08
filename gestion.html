@@ -333,8 +333,15 @@
             </button>
           </li>
           <li class="nav-item" role="presentation">
-            <button class="nav-link fw-bold text-success" id="tab-pagos-tab" data-bs-toggle="tab" data-bs-target="#tab-pagos" type="button" role="tab">
-              <i class="fa-solid fa-receipt me-2"></i>Verificación de Pagos
+            <button class="nav-link fw-bold text-warning" id="tab-pagos-tab" data-bs-toggle="tab" data-bs-target="#tab-pagos" type="button" role="tab">
+              <i class="fa-solid fa-clock-rotate-left me-2"></i>Verificación de Pagos
+              <span class="badge bg-warning text-dark ms-1" id="badgeCountTabPagosPendientes">0</span>
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold text-success" id="tab-pagos-aprobados-tab" data-bs-toggle="tab" data-bs-target="#tab-pagos-aprobados" type="button" role="tab">
+              <i class="fa-solid fa-circle-check me-2"></i>Pagos Aprobados
+              <span class="badge bg-success ms-1" id="badgeCountTabPagosAprobados">0</span>
             </button>
           </li>
         </ul>
@@ -440,9 +447,10 @@
                 </div>
                 <div class="col-lg-4 col-md-12">
                   <select class="form-select" id="selectFiltroEstatusPago">
-                    <option value="todos">Todos los Estados</option>
-                    <option value="pendientes">Pendientes por Validar</option>
-                    <option value="aprobados">Aprobados / Confirmados</option>
+                    <option value="todos">Todos los Pendientes por Validar</option>
+                    <option value="sin_fecha">Pendientes sin Fecha de Emisión</option>
+                    <option value="con_fecha">Pendientes con Fecha de Emisión</option>
+                    <option value="pendientes" class="d-none">Pendientes por Validar</option>
                   </select>
                 </div>
               </div>
@@ -525,6 +533,146 @@
                 </thead>
                 <tbody id="tbodyPagosAdministracion">
                   <tr><td colspan="11" class="text-center text-muted py-4">Cargando declaraciones de pagos...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- TAB 3: PAGOS APROBADOS Y CERTIFICADOS -->
+          <div class="tab-pane fade" id="tab-pagos-aprobados" role="tabpanel">
+            <!-- Tarjetas de Métricas de Pagos Aprobados -->
+            <div class="row g-3 mb-4">
+              <div class="col-md-4">
+                <div class="card border-0 shadow-sm p-3 bg-light">
+                  <div class="d-flex align-items-center">
+                    <div class="bg-success text-white p-3 rounded-3 me-3">
+                      <i class="fa-solid fa-circle-check fa-xl"></i>
+                    </div>
+                    <div>
+                      <small class="text-muted fw-bold text-uppercase d-block">Pagos Aprobados</small>
+                      <h4 class="fw-bold mb-0 text-success" id="cardAprobadosCount">0</h4>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="card border-0 shadow-sm p-3 bg-light">
+                  <div class="d-flex align-items-center">
+                    <div class="bg-primary text-white p-3 rounded-3 me-3">
+                      <i class="fa-solid fa-graduation-cap fa-xl"></i>
+                    </div>
+                    <div>
+                      <small class="text-muted fw-bold text-uppercase d-block">Certificados Emitidos</small>
+                      <h4 class="fw-bold mb-0 text-primary" id="cardAprobadosCertificadosCount">0</h4>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="card border-0 shadow-sm p-3 bg-light">
+                  <div class="d-flex align-items-center">
+                    <div class="bg-info text-white p-3 rounded-3 me-3">
+                      <i class="fa-solid fa-money-bill-wave fa-xl"></i>
+                    </div>
+                    <div>
+                      <small class="text-muted fw-bold text-uppercase d-block">Monto Validado Total</small>
+                      <h5 class="fw-bold mb-0 text-dark" id="cardAprobadosMontoRecaudado">0.00 Bs.</h5>
+                      <small class="text-muted" id="cardAprobadosMontoDolares">($0.00 USD)</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Barra de Herramientas y Filtros para Pagos Aprobados -->
+            <div class="bg-white p-3 rounded border mb-3">
+              <div class="row g-2 align-items-center">
+                <div class="col-lg-6 col-md-6">
+                  <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="fa-solid fa-magnifying-glass"></i></span>
+                    <input type="text" class="form-control" id="inputBuscarPagoAprobado" placeholder="Buscar por cédula, nombre, referencia, código de certificado...">
+                  </div>
+                </div>
+                <div class="col-lg-6 col-md-6">
+                  <div class="input-group">
+                    <span class="input-group-text bg-light text-primary" title="Filtrar por Curso / Taller"><i class="fa-solid fa-graduation-cap"></i></span>
+                    <select class="form-select fw-semibold" id="selectFiltroCursoPagoAprobado">
+                      <option value="todos">Todos los Cursos / Talleres</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3 pt-2 border-top">
+                <div class="d-flex align-items-center flex-wrap gap-2">
+                  <button class="btn btn-outline-secondary btn-sm" id="btnRefrescarPagosAprobados" title="Sincronizar pagos desde base de datos">
+                    <i class="fa-solid fa-arrows-rotate me-1"></i> Actualizar
+                  </button>
+                  <button class="btn btn-warning btn-sm fw-bold text-dark" id="btnRevertirSeleccionadosToolbarAprobados" disabled title="Revertir los pagos aprobados seleccionados a PENDIENTE y anular sus certificados">
+                    <i class="fa-solid fa-rotate-left me-1"></i> Anular Verificación
+                    <span class="badge bg-white text-dark ms-1" id="badgeCountRevertirToolbarAprobados">0</span>
+                  </button>
+                  <button class="btn btn-indigo btn-primary btn-sm fw-bold" id="btnAbrirConfigurarFechaLoteAprobados" disabled title="Configurar fecha de emisión de los aprobados seleccionados">
+                    <i class="fa-solid fa-calendar-days me-1"></i> Configurar Fecha Emisión
+                    <span class="badge bg-white text-primary ms-1" id="badgeCountSeleccionadosToolbarAprobados">0</span>
+                  </button>
+                </div>
+
+                <div class="d-flex align-items-center flex-wrap gap-2">
+                  <button class="btn btn-outline-success btn-sm fw-bold" id="btnExportarPagosAprobadosCsv" title="Descargar CSV con el listado de PAGOS APROBADOS y sus certificados">
+                    <i class="fa-solid fa-file-excel me-1"></i> Descargar Aprobados (CSV)
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Barra Contextual de Acciones Masivas sobre Pagos Aprobados Seleccionados -->
+            <div id="barraSeleccionPagosAprobadosLote" class="alert alert-success d-flex justify-content-between align-items-center flex-wrap gap-2 py-2 px-3 mb-3 shadow-sm border-success" style="display: none;">
+              <div class="d-flex align-items-center flex-wrap gap-2">
+                <span class="badge bg-success fs-6"><i class="fa-solid fa-check-square me-1"></i><span id="lblCountPagosAprobadosSeleccionadosBarra">0</span></span>
+                <span class="fw-semibold text-dark small" id="lblResumenSeleccionPagosAprobados">pagos aprobados seleccionados</span>
+                <button type="button" class="btn btn-sm btn-outline-success bg-white fw-semibold py-0 px-2" id="btnSeleccionarTodosFiltradosPagosAprobados">
+                  <i class="fa-solid fa-list-check me-1"></i> Seleccionar todos los filtrados
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary bg-white py-0 px-2" id="btnLimpiarSeleccionPagosAprobados" title="Quitar selección">
+                  <i class="fa-solid fa-xmark me-1"></i> Limpiar
+                </button>
+              </div>
+              <div class="d-flex align-items-center flex-wrap gap-2">
+                <button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-sm" id="btnRevertirSeleccionadosBarraAprobados" title="Anular verificación de pagos aprobados y anular sus certificados emitidos">
+                  <i class="fa-solid fa-rotate-left me-1"></i> Anular Verificación (<span id="lblCountRevertirBarraAprobados">0</span>)
+                </button>
+                <button type="button" class="btn btn-sm btn-primary fw-bold shadow-sm" id="btnConfigurarFechaDesdeBarraAprobados" title="Asignar fecha de emisión a los seleccionados">
+                  <i class="fa-solid fa-calendar-check me-1"></i> Fecha de Emisión
+                </button>
+                <button type="button" class="btn btn-sm btn-danger fw-bold shadow-sm" id="btnEliminarSeleccionadosBarraAprobados" title="Eliminar permanentemente los pagos seleccionados">
+                  <i class="fa-solid fa-trash me-1"></i> Eliminar (<span id="lblCountEliminarBarraAprobados">0</span>)
+                </button>
+              </div>
+            </div>
+
+            <!-- Tabla de Pagos Aprobados -->
+            <div class="table-responsive">
+              <table class="table table-hover align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th class="text-center" style="width: 42px;">
+                      <input type="checkbox" class="form-check-input cursor-pointer" id="checkSeleccionarTodosPagosAprobados" title="Seleccionar o deseleccionar todos los pagos aprobados mostrados">
+                    </th>
+                    <th>Fecha Pago</th>
+                    <th>Usuario / Participante</th>
+                    <th>Curso Ofertado</th>
+                    <th class="text-center" style="min-width: 155px;">Fecha Emisión<br><small class="text-muted fw-normal">(Certificado)</small></th>
+                    <th>Banco Origen</th>
+                    <th class="text-center">Monto (Bs.)</th>
+                    <th class="text-center">N° Referencia</th>
+                    <th class="text-center">Capture</th>
+                    <th class="text-center">Estatus y Certificación</th>
+                    <th class="text-center" style="min-width: 160px;">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyPagosAprobados">
+                  <tr><td colspan="11" class="text-center text-muted py-4">Cargando pagos aprobados...</td></tr>
                 </tbody>
               </table>
             </div>
