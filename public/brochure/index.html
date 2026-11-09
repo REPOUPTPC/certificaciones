@@ -1112,11 +1112,14 @@
         (function() {
             'use strict';
 
-            // Configurar Worker de PDF.js (con fallback inteligente)
+            // Configurar Worker de PDF.js (con fallback inteligente y prioridad local)
             if (typeof pdfjsLib !== 'undefined') {
-                pdfjsLib.GlobalWorkerOptions.workerSrc = (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-                    ? 'pdf.worker.min.js'
-                    : 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+                try {
+                    const localWorkerUrl = new URL('pdf.worker.min.js', window.location.href).href;
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = localWorkerUrl;
+                } catch (e) {
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdf.worker.min.js';
+                }
             }
 
             // Detección de URL del PDF (Cloudflare R2 como origen oficial)

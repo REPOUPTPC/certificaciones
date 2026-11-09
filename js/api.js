@@ -784,6 +784,10 @@
       return this.get('getBrochureInfo');
     },
 
+    async getBrochureUploadUrl() {
+      return this.get('getBrochureUploadUrl');
+    },
+
     async uploadBrochure(pdfData, filename = 'brochure.pdf') {
       return this.post('uploadBrochure', { pdfData, filename });
     },
@@ -881,6 +885,14 @@
             url: 'brochure/index.html',
             size: 2154300,
             lastModified: new Date().toISOString()
+          };
+        }
+
+        case 'getBrochureUploadUrl': {
+          return {
+            status: 'success',
+            uploadUrl: null,
+            publicUrl: 'brochure/index.html'
           };
         }
 

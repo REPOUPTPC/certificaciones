@@ -1,5 +1,6 @@
 require('dotenv').config();
 const { S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const mime = require('mime-types');
 
 const s3 = new S3Client({
@@ -142,6 +143,45 @@ async function uploadBrochurePdf(pdfData, originalFilename = 'brochure.pdf') {
 }
 
 /**
+ * Genera URLs firmadas (Presigned URLs) para subir directamente el PDF a Cloudflare R2
+ * evitando los límites de tamaño de payload (4.5 MB) de funciones serverless en Vercel
+ */
+async function getBrochureUploadPresignedUrl(expiresIn = 900) {
+  const primaryKey = 'brochure/brochure.pdf';
+  const capitalKey = 'brochure/Brochure.pdf';
+
+  const cmdPrimary = new PutObjectCommand({
+    Bucket: BUCKET,
+    Key: primaryKey,
+    ContentType: 'application/pdf',
+    CacheControl: 'no-cache, no-store, must-revalidate',
+    ContentDisposition: 'inline; filename="brochure.pdf"'
+  });
+
+  const cmdCapital = new PutObjectCommand({
+    Bucket: BUCKET,
+    Key: capitalKey,
+    ContentType: 'application/pdf',
+    CacheControl: 'no-cache, no-store, must-revalidate',
+    ContentDisposition: 'inline; filename="Brochure.pdf"'
+  });
+
+  const [uploadUrl, uploadUrlCapital] = await Promise.all([
+    getSignedUrl(s3, cmdPrimary, { expiresIn }),
+    getSignedUrl(s3, cmdCapital, { expiresIn })
+  ]);
+
+  return {
+    status: 'success',
+    uploadUrl,
+    uploadUrlCapital,
+    publicUrl: `${PUBLIC_URL}/${primaryKey}`,
+    key: primaryKey,
+    expiresIn
+  };
+}
+
+/**
  * Consulta el estado y metadatos del PDF del Brochure en Cloudflare R2
  */
 async function getBrochureStatus() {
@@ -192,6 +232,7 @@ module.exports = {
   s3,
   uploadBase64Image,
   uploadBrochurePdf,
+  getBrochureUploadPresignedUrl,
   getBrochureStatus,
   deleteObjectFromR2,
   PUBLIC_URL,

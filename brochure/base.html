@@ -164,9 +164,19 @@
 
     <script>
         $(document).ready(function() {
-            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+            try {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdf.worker.min.js', window.location.href).href;
+            } catch (e) {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdf.worker.min.js';
+            }
             
-            const pdfUrl = 'https://pub-1a8a6736c07b4083b58438c05d3c94b6.r2.dev/archivo_comprimido.pdf';
+            const urlParams = new URLSearchParams(window.location.search);
+            const customPdf = urlParams.get('pdf');
+            const cacheBuster = urlParams.get('v') || urlParams.get('t');
+            let pdfUrl = customPdf || 'https://pub-b61fc0d596e8472a9cda031c9e80faeb.r2.dev/brochure/brochure.pdf';
+            if (cacheBuster && !customPdf) {
+                pdfUrl += (pdfUrl.includes('?') ? '&' : '?') + `v=${encodeURIComponent(cacheBuster)}`;
+            }
             
             let pdfDoc = null;
             let pageCount = 0;

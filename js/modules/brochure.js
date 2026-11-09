@@ -424,10 +424,11 @@ window.brochureModule = (function() {
     if (btnSubir) btnSubir.disabled = true;
 
     try {
-      const arrayBuffer = await file.arrayBuffer();
       const doOptimize = checkOptimizar ? checkOptimizar.checked : true;
+      const isVeryLarge = file.size > 15 * 1024 * 1024; // > 15 MB
 
-      if (doOptimize && typeof PDFLib !== 'undefined') {
+      if (doOptimize && !isVeryLarge && typeof PDFLib !== 'undefined') {
+        const arrayBuffer = await file.arrayBuffer();
         const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
         const pageCount = pdfDoc.getPageCount();
         lblPaginas.textContent = `${pageCount} págs`;
@@ -450,16 +451,16 @@ window.brochureModule = (function() {
           lblAhorro.className = 'text-success fw-bold';
           lblAhorro.textContent = `-${ahorroPct}%`;
         } else {
-          // Si el archivo ya estaba comprimido al máximo
           lblAhorro.className = 'text-primary fw-bold';
           lblAhorro.textContent = 'Óptimo';
         }
       } else {
-        // Sin optimización adicional
-        optimizedPdfBytes = new Uint8Array(arrayBuffer);
+        // Para archivos grandes o sin optimizador: pasar directo en stream binario
+        optimizedPdfBytes = null;
         lblTamanoOpt.textContent = formatBytes(file.size);
-        lblAhorro.textContent = '0%';
-        lblPaginas.textContent = 'PDF estándar';
+        lblAhorro.className = 'text-info fw-bold';
+        lblAhorro.textContent = isVeryLarge ? 'Stream Directo R2' : 'Original';
+        lblPaginas.textContent = 'PDF Completo';
       }
 
       if (btnSubir) {
@@ -467,10 +468,8 @@ window.brochureModule = (function() {
         btnSubir.innerHTML = `<i class="fa-solid fa-cloud-arrow-up me-2"></i>Subir "${file.name}" a R2 como "brochure.pdf"`;
       }
     } catch (err) {
-      console.error('Error al procesar el archivo PDF:', err);
-      // Fallback: usar el archivo directo
-      const arrayBuffer = await file.arrayBuffer();
-      optimizedPdfBytes = new Uint8Array(arrayBuffer);
+      console.warn('Aviso al optimizar PDF:', err.message);
+      optimizedPdfBytes = null;
       lblTamanoOpt.textContent = formatBytes(file.size);
       lblAhorro.textContent = 'Original';
       lblPaginas.textContent = 'PDF';
@@ -482,10 +481,43 @@ window.brochureModule = (function() {
   }
 
   /**
-   * Ejecuta la subida hacia Cloudflare R2 mediante la API
+   * Helper para subir binario directamente a Cloudflare R2 vía Presigned URL (sin límite de payload Vercel)
+   */
+  function uploadViaPresignedUrl(url, data, onProgress) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', url, true);
+      xhr.setRequestHeader('Content-Type', 'application/pdf');
+
+      if (xhr.upload && onProgress) {
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable && e.total > 0) {
+            const pct = Math.round((e.loaded / e.total) * 100);
+            onProgress(pct, e.loaded, e.total);
+          }
+        };
+      }
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(true);
+        } else {
+          reject(new Error(`Error Cloudflare R2 (${xhr.status}): ${xhr.statusText || 'Error en subida'}`));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error('Fallo de red al conectar con Cloudflare R2'));
+      xhr.ontimeout = () => reject(new Error('Tiempo de espera agotado al conectar con Cloudflare R2'));
+
+      xhr.send(data);
+    });
+  }
+
+  /**
+   * Ejecuta la subida hacia Cloudflare R2 mediante canal directo o API
    */
   async function ejecutarSubidaR2() {
-    if (!optimizedPdfBytes || isUploading) return;
+    if (!selectedFile || isUploading) return;
 
     const btnSubir = document.getElementById('btnSubirBrochure');
     const boxProgreso = document.getElementById('boxProgresoSubida');
@@ -504,37 +536,76 @@ window.brochureModule = (function() {
     };
 
     try {
-      updateProgress(20, 'Codificando documento optimizado...');
-      await new Promise(r => setTimeout(r, 60));
+      updateProgress(10, 'Obteniendo canal de subida directa a Cloudflare R2...');
 
-      const base64Data = uint8ArrayToBase64(optimizedPdfBytes);
+      // Payload binario (Blob o File)
+      const payloadData = optimizedPdfBytes
+        ? new Blob([optimizedPdfBytes], { type: 'application/pdf' })
+        : selectedFile;
 
-      updateProgress(50, 'Enviando y sustituyendo en Cloudflare R2 (brochure/brochure.pdf)...');
-      await new Promise(r => setTimeout(r, 60));
+      let signedRes = null;
+      try {
+        signedRes = await window.api.getBrochureUploadUrl();
+      } catch (errSig) {
+        console.warn('No se pudo obtener URL firmada directa, probando método secundario:', errSig.message);
+      }
 
-      const res = await window.api.uploadBrochure(base64Data, 'brochure.pdf');
+      if (signedRes && signedRes.uploadUrl) {
+        // MÉTODO PRINCIPAL: Subida binaria directa a Cloudflare R2 (sin límite de 4.5 MB de Vercel)
+        updateProgress(20, 'Iniciando subida directa a Cloudflare R2...');
 
-      if (res && (res.status === 'success' || res.url)) {
-        updateProgress(100, '¡Documento brochure.pdf actualizado exitosamente!');
+        await uploadViaPresignedUrl(signedRes.uploadUrl, payloadData, (pct, loaded, total) => {
+          const mbLoaded = (loaded / (1024 * 1024)).toFixed(1);
+          const mbTotal = (total / (1024 * 1024)).toFixed(1);
+          const uiPct = Math.min(95, 20 + Math.round(pct * 0.75));
+          updateProgress(uiPct, `Subiendo a Cloudflare R2: ${pct}% (${mbLoaded} MB de ${mbTotal} MB)...`);
+        });
 
-        if (window.utils && window.utils.showToast) {
-          window.utils.showToast('¡Brochure actualizado exitosamente en Cloudflare R2!', 'success');
+        // Sincronizar copia con Brochure.pdf si existe la URL secundaria
+        if (signedRes.uploadUrlCapital) {
+          try {
+            await uploadViaPresignedUrl(signedRes.uploadUrlCapital, payloadData);
+          } catch (errCap) {
+            console.warn('Aviso: copia Brochure.pdf omitida:', errCap.message);
+          }
         }
 
-        // Refrescar metadatos y visor
-        await cargarInfoBrochure();
-        actualizarIframePreview();
-
-        setTimeout(() => {
-          if (boxProgreso) boxProgreso.classList.add('d-none');
-          if (btnSubir) {
-            btnSubir.disabled = false;
-            btnSubir.innerHTML = `<i class="fa-solid fa-check me-2"></i>Brochure Actualizado`;
-          }
-        }, 1500);
+        updateProgress(100, '¡Documento brochure.pdf actualizado exitosamente en Cloudflare R2!');
       } else {
-        throw new Error(res.message || 'No se recibió confirmación de Cloudflare R2');
+        // MÉTODO FALLBACK: Para archivos pequeños si no hay presigned URL
+        const bytesToEncode = optimizedPdfBytes || new Uint8Array(await selectedFile.arrayBuffer());
+        if (bytesToEncode.byteLength > 4 * 1024 * 1024) {
+          throw new Error('El archivo supera los 4 MB y requiere subida directa a R2. Por favor actualiza la página o verifica la conexión.');
+        }
+
+        updateProgress(35, 'Codificando documento...');
+        const base64Data = uint8ArrayToBase64(bytesToEncode);
+
+        updateProgress(65, 'Enviando a Cloudflare R2...');
+        const res = await window.api.uploadBrochure(base64Data, 'brochure.pdf');
+
+        if (!res || (res.status !== 'success' && !res.url)) {
+          throw new Error(res.message || 'No se recibió confirmación de Cloudflare R2');
+        }
+
+        updateProgress(100, '¡Documento actualizado exitosamente!');
       }
+
+      if (window.utils && window.utils.showToast) {
+        window.utils.showToast('¡Brochure actualizado exitosamente en Cloudflare R2!', 'success');
+      }
+
+      // Refrescar metadatos y visor con nuevo timestamp
+      await cargarInfoBrochure();
+      actualizarIframePreview();
+
+      setTimeout(() => {
+        if (boxProgreso) boxProgreso.classList.add('d-none');
+        if (btnSubir) {
+          btnSubir.disabled = false;
+          btnSubir.innerHTML = `<i class="fa-solid fa-check me-2"></i>Brochure Actualizado`;
+        }
+      }, 1500);
     } catch (err) {
       console.error('Error al subir el brochure a Cloudflare R2:', err);
       updateProgress(0, 'Error en la subida');

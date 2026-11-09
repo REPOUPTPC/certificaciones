@@ -117,6 +117,10 @@ module.exports = async function handler(req, res) {
           result = await services.getBrochureInfo();
           break;
 
+        case 'getBrochureUploadUrl':
+          result = await services.getBrochureUploadUrl();
+          break;
+
         case 'listFuentesExternas':
           result = await services.listFuentesExternas();
           break;
@@ -268,6 +272,10 @@ module.exports = async function handler(req, res) {
 
         case 'getBrochureInfo':
           result = await services.getBrochureInfo();
+          break;
+
+        case 'getBrochureUploadUrl':
+          result = await services.getBrochureUploadUrl();
           break;
 
         case 'listFuentesExternas':
