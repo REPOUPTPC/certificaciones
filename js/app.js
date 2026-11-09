@@ -87,6 +87,9 @@
             case 'secConsultas':
               if (window.consultasModule) await window.consultasModule.init();
               break;
+            case 'secBrochure':
+              if (window.brochureModule) await window.brochureModule.init();
+              break;
             case 'secAdministradores':
               if (window.authAdmin) await window.authAdmin.cargarTablaAdministradores();
               break;
@@ -117,6 +120,7 @@
       '#certificados': 'secCertificados',
       '#disenador': 'secDisenador',
       '#consultas': 'secConsultas',
+      '#brochure': 'secBrochure',
       '#administradores': 'secAdministradores',
       '#mantenimiento': 'secMantenimiento',
       '#configuracion': 'secConfiguracion'
@@ -210,6 +214,9 @@
             break;
           case 'secConsultas':
             if (window.consultasModule) await window.consultasModule.init();
+            break;
+          case 'secBrochure':
+            if (window.brochureModule) await window.brochureModule.init();
             break;
           case 'secAdministradores':
             if (window.authAdmin) await window.authAdmin.cargarTablaAdministradores();
@@ -348,6 +355,9 @@
             break;
           case 'secConsultas':
             if (window.consultasModule) await window.consultasModule.init();
+            break;
+          case 'secBrochure':
+            if (window.brochureModule) await window.brochureModule.init();
             break;
           case 'secAdministradores':
             if (window.authAdmin) await window.authAdmin.cargarTablaAdministradores();

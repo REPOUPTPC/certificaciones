@@ -113,6 +113,10 @@ module.exports = async function handler(req, res) {
           result = await services.getApiKeyConfig();
           break;
 
+        case 'getBrochureInfo':
+          result = await services.getBrochureInfo();
+          break;
+
         case 'listFuentesExternas':
           result = await services.listFuentesExternas();
           break;
@@ -246,6 +250,10 @@ module.exports = async function handler(req, res) {
           result = await services.uploadImage(body.base64Data, body.filename, body.folder || body.carpeta);
           break;
 
+        case 'uploadBrochure':
+          result = await services.uploadBrochure(body.pdfData || body.base64Data, body.filename || 'brochure.pdf');
+          break;
+
         case 'verifyAdmin':
           result = await services.verifyAdmin(body.usuario, body.clave);
           break;
@@ -256,6 +264,10 @@ module.exports = async function handler(req, res) {
 
         case 'getApiKeyInfo':
           result = await services.getApiKeyConfig();
+          break;
+
+        case 'getBrochureInfo':
+          result = await services.getBrochureInfo();
           break;
 
         case 'listFuentesExternas':

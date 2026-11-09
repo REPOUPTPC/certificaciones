@@ -1,0 +1,1986 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="description" content="Brochure Digital de Extensión Universitaria - Universidad Politécnica Territorial de Puerto Cabello (UPTPC)">
+    <title>Brochure Extensión Universitaria | UPTPC</title>
+
+    <!-- Hojas de estilo y dependencias -->
+    <style>
+        :root {
+            --brand-navy: #0b132b;
+            --brand-blue: #1c2541;
+            --brand-accent: #3a506b;
+            --brand-gold: #f59e0b;
+            --brand-gold-glow: rgba(245, 158, 11, 0.35);
+            --bg-dark: #070b14;
+            --bg-gradient: radial-gradient(130% 120% at 50% 15%, #162447 0%, #0c1222 55%, #050811 100%);
+            --glass-bg: rgba(12, 18, 34, 0.88);
+            --glass-border: rgba(255, 255, 255, 0.12);
+            --text-light: #f8fafc;
+            --text-muted: #94a3b8;
+            --toolbar-h: 52px;
+            --bottombar-h: 56px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: var(--bg-dark);
+            background-image: var(--bg-gradient);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: var(--text-light);
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Contenedor principal de la aplicación */
+        .app-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Barra de navegación superior */
+        .top-bar {
+            height: var(--toolbar-h);
+            background: var(--glass-bg);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            z-index: 50;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            flex-shrink: 0;
+        }
+
+        .brand-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand-logo {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #1e40af, #3b82f6);
+            border: 1px solid var(--brand-gold);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 10px var(--brand-gold-glow);
+            flex-shrink: 0;
+        }
+
+        .brand-logo svg {
+            width: 20px;
+            height: 20px;
+            fill: #ffffff;
+        }
+
+        .brand-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .brand-title {
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: #ffffff;
+            white-space: nowrap;
+        }
+
+        .brand-subtitle {
+            font-size: 10px;
+            color: var(--brand-gold);
+            font-weight: 600;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+        }
+
+        .top-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-tool {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--glass-border);
+            color: var(--text-light);
+            border-radius: 7px;
+            padding: 6px 10px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-tool:hover {
+            background: rgba(255, 255, 255, 0.16);
+            border-color: rgba(255, 255, 255, 0.25);
+            transform: translateY(-1px);
+        }
+
+        .btn-tool:active {
+            transform: translateY(0);
+        }
+
+        .btn-tool svg {
+            width: 15px;
+            height: 15px;
+            fill: currentColor;
+        }
+
+        .btn-tool.active {
+            background: var(--brand-gold);
+            color: #000;
+            border-color: var(--brand-gold);
+        }
+
+        .zoom-group {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--glass-border);
+            border-radius: 7px;
+            overflow: hidden;
+        }
+
+        .zoom-group .btn-tool {
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            padding: 6px 9px;
+        }
+
+        .zoom-level {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 0 4px;
+            min-width: 40px;
+            text-align: center;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        /* Área central del libro */
+        .book-viewport {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 0;
+            perspective: 2500px;
+        }
+
+        .zoom-pan-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform-origin: center center;
+            transition: transform 0.2s cubic-bezier(0.1, 0, 0.2, 1);
+            will-change: transform;
+        }
+
+        .zoom-pan-container.is-panning {
+            cursor: grab;
+        }
+
+        .zoom-pan-container.is-dragging {
+            cursor: grabbing;
+        }
+
+        #flipbook-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.4s cubic-bezier(0.2, 0, 0, 1);
+            will-change: transform;
+        }
+
+        #book {
+            position: relative;
+            display: block;
+            box-sizing: border-box;
+            margin: 0 auto;
+        }
+
+        .stf__parent {
+            position: relative !important;
+            display: block !important;
+            box-sizing: border-box !important;
+            margin: 0 auto;
+            box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.85);
+            border-radius: 6px;
+        }
+
+        .stf__wrapper {
+            position: relative !important;
+            width: 100% !important;
+            height: 100% !important;
+            box-sizing: border-box !important;
+            padding-bottom: 0 !important;
+        }
+
+        .stf__block {
+            position: absolute !important;
+            width: 100% !important;
+            height: 100% !important;
+            top: 0 !important;
+            left: 0 !important;
+            box-sizing: border-box !important;
+        }
+
+        #flipbook-wrapper::after {
+            content: '';
+            position: absolute;
+            bottom: -22px;
+            left: 4%;
+            width: 92%;
+            height: 25px;
+            background: radial-gradient(ellipse at center, rgba(0,0,0,0.65) 0%, transparent 75%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Estilo de las páginas */
+        .page {
+            background-color: #ffffff;
+            overflow: hidden;
+            position: relative;
+            box-sizing: border-box;
+        }
+
+        .page-inner {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+            background: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .page-img {
+            width: 100%;
+            height: 100%;
+            object-fit: fill;
+            display: block;
+            pointer-events: none;
+            -webkit-user-drag: none;
+        }
+
+        /* Sombra realista de lomo en el pliegue central */
+        .spine-shadow-left {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 38px;
+            height: 100%;
+            background: linear-gradient(to right, rgba(0, 0, 0, 0.22) 0%, rgba(0,0,0,0.06) 60%, transparent 100%);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .spine-shadow-right {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 38px;
+            height: 100%;
+            background: linear-gradient(to left, rgba(0, 0, 0, 0.22) 0%, rgba(0,0,0,0.06) 60%, transparent 100%);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Indicador sutil de número de página */
+        .page-badge {
+            position: absolute;
+            bottom: 8px;
+            font-size: 10px;
+            font-weight: 700;
+            color: #475569;
+            background: rgba(255, 255, 255, 0.85);
+            padding: 2px 7px;
+            border-radius: 4px;
+            pointer-events: none;
+            z-index: 10;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+        }
+
+        .page-badge.left { left: 10px; }
+        .page-badge.right { right: 10px; }
+
+        /* Loader de página */
+        .page-loader {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            z-index: 8;
+            transition: opacity 0.3s ease;
+        }
+
+        .page-loader.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loader-ring {
+            width: 34px;
+            height: 34px;
+            border: 3px solid rgba(59, 130, 246, 0.2);
+            border-top-color: #2563eb;
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+
+        .loader-text {
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Página de Contraportada Interna institucional (en caso de total impar) */
+        .inside-filler-page {
+            width: 100%;
+            height: 100%;
+            background: #fdfdfd;
+            background-image: radial-gradient(#e2e8f0 0.75px, transparent 0.75px);
+            background-size: 16px 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 30px 24px;
+            color: #1e293b;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        .filler-header {
+            text-align: center;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 15px;
+        }
+
+        .filler-emblem {
+            font-size: 26px;
+            margin-bottom: 6px;
+        }
+
+        .filler-title {
+            font-size: 14px;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: 0.5px;
+        }
+
+        .filler-subtitle {
+            font-size: 11px;
+            font-weight: 600;
+            color: #d97706;
+            margin-top: 3px;
+            text-transform: uppercase;
+        }
+
+        .filler-body {
+            margin: 20px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .filler-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-left: 4px solid #2563eb;
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 11px;
+            line-height: 1.5;
+            color: #334155;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+        }
+
+        .filler-card strong {
+            display: block;
+            color: #0f172a;
+            margin-bottom: 4px;
+            font-size: 12px;
+        }
+
+        .filler-notes {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px;
+            flex: 1;
+        }
+
+        .filler-notes-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #64748b;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .notes-line {
+            height: 18px;
+            border-bottom: 1px dashed #cbd5e1;
+        }
+
+        .filler-footer {
+            text-align: center;
+            font-size: 10px;
+            color: #64748b;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 12px;
+            line-height: 1.6;
+        }
+
+        /* Botones de navegación lateral flotante */
+        .side-nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--glass-border);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 40;
+            transition: all 0.25s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .side-nav-btn:hover:not(:disabled) {
+            background: var(--brand-gold);
+            color: #000000;
+            transform: translateY(-50%) scale(1.1);
+            box-shadow: 0 0 20px var(--brand-gold-glow);
+        }
+
+        .side-nav-btn:disabled {
+            opacity: 0.2;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .side-nav-btn.prev { left: 16px; }
+        .side-nav-btn.next { right: 16px; }
+
+        .side-nav-btn svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+
+        /* Barra de control inferior */
+        .bottom-bar {
+            height: var(--bottombar-h);
+            background: var(--glass-bg);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-top: 1px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 50;
+            flex-shrink: 0;
+            gap: 15px;
+        }
+
+        .controls-left, .controls-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 140px;
+        }
+
+        .controls-right {
+            justify-content: flex-end;
+        }
+
+        .btn-nav {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--glass-border);
+            color: #ffffff;
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .btn-nav:hover:not(:disabled) {
+            background: var(--brand-gold);
+            color: #000;
+            border-color: var(--brand-gold);
+            box-shadow: 0 0 14px var(--brand-gold-glow);
+        }
+
+        .btn-nav:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .btn-nav svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        .controls-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            flex: 1;
+            max-width: 460px;
+        }
+
+        .spread-label {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-light);
+            letter-spacing: 0.3px;
+        }
+
+        .slider-row {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .page-range-slider {
+            flex: 1;
+            height: 6px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+            outline: none;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .page-range-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--brand-gold);
+            border: 2px solid #ffffff;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(0,0,0,0.5);
+            transition: transform 0.15s;
+        }
+
+        .page-range-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.25);
+        }
+
+        .page-input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .page-num-input {
+            width: 44px;
+            height: 26px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--glass-border);
+            border-radius: 5px;
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 700;
+            text-align: center;
+            outline: none;
+        }
+
+        .page-num-input:focus {
+            border-color: var(--brand-gold);
+            background: rgba(255, 255, 255, 0.18);
+        }
+
+        /* Drawer de Miniaturas */
+        .drawer-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .drawer-overlay.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .thumbs-drawer {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 360px;
+            max-width: 90vw;
+            height: 100%;
+            background: #0f172a;
+            border-left: 1px solid var(--glass-border);
+            z-index: 101;
+            display: flex;
+            flex-direction: column;
+            transform: translateX(100%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: -10px 0 35px rgba(0,0,0,0.7);
+        }
+
+        .thumbs-drawer.open {
+            transform: translateX(0);
+        }
+
+        .drawer-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .drawer-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .drawer-close {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 20px;
+            padding: 4px;
+            line-height: 1;
+        }
+
+        .drawer-close:hover { color: #ffffff; }
+
+        .thumbs-grid {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
+        }
+
+        .thumb-card {
+            background: #1e293b;
+            border: 2px solid transparent;
+            border-radius: 6px;
+            overflow: hidden;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.2s;
+        }
+
+        .thumb-card:hover {
+            border-color: #3b82f6;
+            transform: translateY(-2px);
+        }
+
+        .thumb-card.active {
+            border-color: var(--brand-gold);
+            box-shadow: 0 0 12px var(--brand-gold-glow);
+        }
+
+        .thumb-preview {
+            width: 100%;
+            aspect-ratio: 0.77;
+            background: #334155;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .thumb-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .thumb-label {
+            padding: 6px 8px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #cbd5e1;
+            text-align: center;
+            background: #1e293b;
+        }
+
+        /* Pantalla de carga inicial */
+        .loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-dark);
+            background-image: var(--bg-gradient);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 18px;
+            z-index: 200;
+            transition: opacity 0.4s ease;
+        }
+
+        .loading-screen.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-logo-ring {
+            width: 72px;
+            height: 72px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loading-logo-ring svg {
+            width: 36px;
+            height: 36px;
+            fill: var(--brand-gold);
+        }
+
+        .loading-spinner-circle {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 3px solid rgba(245, 158, 11, 0.15);
+            border-top-color: var(--brand-gold);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loading-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: 0.5px;
+        }
+
+        .loading-subtitle {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .loading-bar-wrap {
+            width: 260px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .loading-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #2563eb, var(--brand-gold));
+            transition: width 0.25s ease;
+        }
+
+        /* Modal de Error */
+        .error-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 300;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .error-card {
+            background: #1e293b;
+            border: 1px solid #ef4444;
+            border-radius: 12px;
+            padding: 28px;
+            max-width: 440px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+        }
+
+        .error-icon {
+            font-size: 38px;
+            margin-bottom: 12px;
+        }
+
+        .error-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+
+        .error-msg {
+            font-size: 13px;
+            color: #cbd5e1;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .btn-retry {
+            background: #ef4444;
+            border: none;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 700;
+            padding: 10px 22px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-retry:hover { background: #dc2626; }
+
+        /* Adaptabilidad y Responsive */
+        @media (max-width: 768px) {
+            .brand-subtitle { display: none; }
+            .btn-text { display: none; }
+            .top-bar { padding: 0 10px; }
+            .side-nav-btn { width: 40px; height: 40px; }
+            .side-nav-btn.prev { left: 8px; }
+            .side-nav-btn.next { right: 8px; }
+            .bottom-bar { padding: 0 10px; gap: 8px; }
+            .controls-left, .controls-right { min-width: auto; }
+            .btn-nav span { display: none; }
+            .btn-nav { padding: 8px 10px; }
+            .spread-label { font-size: 11px; }
+        }
+
+        @media (max-width: 480px) {
+            .zoom-group { display: none; }
+            .brand-title { font-size: 12px; }
+        }
+    </style>
+
+    <!-- Inclusión de PDF.js y PageFlip (con fallback local transparente) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script>
+        if (typeof pdfjsLib === 'undefined') {
+            document.write('<script src="pdf.min.js"><' + '/script>');
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
+    <script>
+        if (typeof St === 'undefined') {
+            document.write('<script src="page-flip.browser.js"><' + '/script>');
+        }
+    </script>
+</head>
+<body>
+
+    <div class="app-container" id="app">
+
+        <!-- Barra superior -->
+        <header class="top-bar">
+            <div class="brand-section">
+                <div class="brand-logo" title="UPTPC">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 3L1 9L12 15L21 10.09V17H23V9M5 13.18V17.18L12 21L19 17.18V13.18L12 17L5 13.18Z"/>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <span class="brand-title">UPTPC Extensión Universitaria</span>
+                    <span class="brand-subtitle">Brochure Digital Interactivo</span>
+                </div>
+            </div>
+
+            <div class="top-actions">
+                <!-- Toggle de Sonido -->
+                <button class="btn-tool" id="btn-sound" title="Alternar sonido de hojas">
+                    <svg viewBox="0 0 24 24" id="icon-sound-on"><path d="M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.84 14,18.7V20.77C18,19.86 21,16.28 21,12C21,7.72 18,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16C15.5,15.29 16.5,13.76 16.5,12M3,9V15H7L12,20V4L7,9H3Z"/></svg>
+                    <svg viewBox="0 0 24 24" id="icon-sound-off" style="display:none;"><path d="M12,4L9.91,6.09L12,8.18M4.27,3L3,4.27L7.73,9H3V15H7L12,20V13.27L16.25,17.53C15.58,18.04 14.83,18.46 14,18.7V20.77C15.38,20.45 16.63,19.82 17.68,18.96L19.73,21L21,19.73L4.27,3M19,12C19,12.94 18.8,13.82 18.46,14.64L19.97,16.15C20.62,14.91 21,13.5 21,12C21,7.72 18,4.14 14,3.23V5.29C16.89,6.15 19,8.83 19,12M16.5,12C16.5,10.23 15.5,8.71 14,7.97V10.18L16.45,12.63C16.5,12.43 16.5,12.21 16.5,12Z"/></svg>
+                </button>
+
+                <!-- Miniaturas -->
+                <button class="btn-tool" id="btn-thumbs" title="Ver miniaturas de páginas">
+                    <svg viewBox="0 0 24 24"><path d="M4,4H10V10H4V4M4,14H10V20H4V14M14,4H20V10H14V4M14,14H20V20H14V14Z"/></svg>
+                    <span class="btn-text">Miniaturas</span>
+                </button>
+
+                <!-- Zoom -->
+                <div class="zoom-group">
+                    <button class="btn-tool" id="btn-zoom-out" title="Alejar (-)">
+                        <svg viewBox="0 0 24 24"><path d="M19,13H5V11H19V13Z"/></svg>
+                    </button>
+                    <span class="zoom-level" id="zoom-text" title="Restablecer zoom">100%</span>
+                    <button class="btn-tool" id="btn-zoom-in" title="Acercar (+)">
+                        <svg viewBox="0 0 24 24"><path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+                    </button>
+                </div>
+
+                <!-- Modo de vista: Doble (Libro) / Simple (1 Pág) -->
+                <button class="btn-tool active" id="btn-spread-mode" title="Cambiar a Página Simple (1 Página)">
+                    <svg viewBox="0 0 24 24" id="icon-spread-mode"><path d="M19 2H5C3.9 2 3 2.9 3 4V20C3 21.1 3.9 22 5 22H19C20.1 22 21 21.1 21 20V4C21 2.9 20.1 2 19 2M19 20H13V4H19V20M11 20H5V4H11V20Z"/></svg>
+                    <span class="btn-text" id="spread-mode-text">Vista Doble</span>
+                </button>
+
+                <!-- Pantalla completa -->
+                <button class="btn-tool" id="btn-fullscreen" title="Pantalla completa">
+                    <svg viewBox="0 0 24 24"><path d="M5,5H10V7H7V10H5V5M14,5H19V10H17V7H14V5M17,14H19V19H14V17H17V14M10,17V19H5V14H7V17H10Z"/></svg>
+                </button>
+
+                <!-- Descargar PDF -->
+                <a class="btn-tool" id="btn-download" title="Descargar documento PDF" target="_blank" download>
+                    <svg viewBox="0 0 24 24"><path d="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z"/></svg>
+                </a>
+            </div>
+        </header>
+
+        <!-- Viewport principal -->
+        <main class="book-viewport" id="book-viewport">
+            <div class="zoom-pan-container" id="zoom-container">
+                <div id="flipbook-wrapper">
+                    <div id="book"></div>
+                </div>
+            </div>
+
+            <!-- Botones flotantes de navegación lateral -->
+            <button class="side-nav-btn prev" id="side-prev" aria-label="Página anterior" disabled>
+                <svg viewBox="0 0 24 24"><path d="M15.41,16.58L10.83,12L15.41,7.41L14,6L8,12L14,18L15.41,16.58Z"/></svg>
+            </button>
+            <button class="side-nav-btn next" id="side-next" aria-label="Página siguiente" disabled>
+                <svg viewBox="0 0 24 24"><path d="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z"/></svg>
+            </button>
+        </main>
+
+        <!-- Barra inferior de controles -->
+        <footer class="bottom-bar">
+            <div class="controls-left">
+                <button class="btn-nav" id="btn-prev" disabled>
+                    <svg viewBox="0 0 24 24"><path d="M15.41,16.58L10.83,12L15.41,7.41L14,6L8,12L14,18L15.41,16.58Z"/></svg>
+                    <span>Anterior</span>
+                </button>
+            </div>
+
+            <div class="controls-center">
+                <span class="spread-label" id="spread-label">Cargando páginas...</span>
+                <div class="slider-row">
+                    <input type="range" class="page-range-slider" id="page-slider" min="1" max="1" value="1" disabled>
+                    <div class="page-input-wrapper">
+                        <span>Pág.</span>
+                        <input type="number" class="page-num-input" id="page-input" min="1" max="1" value="1">
+                        <span>de <strong id="total-pages-badge">0</strong></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls-right">
+                <button class="btn-nav" id="btn-next" disabled>
+                    <span>Siguiente</span>
+                    <svg viewBox="0 0 24 24"><path d="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z"/></svg>
+                </button>
+            </div>
+        </footer>
+
+        <!-- Drawer lateral de miniaturas -->
+        <div class="drawer-overlay" id="drawer-overlay"></div>
+        <aside class="thumbs-drawer" id="thumbs-drawer">
+            <div class="drawer-header">
+                <div class="drawer-title">
+                    <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:var(--brand-gold)"><path d="M4,4H10V10H4V4M4,14H10V20H4V14M14,4H20V10H14V4M14,14H20V20H14V14Z"/></svg>
+                    <span>Índice de Páginas (<span id="drawer-count">0</span>)</span>
+                </div>
+                <button class="drawer-close" id="drawer-close" aria-label="Cerrar">✕</button>
+            </div>
+            <div class="thumbs-grid" id="thumbs-grid"></div>
+        </aside>
+
+        <!-- Pantalla de carga inicial -->
+        <div class="loading-screen" id="loading-screen">
+            <div class="loading-logo-ring">
+                <div class="loading-spinner-circle"></div>
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 3L1 9L12 15L21 10.09V17H23V9M5 13.18V17.18L12 21L19 17.18V13.18L12 17L5 13.18Z"/>
+                </svg>
+            </div>
+            <div class="loading-title">UPTPC Extensión Universitaria</div>
+            <div class="loading-subtitle" id="loading-status-text">Cargando documento...</div>
+            <div class="loading-bar-wrap">
+                <div class="loading-bar-fill" id="loading-bar"></div>
+            </div>
+        </div>
+
+        <!-- Modal de Error -->
+        <div class="error-modal" id="error-modal">
+            <div class="error-card">
+                <div class="error-icon">⚠️</div>
+                <div class="error-title">No se pudo cargar el documento</div>
+                <div class="error-msg" id="error-desc">Ocurrió un problema de conexión al descargar el brochure PDF.</div>
+                <button class="btn-retry" id="btn-retry">Reintentar Carga</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Lógica de la aplicación -->
+    <script>
+        (function() {
+            'use strict';
+
+            // Configurar Worker de PDF.js (con fallback inteligente)
+            if (typeof pdfjsLib !== 'undefined') {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+                    ? 'pdf.worker.min.js'
+                    : 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+            }
+
+            // Detección de URL del PDF (Cloudflare R2 como origen oficial)
+            const urlParams = new URLSearchParams(window.location.search);
+            const customPdf = urlParams.get('pdf');
+            const cacheBuster = urlParams.get('v') || urlParams.get('t');
+            const R2_PDF_URL = 'https://pub-b61fc0d596e8472a9cda031c9e80faeb.r2.dev/brochure/brochure.pdf';
+
+            let targetPdfUrl = customPdf || R2_PDF_URL;
+            if (cacheBuster && !customPdf) {
+                targetPdfUrl += (targetPdfUrl.includes('?') ? '&' : '?') + `v=${encodeURIComponent(cacheBuster)}`;
+            }
+
+            // Audio Web procedural para el paso de página
+            let soundEnabled = true;
+            let audioCtx = null;
+
+            function playPageTurnSound() {
+                if (!soundEnabled) return;
+                try {
+                    if (!audioCtx) {
+                        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    }
+                    if (audioCtx.state === 'suspended') {
+                        audioCtx.resume();
+                    }
+                    const bufferSize = Math.floor(audioCtx.sampleRate * 0.12);
+                    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) {
+                        const env = Math.sin((i / bufferSize) * Math.PI);
+                        data[i] = (Math.random() * 2 - 1) * env * 0.25;
+                    }
+                    const noise = audioCtx.createBufferSource();
+                    noise.buffer = buffer;
+                    const filter = audioCtx.createBiquadFilter();
+                    filter.type = 'bandpass';
+                    filter.frequency.setValueAtTime(850, audioCtx.currentTime);
+                    filter.Q.setValueAtTime(1.4, audioCtx.currentTime);
+                    const gain = audioCtx.createGain();
+                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.005, audioCtx.currentTime + 0.12);
+                    noise.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    noise.start();
+                } catch (e) {}
+            }
+
+            // Administrador de renderizado bajo demanda (LRU + Concurrencia controlada)
+            class RenderManager {
+                constructor(pdfDoc, pdfWidth, pdfHeight) {
+                    this.pdfDoc = pdfDoc;
+                    this.pdfWidth = pdfWidth;
+                    this.pdfHeight = pdfHeight;
+                    this.cache = new Map(); // pdfPageNum -> blobUrl
+                    this.rendering = new Set();
+                    this.queue = [];
+                    this.maxWorkers = 2;
+                    this.activeWorkers = 0;
+                    this.maxCacheSize = 28;
+                }
+
+                getPageBlobUrl(pageNum) {
+                    if (pageNum < 1 || pageNum > this.pdfDoc.numPages) return Promise.resolve(null);
+                    if (this.cache.has(pageNum)) {
+                        const url = this.cache.get(pageNum);
+                        this.cache.delete(pageNum);
+                        this.cache.set(pageNum, url);
+                        return Promise.resolve(url);
+                    }
+                    return new Promise((resolve, reject) => {
+                        this.enqueue(pageNum, resolve, reject, true);
+                    });
+                }
+
+                preload(pageNum) {
+                    if (pageNum < 1 || pageNum > this.pdfDoc.numPages) return;
+                    if (this.cache.has(pageNum) || this.rendering.has(pageNum)) return;
+                    this.enqueue(pageNum, null, null, false);
+                }
+
+                enqueue(pageNum, resolve, reject, isPriority) {
+                    const idx = this.queue.findIndex(item => item.page === pageNum);
+                    if (idx !== -1) {
+                        if (isPriority) {
+                            const item = this.queue.splice(idx, 1)[0];
+                            if (resolve) item.callbacks.push({ resolve, reject });
+                            this.queue.unshift(item);
+                        } else if (resolve) {
+                            this.queue[idx].callbacks.push({ resolve, reject });
+                        }
+                        return;
+                    }
+                    const item = { page: pageNum, callbacks: resolve ? [{ resolve, reject }] : [] };
+                    if (isPriority) this.queue.unshift(item);
+                    else this.queue.push(item);
+                    this.processNext();
+                }
+
+                async processNext() {
+                    if (this.activeWorkers >= this.maxWorkers || this.queue.length === 0) return;
+                    this.activeWorkers++;
+                    const item = this.queue.shift();
+                    const pageNum = item.page;
+                    this.rendering.add(pageNum);
+
+                    try {
+                        const blobUrl = await this.renderPage(pageNum);
+                        this.putCache(pageNum, blobUrl);
+                        item.callbacks.forEach(cb => cb.resolve(blobUrl));
+                    } catch (err) {
+                        console.error('Error renderizando página ' + pageNum, err);
+                        item.callbacks.forEach(cb => cb.reject(err));
+                    } finally {
+                        this.rendering.delete(pageNum);
+                        this.activeWorkers--;
+                        this.processNext();
+                    }
+                }
+
+                async renderPage(pageNum) {
+                    const page = await this.pdfDoc.getPage(pageNum);
+                    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+                    const scale = dpr * 1.5;
+                    const viewport = page.getViewport({ scale });
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.floor(viewport.width);
+                    canvas.height = Math.floor(viewport.height);
+                    const ctx = canvas.getContext('2d', { alpha: false });
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                    await page.render({
+                        canvasContext: ctx,
+                        viewport: viewport
+                    }).promise;
+
+                    return new Promise((resolve) => {
+                        canvas.toBlob((blob) => {
+                            canvas.width = 0;
+                            canvas.height = 0;
+                            resolve(URL.createObjectURL(blob));
+                        }, 'image/jpeg', 0.88);
+                    });
+                }
+
+                putCache(pageNum, url) {
+                    if (this.cache.size >= this.maxCacheSize) {
+                        const oldestKey = this.cache.keys().next().value;
+                        const oldestUrl = this.cache.get(oldestKey);
+                        URL.revokeObjectURL(oldestUrl);
+                        this.cache.delete(oldestKey);
+                    }
+                    this.cache.set(pageNum, url);
+                }
+            }
+
+            // Aplicación principal del Flipbook
+            class FlipbookApp {
+                constructor() {
+                    this.pdfDoc = null;
+                    this.numPdfPages = 0;
+                    this.pageFlip = null;
+                    this.renderManager = null;
+                    this.structure = null;
+                    this.aspectRatio = 612 / 790.5;
+                    this.currentZoom = 1.0;
+                    this.panOffset = { x: 0, y: 0 };
+                    this.isPanning = false;
+                    this.panStart = { x: 0, y: 0 };
+                    this.currentOrientation = 'landscape';
+                    this.isSinglePage = false; // Modo doble página (estilo libro) por defecto
+                    this.currentBookIndex = 0;
+
+                    this.dom = {
+                        app: document.getElementById('app'),
+                        book: document.getElementById('book'),
+                        wrapper: document.getElementById('flipbook-wrapper'),
+                        viewport: document.getElementById('book-viewport'),
+                        zoomContainer: document.getElementById('zoom-container'),
+                        loadingScreen: document.getElementById('loading-screen'),
+                        loadingBar: document.getElementById('loading-bar'),
+                        loadingStatusText: document.getElementById('loading-status-text'),
+                        errorModal: document.getElementById('error-modal'),
+                        errorDesc: document.getElementById('error-desc'),
+                        btnRetry: document.getElementById('btn-retry'),
+                        btnPrev: document.getElementById('btn-prev'),
+                        btnNext: document.getElementById('btn-next'),
+                        sidePrev: document.getElementById('side-prev'),
+                        sideNext: document.getElementById('side-next'),
+                        spreadLabel: document.getElementById('spread-label'),
+                        pageSlider: document.getElementById('page-slider'),
+                        pageInput: document.getElementById('page-input'),
+                        totalPagesBadge: document.getElementById('total-pages-badge'),
+                        btnSound: document.getElementById('btn-sound'),
+                        iconSoundOn: document.getElementById('icon-sound-on'),
+                        iconSoundOff: document.getElementById('icon-sound-off'),
+                        btnThumbs: document.getElementById('btn-thumbs'),
+                        thumbsDrawer: document.getElementById('thumbs-drawer'),
+                        drawerOverlay: document.getElementById('drawer-overlay'),
+                        drawerClose: document.getElementById('drawer-close'),
+                        drawerCount: document.getElementById('drawer-count'),
+                        thumbsGrid: document.getElementById('thumbs-grid'),
+                        btnZoomIn: document.getElementById('btn-zoom-in'),
+                        btnZoomOut: document.getElementById('btn-zoom-out'),
+                        zoomText: document.getElementById('zoom-text'),
+                        btnSpreadMode: document.getElementById('btn-spread-mode'),
+                        spreadModeText: document.getElementById('spread-mode-text'),
+                        btnFullscreen: document.getElementById('btn-fullscreen'),
+                        btnDownload: document.getElementById('btn-download')
+                    };
+                }
+
+                async init() {
+                    this.bindGlobalEvents();
+                    await this.loadPdfFromR2(targetPdfUrl);
+                }
+
+                async loadPdfFromR2(url) {
+                    this.showLoading(10, 'Conectando con Cloudflare R2...');
+                    this.dom.btnDownload.href = url;
+
+                    try {
+                        const loadingTask = pdfjsLib.getDocument({
+                            url: url,
+                            cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/cmaps/',
+                            cMapPacked: true
+                        });
+
+                        // Seguimiento de descarga progresiva en tiempo real desde Cloudflare R2
+                        loadingTask.onProgress = (progressData) => {
+                            if (progressData.total > 0) {
+                                const pct = Math.min(99, Math.round((progressData.loaded / progressData.total) * 100));
+                                const mbLoaded = (progressData.loaded / (1024 * 1024)).toFixed(1);
+                                const mbTotal = (progressData.total / (1024 * 1024)).toFixed(1);
+                                this.showLoading(pct, `Descargando desde Cloudflare R2: ${pct}% (${mbLoaded} MB / ${mbTotal} MB)...`);
+                            } else if (progressData.loaded > 0) {
+                                const mbLoaded = (progressData.loaded / (1024 * 1024)).toFixed(1);
+                                this.showLoading(40, `Descargando desde Cloudflare R2: ${mbLoaded} MB transferidos...`);
+                            }
+                        };
+
+                        const pdf = await loadingTask.promise;
+                        await this.onPdfLoaded(pdf);
+                    } catch (err) {
+                        console.error('Error cargando PDF desde Cloudflare R2:', err);
+                        this.showError('No se pudo descargar el archivo PDF desde Cloudflare R2. Verifica tu conexión a internet o intenta recargar.');
+                    }
+                }
+
+                async onPdfLoaded(pdf) {
+                    this.pdfDoc = pdf;
+                    this.numPdfPages = pdf.numPages;
+                    this.showLoading(45, `Analizando ${this.numPdfPages} páginas...`);
+
+                    // Obtener dimensiones reales de la página 1
+                    const page1 = await pdf.getPage(1);
+                    const vp = page1.getViewport({ scale: 1 });
+                    const pdfWidth = vp.width;
+                    const pdfHeight = vp.height;
+                    const aspectRatio = pdfWidth / pdfHeight;
+
+                    // Estructura del libro: resolver páginas pares/impares para cierre de portada/contraportada
+                    this.calculateBookStructure();
+                    this.renderManager = new RenderManager(pdf, pdfWidth, pdfHeight);
+
+                    this.showLoading(70, 'Construyendo pliegos de revista...');
+                    this.buildDomPages(aspectRatio);
+
+                    this.showLoading(85, 'Inicializando animaciones...');
+                    this.updateBookDimensions();
+                    this.initPageFlip(pdfWidth, pdfHeight, aspectRatio);
+
+                    // Inicializar miniaturas
+                    this.initThumbnails();
+
+                    // Pre-renderizar portada y primer pliego inmediatamente
+                    await this.renderManager.getPageBlobUrl(1);
+                    if (this.numPdfPages >= 2) this.renderManager.preload(2);
+                    if (this.numPdfPages >= 3) this.renderManager.preload(3);
+
+                    this.showLoading(100, '¡Listo!');
+                    setTimeout(() => {
+                        this.dom.loadingScreen.classList.add('fade-out');
+                    }, 350);
+                }
+
+                calculateBookStructure() {
+                    const num = this.numPdfPages;
+                    const hasFiller = (num % 2 !== 0 && num > 1);
+                    const totalBookPages = hasFiller ? num + 1 : num;
+                    const pages = [];
+
+                    for (let i = 0; i < totalBookPages; i++) {
+                        if (!hasFiller) {
+                            pages.push({
+                                bookIndex: i,
+                                pdfPage: i + 1,
+                                isCover: i === 0,
+                                isBackCover: i === totalBookPages - 1,
+                                isFiller: false,
+                                density: (i === 0 || i === totalBookPages - 1) ? 'hard' : 'soft'
+                            });
+                        } else {
+                            if (i === 0) {
+                                pages.push({ bookIndex: i, pdfPage: 1, isCover: true, isBackCover: false, isFiller: false, density: 'hard' });
+                            } else if (i === totalBookPages - 2) {
+                                pages.push({ bookIndex: i, pdfPage: null, isCover: false, isBackCover: false, isFiller: true, density: 'soft' });
+                            } else if (i === totalBookPages - 1) {
+                                pages.push({ bookIndex: i, pdfPage: num, isCover: false, isBackCover: true, isFiller: false, density: 'hard' });
+                            } else {
+                                pages.push({ bookIndex: i, pdfPage: i + 1, isCover: false, isBackCover: false, isFiller: false, density: 'soft' });
+                            }
+                        }
+                    }
+
+                    this.structure = { hasFiller, totalBookPages, pages };
+                    this.dom.totalPagesBadge.textContent = this.numPdfPages;
+                    this.dom.drawerCount.textContent = this.numPdfPages;
+                    this.dom.pageSlider.max = this.numPdfPages;
+                    this.dom.pageInput.max = this.numPdfPages;
+                }
+
+                buildDomPages(aspectRatio) {
+                    const book = this.dom.book;
+                    book.innerHTML = '';
+
+                    this.structure.pages.forEach((p) => {
+                        const pageEl = document.createElement('div');
+                        pageEl.className = 'page';
+                        pageEl.dataset.bookIndex = p.bookIndex;
+                        pageEl.dataset.density = p.density;
+
+                        if (p.isFiller) {
+                            pageEl.innerHTML = `
+                                <div class="page-inner">
+                                    <div class="inside-filler-page">
+                                        <div class="filler-header">
+                                            <div class="filler-emblem">🏛️</div>
+                                            <div class="filler-title">UPTPC</div>
+                                            <div class="filler-subtitle">Dirección de Extensión Universitaria</div>
+                                        </div>
+                                        <div class="filler-body">
+                                            <div class="filler-card">
+                                                <strong>Formación Continua & Diplomados</strong>
+                                                Consolida tus competencias profesionales y lidera el cambio con nuestros programas avalados institucionalmente.
+                                            </div>
+                                            <div class="filler-notes">
+                                                <div class="filler-notes-title">Anotaciones de Contacto</div>
+                                                <div class="notes-line"></div>
+                                                <div class="notes-line"></div>
+                                                <div class="notes-line"></div>
+                                                <div class="notes-line"></div>
+                                            </div>
+                                        </div>
+                                        <div class="filler-footer">
+                                            Puerto Cabello, Estado Carabobo, Venezuela<br>
+                                            <strong>www.uptpc.edu.ve</strong>
+                                        </div>
+                                    </div>
+                                    <div class="spine-shadow-right"></div>
+                                </div>
+                            `;
+                        } else {
+                            const isLeft = (p.bookIndex % 2 === 1);
+                            const badgeAlign = isLeft ? 'left' : 'right';
+                            const badgeText = p.isCover ? 'Portada' : (p.isBackCover ? 'Contraportada' : p.pdfPage);
+                            const spineShadow = isLeft ? '<div class="spine-shadow-right"></div>' : (p.bookIndex > 0 && !p.isBackCover ? '<div class="spine-shadow-left"></div>' : '');
+
+                            pageEl.innerHTML = `
+                                <div class="page-inner">
+                                    <div class="page-loader" id="loader-book-${p.bookIndex}">
+                                        <div class="loader-ring"></div>
+                                        <span class="loader-text">Cargando pág. ${p.pdfPage}...</span>
+                                    </div>
+                                    <img class="page-img" id="img-book-${p.bookIndex}" alt="Página ${p.pdfPage}" />
+                                    <div class="page-badge ${badgeAlign}">${badgeText}</div>
+                                    ${spineShadow}
+                                </div>
+                            `;
+                        }
+                        book.appendChild(pageEl);
+                    });
+                }
+
+                updateBookDimensions() {
+                    const vp = this.dom.viewport;
+                    if (!vp) return;
+                    const availW = Math.max(280, vp.clientWidth - 24);
+                    const availH = Math.max(280, vp.clientHeight - 20);
+                    const pageAspect = this.aspectRatio || (612 / 790.5);
+
+                    let targetBookWidth, targetBookHeight, targetPageWidth, targetPageHeight;
+
+                    if (!this.isSinglePage) {
+                        // MODO VISTA DOBLE (2 páginas lado a lado estilo libro)
+                        const spreadAspect = pageAspect * 2;
+                        if (availW / availH >= spreadAspect) {
+                            // Altura disponible es el factor limitante: aprovechamos toda la altura
+                            targetBookHeight = availH;
+                            targetBookWidth = Math.round(targetBookHeight * spreadAspect);
+                        } else {
+                            // Ancho disponible es el factor limitante
+                            targetBookWidth = availW;
+                            targetBookHeight = Math.round(targetBookWidth / spreadAspect);
+                        }
+                        targetPageWidth = Math.round(targetBookWidth / 2);
+                        targetPageHeight = targetBookHeight;
+                    } else {
+                        // MODO PÁGINA SIMPLE (1 página grande centrada)
+                        if (availW / availH >= pageAspect) {
+                            targetBookHeight = availH;
+                            targetBookWidth = Math.round(targetBookHeight * pageAspect);
+                        } else {
+                            targetBookWidth = availW;
+                            targetBookHeight = Math.round(targetBookWidth / pageAspect);
+                        }
+                        targetPageWidth = targetBookWidth;
+                        targetPageHeight = targetBookHeight;
+                    }
+
+                    // Establecer dimensiones en píxeles reales en #book y #flipbook-wrapper
+                    this.dom.book.style.width = `${targetBookWidth}px`;
+                    this.dom.book.style.height = `${targetBookHeight}px`;
+                    this.dom.wrapper.style.width = `${targetBookWidth}px`;
+                    this.dom.wrapper.style.height = `${targetBookHeight}px`;
+
+                    if (this.pageFlip) {
+                        const settings = this.pageFlip.getSettings();
+                        settings.usePortrait = this.isSinglePage;
+                        settings.minWidth = this.isSinglePage ? 99999 : 0;
+                        settings.width = targetPageWidth;
+                        settings.height = targetPageHeight;
+                        settings.maxWidth = targetPageWidth * 3;
+                        settings.minHeight = 0;
+                        settings.maxHeight = targetPageHeight * 3;
+                        this.pageFlip.update();
+                    }
+                }
+
+                initPageFlip(pdfWidth, pdfHeight, aspectRatio) {
+                    const targetPageWidth = Math.round(parseInt(this.dom.book.style.width, 10) / (this.isSinglePage ? 1 : 2));
+                    const targetPageHeight = parseInt(this.dom.book.style.height, 10);
+
+                    this.pageFlip = new St.PageFlip(this.dom.book, {
+                        width: targetPageWidth,
+                        height: targetPageHeight,
+                        size: 'stretch',
+                        minWidth: this.isSinglePage ? 99999 : 0,
+                        maxWidth: 3000,
+                        minHeight: 0,
+                        maxHeight: 3000,
+                        maxShadowOpacity: 0.55,
+                        showCover: true,
+                        usePortrait: this.isSinglePage,
+                        flippingTime: 650,
+                        showPageCorners: true,
+                        drawShadow: true,
+                        autoSize: false,
+                        useMouseEvents: true,
+                        clickEventForward: true,
+                        swipeDistance: 25
+                    });
+
+                    this.pageFlip.loadFromHTML(this.dom.book.querySelectorAll('.page'));
+
+                    this.pageFlip.on('init', (e) => {
+                        this.currentOrientation = e.data.mode;
+                        this.updateSpreadModeUI();
+                        this.updateControlsState();
+                        this.loadVisiblePages();
+                    });
+
+                    this.pageFlip.on('flip', (e) => {
+                        this.currentBookIndex = e.data;
+                        playPageTurnSound();
+                        this.updateControlsState();
+                        this.loadVisiblePages();
+                    });
+
+                    this.pageFlip.on('changeOrientation', (e) => {
+                        this.currentOrientation = e.data;
+                        this.updateControlsState();
+                        this.loadVisiblePages();
+                    });
+
+                    // ResizeObserver para cambios dinámicos del iframe en Google Sites
+                    let resizeTimer = null;
+                    const ro = new ResizeObserver(() => {
+                        clearTimeout(resizeTimer);
+                        resizeTimer = setTimeout(() => {
+                            this.updateBookDimensions();
+                            this.updateControlsState();
+                        }, 80);
+                    });
+                    ro.observe(this.dom.viewport);
+                }
+
+                loadVisiblePages() {
+                    const bookIdx = this.currentBookIndex;
+                    const mode = this.currentOrientation;
+                    const isDouble = (mode === 'landscape' && !this.isSinglePage);
+                    const visibleIndices = isDouble
+                        ? (bookIdx === 0 ? [0] : (bookIdx === this.structure.totalBookPages - 1 ? [bookIdx] : [bookIdx, bookIdx + 1]))
+                        : [bookIdx];
+
+                    // Si estamos en modo página simple, garantizamos que ninguna otra página permanezca visible
+                    if (this.isSinglePage && this.dom.book) {
+                        const pages = this.dom.book.querySelectorAll('.page');
+                        pages.forEach((pageEl) => {
+                            const pIdx = parseInt(pageEl.dataset.bookIndex, 10);
+                            if (pIdx !== bookIdx) {
+                                pageEl.style.display = 'none';
+                            }
+                        });
+                    }
+
+                    // Renderizar páginas visibles con alta prioridad
+                    visibleIndices.forEach((bIdx) => {
+                        this.renderBookPage(bIdx);
+                    });
+
+                    // Pre-cargar adyacentes (+2 / -2)
+                    const adjacent = [bookIdx - 2, bookIdx - 1, bookIdx + 2, bookIdx + 3];
+                    adjacent.forEach((bIdx) => {
+                        if (bIdx >= 0 && bIdx < this.structure.totalBookPages) {
+                            const p = this.structure.pages[bIdx];
+                            if (p && p.pdfPage) this.renderManager.preload(p.pdfPage);
+                        }
+                    });
+                }
+
+                async renderBookPage(bookIdx) {
+                    const p = this.structure.pages[bookIdx];
+                    if (!p || p.isFiller || !p.pdfPage) return;
+
+                    const img = document.getElementById(`img-book-${bookIdx}`);
+                    const loader = document.getElementById(`loader-book-${bookIdx}`);
+                    if (!img) return;
+
+                    if (!img.src || img.src === window.location.href) {
+                        try {
+                            const blobUrl = await this.renderManager.getPageBlobUrl(p.pdfPage);
+                            if (blobUrl) {
+                                img.src = blobUrl;
+                                img.onload = () => {
+                                    if (loader) loader.classList.add('hidden');
+                                };
+                            }
+                        } catch (err) {
+                            console.error('Error cargando imagen de página', err);
+                        }
+                    }
+                }
+
+                updateControlsState() {
+                    const bookIdx = this.currentBookIndex;
+                    const totalBook = this.structure.totalBookPages;
+                    const isLandscape = (this.currentOrientation === 'landscape' && !this.isSinglePage);
+
+                    // Deshabilitar botones de navegación en extremos
+                    const isAtStart = (bookIdx <= 0);
+                    const isAtEnd = (bookIdx >= totalBook - 1);
+
+                    this.dom.btnPrev.disabled = isAtStart;
+                    this.dom.sidePrev.disabled = isAtStart;
+                    this.dom.btnNext.disabled = isAtEnd;
+                    this.dom.sideNext.disabled = isAtEnd;
+
+                    // Auto-centrado visual suave de portada y contraportada en modo libro (doble página)
+                    if (isLandscape && !this.isSinglePage) {
+                        if (isAtStart) {
+                            this.dom.wrapper.style.transform = 'translateX(-25%)';
+                        } else if (isAtEnd) {
+                            this.dom.wrapper.style.transform = 'translateX(25%)';
+                        } else {
+                            this.dom.wrapper.style.transform = 'translateX(0)';
+                        }
+                    } else {
+                        this.dom.wrapper.style.transform = 'translateX(0)';
+                    }
+
+                    // Texto amigable de pliegos
+                    const currentItem = this.structure.pages[bookIdx];
+                    let label = '';
+                    let activePdfPage = currentItem ? currentItem.pdfPage : 1;
+
+                    if (!isLandscape || this.isSinglePage) {
+                        if (currentItem.isCover) label = `Portada (Pág. 1 de ${this.numPdfPages})`;
+                        else if (currentItem.isBackCover) label = `Contraportada (Pág. ${this.numPdfPages} de ${this.numPdfPages})`;
+                        else if (currentItem.isFiller) label = `Información Institucional`;
+                        else label = `Página ${currentItem.pdfPage} de ${this.numPdfPages}`;
+                    } else if (bookIdx === 0) {
+                        label = `Portada (Pág. 1 de ${this.numPdfPages})`;
+                    } else if (bookIdx === totalBook - 1) {
+                        label = `Contraportada (Pág. ${this.numPdfPages} de ${this.numPdfPages})`;
+                        activePdfPage = this.numPdfPages;
+                    } else {
+                        const rightItem = this.structure.pages[bookIdx + 1];
+                        if (rightItem && !rightItem.isFiller) {
+                            label = `Páginas ${currentItem.pdfPage} - ${rightItem.pdfPage} de ${this.numPdfPages}`;
+                        } else {
+                            label = `Página ${currentItem.pdfPage} de ${this.numPdfPages}`;
+                        }
+                    }
+
+                    this.dom.spreadLabel.textContent = label;
+
+                    if (activePdfPage) {
+                        this.dom.pageSlider.value = activePdfPage;
+                        this.dom.pageInput.value = activePdfPage;
+                    }
+
+                    // Actualizar miniatura activa
+                    document.querySelectorAll('.thumb-card').forEach(card => card.classList.remove('active'));
+                    const activeThumb = document.getElementById(`thumb-${activePdfPage}`);
+                    if (activeThumb) activeThumb.classList.add('active');
+                }
+
+                jumpToPdfPage(pageNum) {
+                    const target = Math.max(1, Math.min(this.numPdfPages, parseInt(pageNum, 10) || 1));
+                    let targetBookIdx = 0;
+                    for (const p of this.structure.pages) {
+                        if (p.pdfPage === target) {
+                            targetBookIdx = p.bookIndex;
+                            break;
+                        }
+                    }
+                    if (this.pageFlip) {
+                        this.pageFlip.flip(targetBookIdx);
+                    }
+                }
+
+                initThumbnails() {
+                    const grid = this.dom.thumbsGrid;
+                    grid.innerHTML = '';
+
+                    for (let pNum = 1; pNum <= this.numPdfPages; pNum++) {
+                        const card = document.createElement('div');
+                        card.className = 'thumb-card';
+                        card.id = `thumb-${pNum}`;
+                        card.dataset.page = pNum;
+
+                        const tag = (pNum === 1) ? 'Portada' : (pNum === this.numPdfPages ? 'Contraportada' : `Pág. ${pNum}`);
+                        card.innerHTML = `
+                            <div class="thumb-preview">
+                                <img id="thumb-img-${pNum}" loading="lazy" alt="Página ${pNum}" />
+                            </div>
+                            <div class="thumb-label">${tag}</div>
+                        `;
+
+                        card.addEventListener('click', () => {
+                            this.jumpToPdfPage(pNum);
+                            this.closeDrawer();
+                        });
+
+                        grid.appendChild(card);
+                    }
+
+                    // Renderizado perezoso de miniaturas mediante IntersectionObserver
+                    const observer = new IntersectionObserver((entries) => {
+                        entries.forEach(entry => {
+                            if (entry.isIntersecting) {
+                                const card = entry.target;
+                                const pNum = parseInt(card.dataset.page, 10);
+                                const img = document.getElementById(`thumb-img-${pNum}`);
+                                if (img && !img.src) {
+                                    this.renderManager.getPageBlobUrl(pNum).then(url => {
+                                        if (url) img.src = url;
+                                    });
+                                }
+                                observer.unobserve(card);
+                            }
+                        });
+                    }, { root: grid, rootMargin: '100px' });
+
+                    grid.querySelectorAll('.thumb-card').forEach(card => observer.observe(card));
+                }
+
+                // Sistema de Zoom y Pan
+                setZoom(level, clientOrigin = null) {
+                    this.currentZoom = Math.max(1.0, Math.min(2.2, level));
+                    this.dom.zoomText.textContent = `${Math.round(this.currentZoom * 100)}%`;
+
+                    if (this.currentZoom <= 1.0) {
+                        this.panOffset = { x: 0, y: 0 };
+                        this.dom.zoomContainer.classList.remove('is-panning', 'is-dragging');
+                    } else {
+                        this.dom.zoomContainer.classList.add('is-panning');
+                    }
+
+                    this.applyTransform();
+                }
+
+                applyTransform() {
+                    this.dom.zoomContainer.style.transform = `scale(${this.currentZoom}) translate(${this.panOffset.x}px, ${this.panOffset.y}px)`;
+                }
+
+                toggleSpreadMode() {
+                    this.isSinglePage = !this.isSinglePage;
+                    this.updateSpreadModeUI();
+
+                    if (this.pageFlip) {
+                        const targetMode = this.isSinglePage ? 'portrait' : 'landscape';
+                        const settings = this.pageFlip.getSettings();
+                        settings.usePortrait = this.isSinglePage;
+                        settings.minWidth = this.isSinglePage ? 99999 : 0;
+
+                        this.updateBookDimensions();
+                        this.pageFlip.updateOrientation(targetMode);
+
+                        const render = this.pageFlip.getRender();
+                        if (render) {
+                            render.orientation = targetMode;
+                            if (this.isSinglePage) {
+                                render.setLeftPage(null);
+                            }
+                        }
+
+                        this.currentOrientation = this.pageFlip.getOrientation() || targetMode;
+                        this.pageFlip.turnToPage(this.currentBookIndex);
+                        this.updateControlsState();
+                        this.loadVisiblePages();
+                    }
+                }
+
+                updateSpreadModeUI() {
+                    const icon = document.getElementById('icon-spread-mode');
+                    if (this.isSinglePage) {
+                        this.dom.spreadModeText.textContent = 'Pág. Simple';
+                        this.dom.btnSpreadMode.classList.remove('active');
+                        this.dom.btnSpreadMode.title = 'Cambiar a Vista Doble (Estilo Libro - 2 Páginas)';
+                        if (icon) {
+                            icon.innerHTML = '<path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2M18 20H6V4H13V9H18V20Z"/>';
+                        }
+                    } else {
+                        this.dom.spreadModeText.textContent = 'Vista Doble';
+                        this.dom.btnSpreadMode.classList.add('active');
+                        this.dom.btnSpreadMode.title = 'Cambiar a Página Simple (1 Página)';
+                        if (icon) {
+                            icon.innerHTML = '<path d="M19 2H5C3.9 2 3 2.9 3 4V20C3 21.1 3.9 22 5 22H19C20.1 22 21 21.1 21 20V4C21 2.9 20.1 2 19 2M19 20H13V4H19V20M11 20H5V4H11V20Z"/>';
+                        }
+                    }
+                }
+
+                toggleFullscreen() {
+                    if (!document.fullscreenElement) {
+                        document.documentElement.requestFullscreen().catch((err) => {
+                            console.warn('Fullscreen bloqueado por el contenedor iframe, abriendo en ventana completa...', err);
+                            window.open(window.location.href, '_blank');
+                        });
+                    } else {
+                        document.exitFullscreen().catch(() => {});
+                    }
+                }
+
+                openDrawer() {
+                    this.dom.thumbsDrawer.classList.add('open');
+                    this.dom.drawerOverlay.classList.add('open');
+                }
+
+                closeDrawer() {
+                    this.dom.thumbsDrawer.classList.remove('open');
+                    this.dom.drawerOverlay.classList.remove('open');
+                }
+
+                showLoading(pct, text) {
+                    this.dom.loadingBar.style.width = `${pct}%`;
+                    if (text) this.dom.loadingStatusText.textContent = text;
+                }
+
+                showError(msg) {
+                    this.dom.loadingScreen.style.display = 'none';
+                    this.dom.errorDesc.textContent = msg;
+                    this.dom.errorModal.style.display = 'flex';
+                }
+
+                bindGlobalEvents() {
+                    // Controles de navegación de página
+                    const turnPrev = () => { if (this.pageFlip) this.pageFlip.flipPrev(); };
+                    const turnNext = () => { if (this.pageFlip) this.pageFlip.flipNext(); };
+
+                    this.dom.btnPrev.addEventListener('click', turnPrev);
+                    this.dom.sidePrev.addEventListener('click', turnPrev);
+                    this.dom.btnNext.addEventListener('click', turnNext);
+                    this.dom.sideNext.addEventListener('click', turnNext);
+
+                    // Deslizador y salto numérico
+                    this.dom.pageSlider.addEventListener('input', (e) => {
+                        this.jumpToPdfPage(e.target.value);
+                    });
+
+                    this.dom.pageInput.addEventListener('change', (e) => {
+                        this.jumpToPdfPage(e.target.value);
+                    });
+
+                    // Teclado
+                    window.addEventListener('keydown', (e) => {
+                        if (e.target.tagName === 'INPUT') return;
+                        if (e.key === 'ArrowLeft') turnPrev();
+                        if (e.key === 'ArrowRight' || e.key === ' ') turnNext();
+                        if (e.key === 'Home') this.jumpToPdfPage(1);
+                        if (e.key === 'End') this.jumpToPdfPage(this.numPdfPages);
+                        if (e.key === 'Escape') this.closeDrawer();
+                    });
+
+                    // Sonido
+                    this.dom.btnSound.addEventListener('click', () => {
+                        soundEnabled = !soundEnabled;
+                        this.dom.iconSoundOn.style.display = soundEnabled ? 'block' : 'none';
+                        this.dom.iconSoundOff.style.display = soundEnabled ? 'none' : 'block';
+                    });
+
+                    // Drawer de Miniaturas
+                    this.dom.btnThumbs.addEventListener('click', () => this.openDrawer());
+                    this.dom.drawerClose.addEventListener('click', () => this.closeDrawer());
+                    this.dom.drawerOverlay.addEventListener('click', () => this.closeDrawer());
+
+                    // Zoom
+                    this.dom.btnZoomIn.addEventListener('click', () => this.setZoom(this.currentZoom + 0.3));
+                    this.dom.btnZoomOut.addEventListener('click', () => this.setZoom(this.currentZoom - 0.3));
+                    this.dom.zoomText.addEventListener('click', () => this.setZoom(1.0));
+
+                    // Doble clic para zoom alternado
+                    this.dom.viewport.addEventListener('dblclick', (e) => {
+                        if (e.target.closest('.side-nav-btn')) return;
+                        this.setZoom(this.currentZoom > 1.0 ? 1.0 : 1.6);
+                    });
+
+                    // Pan con mouse cuando zoom > 1
+                    this.dom.viewport.addEventListener('mousedown', (e) => {
+                        if (this.currentZoom <= 1.0 || e.target.closest('.side-nav-btn')) return;
+                        this.isPanning = true;
+                        this.panStart = { x: e.clientX - this.panOffset.x, y: e.clientY - this.panOffset.y };
+                        this.dom.zoomContainer.classList.add('is-dragging');
+                    });
+
+                    window.addEventListener('mousemove', (e) => {
+                        if (!this.isPanning) return;
+                        this.panOffset = { x: e.clientX - this.panStart.x, y: e.clientY - this.panStart.y };
+                        this.applyTransform();
+                    });
+
+                    window.addEventListener('mouseup', () => {
+                        this.isPanning = false;
+                        this.dom.zoomContainer.classList.remove('is-dragging');
+                    });
+
+                    // Modo de vista y pantalla completa
+                    this.dom.btnSpreadMode.addEventListener('click', () => this.toggleSpreadMode());
+                    this.dom.btnFullscreen.addEventListener('click', () => this.toggleFullscreen());
+                    this.dom.btnRetry.addEventListener('click', () => window.location.reload());
+                }
+            }
+
+            // Iniciar aplicación al cargar el DOM
+            document.addEventListener('DOMContentLoaded', () => {
+                const app = new FlipbookApp();
+                app.init();
+            });
+
+        })();
+    </script>
+</body>
+</html>

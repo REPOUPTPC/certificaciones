@@ -19,12 +19,16 @@ files.forEach(file => {
 });
 
 // Copiar carpetas estáticas
-const dirs = ['css', 'js', 'img'];
+const dirs = ['css', 'js', 'img', 'brochure'];
 dirs.forEach(dir => {
   const src = path.join(rootDir, dir);
   const dest = path.join(publicDir, dir);
   if (fs.existsSync(src)) {
-    fs.cpSync(src, dest, { recursive: true, force: true });
+    fs.cpSync(src, dest, {
+      recursive: true,
+      force: true,
+      filter: (source) => !source.includes('.git')
+    });
   }
 });
 

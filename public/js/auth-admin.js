@@ -127,7 +127,7 @@
         return targetSecId === 'secOfertas';
       }
       if (session.tipo === 'AUDITOR') {
-        const auditables = ['secDashboard', 'secUsuarios', 'secUnidades', 'secFirmas', 'secCursos', 'secCertificados', 'secConsultas'];
+        const auditables = ['secDashboard', 'secUsuarios', 'secUnidades', 'secFirmas', 'secCursos', 'secCertificados', 'secConsultas', 'secBrochure'];
         return auditables.includes(targetSecId);
       }
 
@@ -274,7 +274,7 @@
 
         // Caso Perfil AUDITOR: Solo Lectura en Secciones Auditables
         if (tipoUpper === 'AUDITOR') {
-          const auditables = ['secDashboard', 'secUsuarios', 'secUnidades', 'secFirmas', 'secCursos', 'secCertificados', 'secConsultas'];
+          const auditables = ['secDashboard', 'secUsuarios', 'secUnidades', 'secFirmas', 'secCursos', 'secCertificados', 'secConsultas', 'secBrochure'];
           link.style.display = auditables.includes(target) ? '' : 'none';
           return;
         }

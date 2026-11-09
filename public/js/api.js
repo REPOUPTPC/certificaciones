@@ -780,6 +780,14 @@
       return this.post('uploadImage', { base64Data, filename, folder });
     },
 
+    async getBrochureInfo() {
+      return this.get('getBrochureInfo');
+    },
+
+    async uploadBrochure(pdfData, filename = 'brochure.pdf') {
+      return this.post('uploadBrochure', { pdfData, filename });
+    },
+
     _cachedTasaDolar: null,
     _tasaDolarTime: 0,
 
@@ -863,6 +871,16 @@
               totalVerificaciones: (db.consulta || []).length,
               ultimosCertificados: vista.slice(-5).reverse()
             }
+          };
+        }
+
+        case 'getBrochureInfo': {
+          return {
+            status: 'success',
+            exists: true,
+            url: 'brochure/index.html',
+            size: 2154300,
+            lastModified: new Date().toISOString()
           };
         }
 
@@ -1578,6 +1596,16 @@
 
         case 'uploadImage': {
           return { status: 'success', url: payload.base64Data, filename: payload.filename };
+        }
+
+        case 'uploadBrochure': {
+          return {
+            status: 'success',
+            message: 'Brochure subido localmente (Modo Mock)',
+            url: 'brochure/index.html',
+            size: (payload.pdfData || '').length,
+            filename: 'brochure.pdf'
+          };
         }
 
         default:

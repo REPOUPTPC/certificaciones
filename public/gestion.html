@@ -135,6 +135,9 @@
       <a href="#consultas" class="nav-link-tab" data-target="secConsultas">
         <i class="fa-solid fa-clock-rotate-left me-2"></i> <span class="sidebar-text">Bitácora Consultas</span>
       </a>
+      <a href="#brochure" class="nav-link-tab" data-target="secBrochure">
+        <i class="fa-solid fa-book-open-reader me-2"></i> <span class="sidebar-text">Brochure Digital</span>
+      </a>
       <a href="#administradores" class="nav-link-tab" data-target="secAdministradores" id="navLinkAdministradores" style="display: none;">
         <i class="fa-solid fa-user-shield me-2"></i> <span class="sidebar-text">Gestión Administradores</span>
       </a>
@@ -1156,6 +1159,13 @@
           </table>
         </div>
       </div>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <!-- SECCIÓN: BROCHURE DIGITAL (EXTENSIÓN UNIVERSITARIA) -->
+    <!-- ═════════════════════════════════════════════════════════════════ -->
+    <section id="secBrochure" class="tab-section" style="display: none;">
+      <!-- El contenido dinámico es renderizado e inicializado por js/modules/brochure.js -->
     </section>
 
     <!-- ═════════════════════════════════════════════════════════════════ -->
@@ -3634,7 +3644,11 @@ if (!empty($data['cursos'])) {
   <script src="js/modules/cursos.js"></script>
   <script src="js/modules/certificados.js"></script>
   <script src="js/modules/disenador.js"></script>
+  <!-- Motor de Optimización PDF en Cliente (pdf-lib) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+  
   <script src="js/modules/consultas.js"></script>
+  <script src="js/modules/brochure.js"></script>
   <script src="js/modules/mantenimiento.js"></script>
   <script src="js/app.js"></script>
   <script src="js/auth-admin.js"></script>

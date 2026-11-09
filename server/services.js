@@ -1,5 +1,5 @@
 const db = require('./db');
-const { uploadBase64Image, deleteObjectFromR2 } = require('./storage');
+const { uploadBase64Image, uploadBrochurePdf, getBrochureStatus, deleteObjectFromR2 } = require('./storage');
 const crypto = require('crypto');
 
 const ALLOWED_TABLES = [
@@ -760,6 +760,14 @@ const services = {
 
   async uploadImage(base64Data, filename, folder) {
     return await uploadBase64Image(base64Data, filename, folder);
+  },
+
+  async uploadBrochure(pdfData, filename) {
+    return await uploadBrochurePdf(pdfData, filename);
+  },
+
+  async getBrochureInfo() {
+    return await getBrochureStatus();
   },
 
   async verifyAdmin(usuario, clave) {
