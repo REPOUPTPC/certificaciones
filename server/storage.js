@@ -153,17 +153,13 @@ async function getBrochureUploadPresignedUrl(expiresIn = 900) {
   const cmdPrimary = new PutObjectCommand({
     Bucket: BUCKET,
     Key: primaryKey,
-    ContentType: 'application/pdf',
-    CacheControl: 'no-cache, no-store, must-revalidate',
-    ContentDisposition: 'inline; filename="brochure.pdf"'
+    ContentType: 'application/pdf'
   });
 
   const cmdCapital = new PutObjectCommand({
     Bucket: BUCKET,
     Key: capitalKey,
-    ContentType: 'application/pdf',
-    CacheControl: 'no-cache, no-store, must-revalidate',
-    ContentDisposition: 'inline; filename="Brochure.pdf"'
+    ContentType: 'application/pdf'
   });
 
   const [uploadUrl, uploadUrlCapital] = await Promise.all([

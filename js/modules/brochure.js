@@ -506,7 +506,7 @@ window.brochureModule = (function() {
         }
       };
 
-      xhr.onerror = () => reject(new Error('Fallo de red al conectar con Cloudflare R2'));
+      xhr.onerror = () => reject(new Error('Fallo de red al conectar con Cloudflare R2 (posible bloqueo CORS o conexión)'));
       xhr.ontimeout = () => reject(new Error('Tiempo de espera agotado al conectar con Cloudflare R2'));
 
       xhr.send(data);
@@ -554,23 +554,45 @@ window.brochureModule = (function() {
         // MÉTODO PRINCIPAL: Subida binaria directa a Cloudflare R2 (sin límite de 4.5 MB de Vercel)
         updateProgress(20, 'Iniciando subida directa a Cloudflare R2...');
 
-        await uploadViaPresignedUrl(signedRes.uploadUrl, payloadData, (pct, loaded, total) => {
-          const mbLoaded = (loaded / (1024 * 1024)).toFixed(1);
-          const mbTotal = (total / (1024 * 1024)).toFixed(1);
-          const uiPct = Math.min(95, 20 + Math.round(pct * 0.75));
-          updateProgress(uiPct, `Subiendo a Cloudflare R2: ${pct}% (${mbLoaded} MB de ${mbTotal} MB)...`);
-        });
+        try {
+          await uploadViaPresignedUrl(signedRes.uploadUrl, payloadData, (pct, loaded, total) => {
+            const mbLoaded = (loaded / (1024 * 1024)).toFixed(1);
+            const mbTotal = (total / (1024 * 1024)).toFixed(1);
+            const uiPct = Math.min(95, 20 + Math.round(pct * 0.75));
+            updateProgress(uiPct, `Subiendo a Cloudflare R2: ${pct}% (${mbLoaded} MB de ${mbTotal} MB)...`);
+          });
 
-        // Sincronizar copia con Brochure.pdf si existe la URL secundaria
-        if (signedRes.uploadUrlCapital) {
-          try {
-            await uploadViaPresignedUrl(signedRes.uploadUrlCapital, payloadData);
-          } catch (errCap) {
-            console.warn('Aviso: copia Brochure.pdf omitida:', errCap.message);
+          // Sincronizar copia con Brochure.pdf si existe la URL secundaria
+          if (signedRes.uploadUrlCapital) {
+            try {
+              await uploadViaPresignedUrl(signedRes.uploadUrlCapital, payloadData);
+            } catch (errCap) {
+              console.warn('Aviso: copia Brochure.pdf omitida:', errCap.message);
+            }
+          }
+
+          updateProgress(100, '¡Documento brochure.pdf actualizado exitosamente en Cloudflare R2!');
+        } catch (directErr) {
+          console.warn('Fallo la subida directa a R2 vía presigned URL:', directErr);
+          const fileSize = payloadData.size || (optimizedPdfBytes ? optimizedPdfBytes.byteLength : 0);
+          if (fileSize > 0 && fileSize <= 4 * 1024 * 1024) {
+            updateProgress(40, 'Reintentando por canal seguro API (fallback servidor)...');
+            const bytesToEncode = optimizedPdfBytes || new Uint8Array(await selectedFile.arrayBuffer());
+            const base64Data = uint8ArrayToBase64(bytesToEncode);
+            updateProgress(70, 'Subiendo mediante API del servidor a Cloudflare R2...');
+            const res = await window.api.uploadBrochure(base64Data, 'brochure.pdf');
+            if (!res || (res.status !== 'success' && !res.url)) {
+              throw new Error(res.message || 'No se recibió confirmación de Cloudflare R2');
+            }
+            updateProgress(100, '¡Documento brochure.pdf actualizado exitosamente!');
+          } else {
+            throw new Error(
+              `Fallo de conexión con Cloudflare R2 (${directErr.message}). ` +
+              `El archivo supera los 4 MB y requiere subida directa. ` +
+              `Verifica que el bucket de R2 tenga configuradas las reglas CORS en el panel de Cloudflare.`
+            );
           }
         }
-
-        updateProgress(100, '¡Documento brochure.pdf actualizado exitosamente en Cloudflare R2!');
       } else {
         // MÉTODO FALLBACK: Para archivos pequeños si no hay presigned URL
         const bytesToEncode = optimizedPdfBytes || new Uint8Array(await selectedFile.arrayBuffer());
